@@ -1,0 +1,249 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-share: "Share Tech Mono", monospace;
+  --font-varela: "Varela", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  --font-syne: "Syne", sans-serif;
+  --font-space: "Space Mono", monospace;
+  --font-ibm: "IBM Plex Mono", monospace;
+
+  --color-canvas: #09090b;
+  --color-surface: #121215;
+  --color-surface-elevated: #18181b;
+  --color-surface-hover: #27272a;
+  --color-surface-soft: rgba(255, 255, 255, 0.05);
+  --color-ink: #f4f4f5;
+  --color-ink-secondary: #a1a1aa;
+  --color-muted: #71717a;
+  --color-muted-2: #52525b;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-accent: rgba(255, 255, 255, 0.25);
+  --color-accent-soft: rgba(255, 255, 255, 0.08);
+  --color-overlay: rgba(0, 0, 0, 0.7);
+  --color-diamond-shadow: #27272a;
+}
+
+html.light {
+  --color-canvas: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #fafafa;
+  --color-surface-hover: #e4e4e7;
+  --color-surface-soft: rgba(0, 0, 0, 0.04);
+  --color-ink: #09090b;
+  --color-ink-secondary: #52525b;
+  --color-muted: #71717a;
+  --color-muted-2: #a1a1aa;
+  --color-border: rgba(0, 0, 0, 0.12);
+  --color-border-accent: rgba(0, 0, 0, 0.25);
+  --color-accent-soft: rgba(0, 0, 0, 0.06);
+  --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-diamond-shadow: #d4d4d8;
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Explicit theme utility classes guaranteed to work in light and dark mode */
+.text-theme-title {
+  color: var(--color-ink);
+}
+
+html.light .text-theme-title {
+  color: #09090b !important;
+}
+
+html.dark .text-theme-title,
+html:not(.light) .text-theme-title {
+  color: #f4f4f5 !important;
+}
+
+.text-theme-desc {
+  color: var(--color-ink-secondary);
+}
+
+html.light .text-theme-desc {
+  color: #52525b !important;
+}
+
+html.dark .text-theme-desc,
+html:not(.light) .text-theme-desc {
+  color: #a1a1aa !important;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 22ch;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    border-color: rgba(244, 244, 245, 1);
+  }
+  50% {
+    border-color: rgba(244, 244, 245, 0);
+  }
+}
+
+@keyframes spin-ease {
+  from {
+    transform: rotate(45deg);
+  }
+  to {
+    transform: rotate(405deg);
+  }
+}
+
+.animate-spin-slow {
+  will-change: transform;
+  animation: spin-ease 3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeLeftRight {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes homeArrowDown {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  10% {
+    transform: translate3d(0, 5px, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(0, 30px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInLink {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes wave-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+.animate-wave-ring {
+  animation: wave-ring 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.typing-animate {
+  width: 0;
+  animation:
+    typing 1.8s linear forwards,
+    blink 0.7s ease-in-out infinite;
+}
+
+.hero-arrow-bounce {
+  animation: homeArrowDown 2s infinite;
+}
+
+.hero-arrow-bounce:hover {
+  animation-play-state: paused;
+}
+
+.fade-in-left-right {
+  opacity: 0;
+  transform: translateX(-60px);
+  animation: fadeLeftRight 0.8s ease-out forwards;
+}
+
+.card-stagger:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.card-stagger:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.card-stagger:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.card-stagger:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.card-stagger:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.card-stagger:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.card-stagger:nth-child(7) {
+  animation-delay: 0.35s;
+}
+.card-stagger:nth-child(8) {
+  animation-delay: 0.4s;
+}
+.card-stagger:nth-child(9) {
+  animation-delay: 0.45s;
+}
+.card-stagger:nth-child(10) {
+  animation-delay: 0.5s;
+}
+.card-stagger:nth-child(11) {
+  animation-delay: 0.55s;
+}
+
+.tool-card-anim {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.tool-card-anim:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.tool-card-anim:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.tool-card-anim:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.tool-card-anim:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+body {
+  font-family: "Share Tech Mono", monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
