@@ -73,7 +73,11 @@ export default function Catalog() {
   // Sync custom added items to localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("sotano_custom_catalog_items", JSON.stringify(customItems));
+      try {
+        localStorage.setItem("sotano_custom_catalog_items", JSON.stringify(customItems));
+      } catch (err) {
+        console.error("No se pudo guardar en localStorage:", err);
+      }
     }
   }, [customItems]);
 
