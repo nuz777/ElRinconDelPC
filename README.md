@@ -1,8 +1,6 @@
 # 🖥️ El Sótano del PC
 
-<p align="center">
-  <img src="public/img/SN-tools.jpg" alt="El Sótano del PC Banner" width="100%" style="border-radius: 16px; max-height: 380px; object-fit: cover;" />
-</p>
+
 
 <p align="center">
   <strong>Tu rincón definitivo para juegos de PC, mods, shaders y herramientas de optimización.</strong><br>
