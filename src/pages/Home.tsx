@@ -203,7 +203,7 @@ export default function Home() {
                   {
                     icon: Gamepad2,
                     title: "Juegos de PC",
-                    desc: "Títulos emblemáticos organizados por géneros, listos con sus especificaciones completas y descargas sin complicaciones.",
+                    desc: "Títulos emblemáticos organizados por géneros, listos con sus especificaciones completas y descargas.",
                   },
                   {
                     icon: Download,
