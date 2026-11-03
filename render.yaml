@@ -13,13 +13,15 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        fromStaticSite:
+        fromService:
+          type: web
           name: el-sotano-frontend
           property: url
 
   # Frontend Vite React SPA (Static Site)
-  - type: static
+  - type: web
     name: el-sotano-frontend
+    runtime: static
     rootDir: Frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
