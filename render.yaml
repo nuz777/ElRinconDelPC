@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     rootDir: API
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
@@ -20,7 +20,7 @@ services:
     name: el-sotano-frontend
     runtime: static
     rootDir: Frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     staticPublishPath: dist
     routes:
       - type: rewrite
