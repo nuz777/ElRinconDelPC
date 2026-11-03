@@ -13,10 +13,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: el-sotano-frontend
-          property: url
+        sync: false
 
   # Frontend Vite React SPA (Static Site)
   - type: web
@@ -31,7 +28,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: el-sotano-api
-          property: url
+        sync: false
