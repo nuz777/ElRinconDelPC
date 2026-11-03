@@ -37,6 +37,8 @@ function GithubIcon({ className = "size-5" }: { className?: string }) {
   );
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 const socialButtonClass =
   "w-full h-12 flex items-center justify-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-100 text-xs font-bold uppercase tracking-wider hover:bg-zinc-800 hover:border-zinc-500 hover:text-white active:scale-98 transition cursor-pointer";
 
@@ -66,7 +68,7 @@ export default function Auth({ initialMode }: AuthProps) {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3000/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: identifier, password }),
@@ -119,7 +121,7 @@ export default function Auth({ initialMode }: AuthProps) {
   };
 
   const handleSocial = (provider: "google" | "github") => {
-    window.location.href = `http://localhost:3000/auth/${provider}`;
+    window.location.href = `${API_BASE_URL}/auth/${provider}`;
   };
 
   const handleGoHome = () => {

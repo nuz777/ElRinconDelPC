@@ -1,0 +1,35 @@
+services:
+  # Backend NestJS (Web Service)
+  - type: web
+    name: el-sotano-api
+    runtime: node
+    plan: free
+    rootDir: API
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        fromStaticSite:
+          name: el-sotano-frontend
+          property: url
+
+  # Frontend Vite React SPA (Static Site)
+  - type: static
+    name: el-sotano-frontend
+    rootDir: Frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: el-sotano-api
+          property: url

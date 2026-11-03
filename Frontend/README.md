@@ -125,7 +125,7 @@ ElRinconDelPC/
 
 - **Nuz_v** ([@nuz777](https://github.com/nuz777))
   - *Desarrollador Fullstack* enfocado en **C#**, **.NET**, **React** y **TypeScript**.
-  - Creador y mantenedor de **El sótano del pc**.
+z  -  mantenedor de **El sótano del pc**.
 
 ---
 
