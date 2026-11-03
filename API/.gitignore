@@ -1,0 +1,18 @@
+# Compiled output
+dist
+*.tsbuildinfo
+
+# Node dependencies
+node_modules
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Vitest / coverage
+coverage
+.vitest

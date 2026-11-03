@@ -1,0 +1,28 @@
+{
+  "material-icon-theme.activeIconPack": "nest",
+  "material-icon-theme.files.associations": {
+    "*.controller.ts": "nest-controller",
+    "*.service.ts": "nest-service",
+    "*.module.ts": "nest-module",
+    "*.guard.ts": "nest-guard",
+    "*.interceptor.ts": "nest-interceptor",
+    "*.pipe.ts": "nest-pipe",
+    "*.filter.ts": "nest-filter",
+    "*.gateway.ts": "nest-gateway",
+    "*.middleware.ts": "nest-middleware",
+    "*.decorator.ts": "nest-decorator"
+  },
+  "vscode-icons.associations.files": [
+    { "icon": "nest-controller", "extensions": ["controller.ts"], "format": "svg" },
+    { "icon": "nest-service", "extensions": ["service.ts"], "format": "svg" },
+    { "icon": "nest-module", "extensions": ["module.ts"], "format": "svg" },
+    { "icon": "nest-guard", "extensions": ["guard.ts"], "format": "svg" },
+    { "icon": "nest-interceptor", "extensions": ["interceptor.ts"], "format": "svg" },
+    { "icon": "nest-pipe", "extensions": ["pipe.ts"], "format": "svg" },
+    { "icon": "nest-filter", "extensions": ["filter.ts"], "format": "svg" },
+    { "icon": "nest-gateway", "extensions": ["gateway.ts"], "format": "svg" },
+    { "icon": "nest-middleware", "extensions": ["middleware.ts"], "format": "svg" },
+    { "icon": "nest-decorator", "extensions": ["decorator.ts"], "format": "svg" }
+  ]
+}
+
