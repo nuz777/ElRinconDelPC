@@ -1,18 +1,21 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Role } from '../../Domain/Entities/roles.enum.js';
 import type { User } from '../../Domain/Entities/user.entity.js';
 import {
   AUTH_REPOSITORY,
   type AuthRepository,
 } from '../../Domain/interfaces/auth-repository.interface.js';
+import { MailService } from '../../Infraestructure/mail/mail.service.js';
 import { HashingService } from '../../Infraestructure/security/hashing.service.js';
 import type { JwtPayload } from '../../Infraestructure/security/jwt.strategy.js';
-import type { OAuthUser } from '../../Infraestructure/security/google.strategy.js';
 import type { AuthResponseDto } from '../../Presentation/dtos/auth-response.dto.js';
 import type { LoginRequestDto } from '../../Presentation/dtos/login-request.dto.js';
 import type { RegisterRequestDto } from '../../Presentation/dtos/register-request.dto.js';
@@ -23,6 +26,7 @@ export class AuthService {
     @Inject(AUTH_REPOSITORY) private readonly authRepository: AuthRepository,
     private readonly hashingService: HashingService,
     private readonly jwtService: JwtService,
+    @Optional() private readonly mailService?: MailService,
   ) {}
 
   async register(dto: RegisterRequestDto): Promise<AuthResponseDto> {
@@ -50,13 +54,7 @@ export class AuthService {
     );
 
     const invalid = new UnauthorizedException('Credenciales inválidas');
-    if (!user) throw invalid;
-
-    if (!user.passwordHash) {
-      throw new UnauthorizedException(
-        `Esta cuenta fue creada con ${user.provider}. Por favor, inicia sesión mediante ${user.provider}.`,
-      );
-    }
+    if (!user || !user.passwordHash) throw invalid;
 
     const matches = await this.hashingService.compare(
       dto.password,
@@ -67,51 +65,73 @@ export class AuthService {
     return this.buildResponse(user);
   }
 
-  async validateOAuthLogin(oauthUser: OAuthUser): Promise<AuthResponseDto> {
-    const email = oauthUser.email.trim().toLowerCase();
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const genericResponse = {
+      message:
+        'Si el correo está registrado, recibirás un código de verificación.',
+    };
 
-    // 1. Buscar por proveedor y providerId
-    let user = await this.authRepository.findByProviderId(
-      oauthUser.provider,
-      oauthUser.providerId,
-    );
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.authRepository.findByEmail(normalizedEmail);
 
-    if (user) {
-      const updated = await this.authRepository.update(user.id, {
-        name: user.name || oauthUser.name,
-        picture: oauthUser.picture || user.picture,
-      });
-      return this.buildResponse(updated ?? user);
+    if (!user) {
+      return genericResponse;
     }
 
-    // 2. Si no existe por providerId, buscar por email
-    if (email) {
-      user = await this.authRepository.findByEmail(email);
-      if (user) {
-        const updated = await this.authRepository.update(user.id, {
-          provider: oauthUser.provider,
-          providerId: oauthUser.providerId,
-          name: user.name || oauthUser.name,
-          picture: oauthUser.picture || user.picture,
-        });
-        return this.buildResponse(updated ?? user);
-      }
-    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetTokenExpires = new Date(Date.now() + 15 * 60 * 1000);
 
-    // 3. Crear nuevo usuario si no existía
-    const newUser = await this.authRepository.create({
-      email,
-      provider: oauthUser.provider,
-      providerId: oauthUser.providerId,
-      name: oauthUser.name,
-      picture: oauthUser.picture,
+    await this.authRepository.update(user.id, {
+      resetToken: code,
+      resetTokenExpires,
     });
 
-    return this.buildResponse(newUser);
+    if (this.mailService) {
+      await this.mailService.sendResetCode(user.email, code);
+    }
+
+    return genericResponse;
+  }
+
+  async resetPassword(
+    email: string,
+    code: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.authRepository.findByEmail(normalizedEmail);
+
+    if (!user || !user.resetToken || user.resetToken !== code) {
+      throw new BadRequestException(
+        'El código ingresado es incorrecto o no existe.',
+      );
+    }
+
+    if (
+      !user.resetTokenExpires ||
+      new Date() > new Date(user.resetTokenExpires)
+    ) {
+      throw new BadRequestException('El código de verificación ha expirado.');
+    }
+
+    const passwordHash = await this.hashingService.hash(newPassword);
+
+    await this.authRepository.update(user.id, {
+      passwordHash,
+      resetToken: null,
+      resetTokenExpires: null,
+    });
+
+    return { message: 'Contraseña actualizada exitosamente.' };
   }
 
   private async buildResponse(user: User): Promise<AuthResponseDto> {
-    const payload: JwtPayload = { sub: user.id, email: user.email };
+    const role = user.role ?? Role.USER;
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role,
+    };
     const accessToken = await this.jwtService.signAsync(payload);
 
     return {
@@ -121,6 +141,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         provider: user.provider,
+        role,
         picture: user.picture,
       },
     };

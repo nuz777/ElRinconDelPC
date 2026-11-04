@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Copy,
   Check,
+  Trash2,
 } from "lucide-react";
 import type { CatalogItem } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
@@ -20,11 +21,15 @@ import { useTheme } from "../ThemeContext";
 interface FullscreenDetailModalProps {
   item: CatalogItem | null;
   onClose: () => void;
+  isAdmin?: boolean;
+  onDelete?: (item: CatalogItem) => void;
 }
 
 export default function FullscreenDetailModal({
   item,
   onClose,
+  isAdmin,
+  onDelete,
 }: FullscreenDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const { theme } = useTheme();
@@ -110,6 +115,17 @@ export default function FullscreenDetailModal({
           </div>
 
           <div className="flex items-center gap-3">
+            {isAdmin && onDelete && (
+              <button
+                onClick={() => onDelete(item)}
+                title="Eliminar este ítem"
+                className="px-3 py-1.5 rounded-xl border border-red-600/40 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+              >
+                <Trash2 className="size-4" />
+                <span className="hidden sm:inline font-semibold">Eliminar</span>
+              </button>
+            )}
+
             <button
               onClick={handleCopyLink}
               title="Copiar enlace"

@@ -1,3 +1,4 @@
+import type { Role } from '../Entities/roles.enum.js';
 import type { AuthProvider, User } from '../Entities/user.entity.js';
 
 export interface CreateUserData {
@@ -5,13 +6,12 @@ export interface CreateUserData {
   provider: AuthProvider;
   name?: string;
   passwordHash?: string;
-  providerId?: string;
   picture?: string;
+  role?: Role;
 }
 
 export interface AuthRepository {
   findByEmail(email: string): Promise<User | null>;
-  findByProviderId(provider: AuthProvider, providerId: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   create(data: CreateUserData): Promise<User>;
   update(id: string, data: Partial<User>): Promise<User | null>;

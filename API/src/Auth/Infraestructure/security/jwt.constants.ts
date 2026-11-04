@@ -1,4 +1,4 @@
-export const DEFAULT_JWT_EXPIRES_IN = '7d';
+export const DEFAULT_JWT_EXPIRES_IN = '1d';
 
 /**
  * Lee el secreto desde JWT_SECRET. En producción es obligatorio;

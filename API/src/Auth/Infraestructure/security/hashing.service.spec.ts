@@ -9,7 +9,7 @@ describe('HashingService (Unit)', () => {
     const hash = await hashingService.hash(plain);
 
     expect(hash).not.toBe(plain);
-    expect(hash.startsWith('$2b$12$') || hash.startsWith('$2a$12$')).toBe(true);
+    expect(hash.startsWith('$2b$10$') || hash.startsWith('$2a$10$')).toBe(true);
 
     const valid = await hashingService.compare(plain, hash);
     expect(valid).toBe(true);

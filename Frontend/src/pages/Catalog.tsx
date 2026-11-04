@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Sun,
   Moon,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Header from "../components/Header";
@@ -25,6 +26,15 @@ import {
   type Apartado,
 } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
+import {
+  AUTH_STATE_EVENT,
+  authService,
+  type AuthUser,
+} from "../services/auth.service";
+import {
+  catalogService,
+  mapApartadoToSection,
+} from "../services/catalog.service";
 
 const APARTADOS_CONFIG: {
   id: "todos" | Apartado;
@@ -41,12 +51,10 @@ export default function Catalog() {
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === "light";
 
-  // Only store custom items added through UI; base items always read directly from catalog.ts
+  // Items guardados en PostgreSQL / Local
   const [customItems, setCustomItems] = useState<CatalogItem[]>(() => {
     if (typeof window !== "undefined") {
-      // Remove obsolete cache key that locked outdated base catalog items
       localStorage.removeItem("sotano_catalog_items");
-
       const stored = localStorage.getItem("sotano_custom_catalog_items");
       if (stored) {
         try {
@@ -59,6 +67,31 @@ export default function Catalog() {
     return [];
   });
 
+  // Carga inicial y reactiva desde la Base de Datos (PostgreSQL via API)
+  useEffect(() => {
+    let isMounted = true;
+    catalogService
+      .getItems()
+      .then((dbItems) => {
+        if (!isMounted) return;
+        if (dbItems && dbItems.length > 0) {
+          setCustomItems((prev) => {
+            // Combinar items de la DB evitando duplicados por ID
+            const dbIds = new Set(dbItems.map((it) => it.id));
+            const remainingLocal = prev.filter((p) => !dbIds.has(p.id));
+            return [...dbItems, ...remainingLocal];
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("No se pudo sincronizar el catálogo con la DB:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const items = useMemo(() => {
     return [...customItems, ...initialCatalogItems];
   }, [customItems]);
@@ -69,8 +102,32 @@ export default function Catalog() {
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<CatalogItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    authService.getStoredUser(),
+  );
+  const isAdmin = user?.role === "admin";
 
-  // Sync custom added items to localStorage
+  useEffect(() => {
+    const syncAuth = () => {
+      const currentUser = authService.getStoredUser();
+      setUser(currentUser);
+      if (currentUser?.role !== "admin") {
+        setIsAddModalOpen(false);
+      }
+    };
+    window.addEventListener("storage", syncAuth);
+    window.addEventListener("focus", syncAuth);
+    window.addEventListener(AUTH_STATE_EVENT, syncAuth);
+    return () => {
+      window.removeEventListener("storage", syncAuth);
+      window.removeEventListener("focus", syncAuth);
+      window.removeEventListener(AUTH_STATE_EVENT, syncAuth);
+    };
+  }, []);
+
+  // Sync custom added items to localStorage como respaldo offline
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
@@ -81,11 +138,65 @@ export default function Catalog() {
     }
   }, [customItems]);
 
-  // Handle adding custom items
-  const handleAddItem = (newItem: CatalogItem) => {
-    setCustomItems((prev) => [newItem, ...prev]);
+  // Handle adding custom items (guarda en PostgreSQL mediante catalogService)
+  const handleAddItem = async (newItem: CatalogItem) => {
+    if (!isAdmin) return;
+
     setSelectedApartado(newItem.apartado);
     setSelectedGenre(newItem.genre);
+
+    try {
+      const section = mapApartadoToSection(newItem.apartado);
+      const download = newItem.downloadLinks[0]?.url;
+      const validDownloadUrl =
+        download && (download.startsWith("http://") || download.startsWith("https://"))
+          ? download
+          : undefined;
+
+      const createdInDb = await catalogService.createItem({
+        section,
+        title: newItem.title,
+        genre: newItem.genre,
+        size: newItem.size,
+        version: newItem.version,
+        badge: newItem.tag,
+        coverUrl: newItem.img,
+        downloadUrl: validDownloadUrl,
+        developer: newItem.developer,
+        shortDescription: newItem.fullDesc || newItem.shortDesc,
+      });
+
+      // Añadir al estado directamente con el UUID de la base de datos
+      setCustomItems((prev) => [createdInDb, ...prev]);
+    } catch (err) {
+      console.error("Error guardando en la base de datos:", err);
+      // Respaldo optimista local si fallara la conexión
+      setCustomItems((prev) => [newItem, ...prev]);
+    }
+  };
+
+  // Handle removing items from Database and local view
+  const handleDeleteItem = async (item: CatalogItem) => {
+    if (!isAdmin) return;
+    try {
+      setIsDeleting(true);
+      // Si el id es un UUID (proveniente de la base de datos), llamar al backend
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
+      if (isUuid) {
+        await catalogService.deleteItem(item.id);
+      }
+      setCustomItems((prev) => prev.filter((it) => it.id !== item.id));
+      if (selectedItem?.id === item.id) {
+        setSelectedItem(null);
+      }
+      setItemToDelete(null);
+    } catch (err) {
+      console.error("Error al eliminar el ítem:", err);
+      const msg = err instanceof Error ? err.message : "Hubo un error al eliminar el ítem del servidor.";
+      alert(msg);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Get list of genres based on active apartado
@@ -194,17 +305,19 @@ export default function Catalog() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-transform shadow-md cursor-pointer hover:scale-105 active:scale-95 ${
-                    isLight
-                      ? "bg-zinc-900 text-white hover:bg-black"
-                      : "bg-white text-zinc-950 hover:bg-zinc-200"
-                  }`}
-                >
-                  <Plus className="size-4" />
-                  <span>Agregar Item</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-transform shadow-md cursor-pointer hover:scale-105 active:scale-95 ${
+                      isLight
+                        ? "bg-zinc-900 text-white hover:bg-black"
+                        : "bg-white text-zinc-950 hover:bg-zinc-200"
+                    }`}
+                  >
+                    <Plus className="size-4" />
+                    <span>Agregar Item</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => setFilterDrawerOpen(true)}
@@ -428,16 +541,18 @@ export default function Catalog() {
                 >
                   Restablecer Filtros
                 </button>
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer ${
-                    isLight
-                      ? "bg-zinc-900 text-white hover:bg-black"
-                      : "bg-white text-zinc-950 hover:bg-zinc-200"
-                  }`}
-                >
-                  Agregar este elemento
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer ${
+                      isLight
+                        ? "bg-zinc-900 text-white hover:bg-black"
+                        : "bg-white text-zinc-950 hover:bg-zinc-200"
+                    }`}
+                  >
+                    Agregar este elemento
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -524,18 +639,34 @@ export default function Catalog() {
                         />
 
                         {/* Top Badges (Solid background instead of heavy backdrop-blur) */}
-                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
-                          <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
-                            {item.apartado === "juegos"
-                              ? "Juego"
-                              : item.apartado === "mods"
-                              ? "Mod"
-                              : "Tool"}
-                          </span>
+                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 pointer-events-none">
+                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
+                              {item.apartado === "juegos"
+                                ? "Juego"
+                                : item.apartado === "mods"
+                                ? "Mod"
+                                : "Tool"}
+                            </span>
 
-                          <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white text-zinc-950 shadow-sm">
-                            {item.tag}
-                          </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white text-zinc-950 shadow-sm">
+                              {item.tag}
+                            </span>
+                          </div>
+
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setItemToDelete(item);
+                              }}
+                              title="Eliminar elemento del catálogo"
+                              className="p-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
                         </div>
 
                         {/* Bottom Tag */}
@@ -846,14 +977,72 @@ export default function Catalog() {
       <FullscreenDetailModal
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+        isAdmin={isAdmin}
+        onDelete={(item) => setItemToDelete(item)}
       />
 
-      {/* Add Item Modal */}
-      <AddItemModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddItem={handleAddItem}
-      />
+      {/* Add Item Modal (Rendered strictly for Admins) */}
+      {isAdmin && (
+        <AddItemModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onAddItem={handleAddItem}
+        />
+      )}
+
+      {/* Delete Confirmation Modal for Admins */}
+      <AnimatePresence>
+        {isAdmin && itemToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`relative w-full max-w-md rounded-2xl p-6 border shadow-2xl transition-colors ${
+                isLight ? "bg-white border-zinc-200 text-zinc-900" : "bg-zinc-950 border-zinc-800 text-zinc-100"
+              }`}
+            >
+              <div className="flex items-center gap-3 text-red-500 mb-4">
+                <div className="p-3 rounded-full bg-red-500/10 border border-red-500/20">
+                  <Trash2 className="size-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg uppercase tracking-wide">¿Eliminar elemento?</h3>
+                  <p className="text-xs text-zinc-400">Esta acción no se puede deshacer.</p>
+                </div>
+              </div>
+
+              <p className={`text-sm mb-6 ${isLight ? "text-zinc-600" : "text-zinc-300"}`}>
+                ¿Estás seguro de que deseas eliminar permanentemente{" "}
+                <span className="font-bold text-red-400">"{itemToDelete.title}"</span> de la biblioteca y de la base de datos?
+              </p>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setItemToDelete(null)}
+                  className={`px-4 py-2.5 rounded-xl border text-xs uppercase tracking-wider font-semibold cursor-pointer transition-colors ${
+                    isLight
+                      ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300"
+                      : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-700"
+                  }`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => handleDeleteItem(itemToDelete)}
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs uppercase tracking-wider font-bold shadow-lg transition-transform cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

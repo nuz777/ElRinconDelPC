@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { Apartado, CatalogItem } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
+import { authService } from "../services/auth.service";
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -118,7 +119,7 @@ export default function AddItemModal({
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen || !authService.isAdmin()) return null;
 
   const resetForm = () => {
     setTitle("");
@@ -198,6 +199,7 @@ export default function AddItemModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!authService.isAdmin()) return;
     if (!title.trim() || !shortDesc.trim()) return;
 
     let finalImg = "/img/indicado.webp";

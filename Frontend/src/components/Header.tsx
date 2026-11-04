@@ -2,11 +2,15 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import { useTheme } from "../ThemeContext";
+import {
+  AUTH_STATE_EVENT,
+  authService,
+  type AuthUser,
+} from "../services/auth.service";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
   { href: "/catalogo", label: "Catálogo" },
-  { href: "/#intro", label: "Intro" },
   { href: "/#about", label: "Sobre Nosotros" },
   { href: "/#team", label: "Equipo" },
   { href: "/#video", label: "Video" },
@@ -17,50 +21,28 @@ interface HeaderProps {
   onNavSectionClick?: (sectionId: string) => void;
 }
 
-interface CurrentUser {
-  id?: string;
-  name?: string;
-  username?: string;
-  email?: string;
-}
-
-const getStoredUser = (): CurrentUser | null => {
-  if (typeof window === "undefined") return null;
-  try {
-    const rawToken = localStorage.getItem("sotano_token");
-    const rawUser = localStorage.getItem("sotano_user");
-    if (!rawToken && !rawUser) return null;
-    if (rawUser) {
-      const parsed = JSON.parse(rawUser);
-      if (parsed && typeof parsed === "object") return parsed;
-    }
-    if (rawToken) {
-      return { name: "Usuario" };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
 export default function Header({ onNavSectionClick }: HeaderProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === "light";
 
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(getStoredUser);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() =>
+    authService.getStoredUser(),
+  );
 
   useEffect(() => {
     const syncUser = () => {
-      setCurrentUser(getStoredUser());
+      setCurrentUser(authService.getStoredUser());
     };
 
     window.addEventListener("storage", syncUser);
     window.addEventListener("focus", syncUser);
+    window.addEventListener(AUTH_STATE_EVENT, syncUser);
     return () => {
       window.removeEventListener("storage", syncUser);
       window.removeEventListener("focus", syncUser);
+      window.removeEventListener(AUTH_STATE_EVENT, syncUser);
     };
   }, []);
 
@@ -72,12 +54,7 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
   }, [sidebarOpen]);
 
   const handleLogout = useCallback(() => {
-    try {
-      localStorage.removeItem("sotano_token");
-      localStorage.removeItem("sotano_user");
-    } catch {
-      // ignore
-    }
+    authService.logout();
     setCurrentUser(null);
     window.location.reload();
   }, []);

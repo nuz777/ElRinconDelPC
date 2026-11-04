@@ -6,26 +6,32 @@ import {
   HttpStatus,
   Post,
   Req,
-  Res,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import { AuthService } from '../Application/Services/auth.service.js';
-import type { OAuthUser } from '../Infraestructure/security/google.strategy.js';
+import { Role } from '../Domain/Entities/roles.enum.js';
+import { Roles } from '../Infraestructure/security/decorators/roles.decorator.js';
+import { JwtAuthGuard } from '../Infraestructure/security/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../Infraestructure/security/guards/roles.guard.js';
+import type { AuthenticatedUser } from '../Infraestructure/security/jwt.strategy.js';
 import { AuthResponseDto } from './dtos/auth-response.dto.js';
+import { ForgotPasswordDto } from './dtos/forgot-password.dto.js';
 import { LoginRequestDto } from './dtos/login-request.dto.js';
 import { RegisterRequestDto } from './dtos/register-request.dto.js';
+import { ResetPasswordDto } from './dtos/reset-password.dto.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -51,67 +57,63 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Iniciar autenticación con Google OAuth2' })
-  @ApiResponse({ status: 302, description: 'Redirección a Google Accounts' })
-  googleAuth(): void {
-    // Passport redirige automáticamente al flujo de Google
-  }
-
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Callback de autenticación con Google OAuth2' })
-  @ApiOkResponse({
-    description: 'Autenticación con Google exitosa',
-    type: AuthResponseDto,
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Solicitar código de 6 dígitos para recuperación de contraseña',
   })
-  async googleCallback(
-    @Req() req: Request & { user: OAuthUser },
-    @Res() res: Response,
-  ): Promise<void> {
-    const authResult = await this.authService.validateOAuthLogin(req.user);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-
-    if (!req.headers.accept?.includes('application/json')) {
-      const target = `${frontendUrl}/?token=${encodeURIComponent(
-        authResult.accessToken,
-      )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
-      return res.redirect(target);
-    }
-
-    res.json(authResult);
-  }
-
-  @Get('github')
-  @UseGuards(AuthGuard('github'))
-  @ApiOperation({ summary: 'Iniciar autenticación con GitHub OAuth2' })
-  @ApiResponse({ status: 302, description: 'Redirección a GitHub' })
-  githubAuth(): void {
-    // Passport redirige automáticamente al flujo de GitHub
-  }
-
-  @Get('github/callback')
-  @UseGuards(AuthGuard('github'))
-  @ApiOperation({ summary: 'Callback de autenticación con GitHub OAuth2' })
-  @ApiOkResponse({
-    description: 'Autenticación con GitHub exitosa',
-    type: AuthResponseDto,
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description:
+      'Si el correo está registrado, se envía el código de verificación de 6 dígitos (expira en 15 minutos)',
   })
-  async githubCallback(
-    @Req() req: Request & { user: OAuthUser },
-    @Res() res: Response,
-  ): Promise<void> {
-    const authResult = await this.authService.validateOAuthLogin(req.user);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  @ApiBadRequestResponse({ description: 'Correo electrónico inválido' })
+  forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.forgotPassword(dto.email);
+  }
 
-    if (!req.headers.accept?.includes('application/json')) {
-      const target = `${frontendUrl}/?token=${encodeURIComponent(
-        authResult.accessToken,
-      )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
-      return res.redirect(target);
-    }
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Restablecer la contraseña mediante el código de verificación de 6 dígitos',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Contraseña actualizada exitosamente',
+  })
+  @ApiBadRequestResponse({
+    description: 'Código incorrecto, expirado o datos inválidos',
+  })
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
+    return this.authService.resetPassword(
+      dto.email,
+      dto.code,
+      dto.newPassword,
+    );
+  }
 
-    res.json(authResult);
+  @Get('admin/only')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Endpoint de prueba exclusivo para administradores' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Acceso concedido al administrador',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'No autenticado o token JWT inválido',
+  })
+  @ApiForbiddenResponse({
+    description: 'No tienes permisos para acceder a este recurso',
+  })
+  adminOnly(@Req() req: Request & { user: AuthenticatedUser }) {
+    return {
+      message: 'Acceso concedido: Bienvenido al panel de administración',
+      user: req.user,
+    };
   }
 }
