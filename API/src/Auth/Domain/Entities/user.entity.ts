@@ -1,24 +1,32 @@
-export type AuthProvider = 'local' | 'google' | 'github';
+import type { Role } from './roles.enum.js';
+
+export type AuthProvider = 'local' | 'system';
 
 export interface UserProps {
   id: string;
   email: string;
   provider?: AuthProvider;
   passwordHash?: string;
-  providerId?: string;
   name?: string;
   picture?: string;
+  role?: Role;
+  resetToken?: string | null;
+  resetTokenExpires?: Date | null;
   createdAt?: Date;
 }
+
+const DEFAULT_ROLE = 'user' as Role;
 
 export class User {
   public readonly id: string;
   public email: string;
   public provider: AuthProvider;
   public passwordHash?: string;
-  public providerId?: string;
   public name?: string;
   public picture?: string;
+  public role: Role;
+  public resetToken?: string | null;
+  public resetTokenExpires?: Date | null;
   public readonly createdAt: Date;
 
   constructor(
@@ -27,18 +35,20 @@ export class User {
     emailOrHash?: string,
     passwordHash?: string,
     provider: AuthProvider = 'local',
-    providerId?: string,
     picture?: string,
     createdAt: Date = new Date(),
+    role: Role = DEFAULT_ROLE,
   ) {
     if (typeof idOrProps === 'object') {
       this.id = idOrProps.id;
       this.email = idOrProps.email;
       this.provider = idOrProps.provider ?? 'local';
       this.passwordHash = idOrProps.passwordHash;
-      this.providerId = idOrProps.providerId;
       this.name = idOrProps.name;
       this.picture = idOrProps.picture;
+      this.role = idOrProps.role ?? DEFAULT_ROLE;
+      this.resetToken = idOrProps.resetToken ?? null;
+      this.resetTokenExpires = idOrProps.resetTokenExpires ?? null;
       this.createdAt = idOrProps.createdAt ?? new Date();
     } else {
       this.id = idOrProps;
@@ -52,8 +62,10 @@ export class User {
         this.passwordHash = emailOrHash;
         this.provider = provider;
       }
-      this.providerId = providerId;
       this.picture = picture;
+      this.role = role;
+      this.resetToken = null;
+      this.resetTokenExpires = null;
       this.createdAt = createdAt;
     }
   }

@@ -8,6 +8,12 @@
     "lint": "npm --prefix Frontend run lint",
     "api:dev": "npm --prefix API run start:dev",
     "api:build": "npm --prefix API run build",
-    "api:test": "npm --prefix API test"
+    "api:test": "npm --prefix API test",
+    "api:typeorm": "npm --prefix API run typeorm --",
+    "api:migration:generate": "npm --prefix API run migration:generate --",
+    "api:migration:run": "npm --prefix API run migration:run",
+    "api:migration:revert": "npm --prefix API run migration:revert",
+    "api:migration:create": "npm --prefix API run migration:create --",
+    "api:seed:admin": "npm --prefix API run seed:admin"
   }
 }

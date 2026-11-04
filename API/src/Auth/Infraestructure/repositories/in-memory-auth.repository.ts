@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { User, type AuthProvider } from '../../Domain/Entities/user.entity.js';
+import { Role } from '../../Domain/Entities/roles.enum.js';
+import { User } from '../../Domain/Entities/user.entity.js';
 import type {
   AuthRepository,
   CreateUserData,
@@ -14,22 +15,43 @@ import type {
 export class InMemoryAuthRepository implements AuthRepository {
   private readonly users = new Map<string, User>();
 
+  constructor() {
+    this.seedAdmins();
+  }
+
+  private seedAdmins(): void {
+    const admins: User[] = [
+      new User({
+        id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        name: 'Dozen_Apollo',
+        email: 'theunrealultranigg@gmail.com',
+        passwordHash:
+          '$2b$10$VjkiiKmEqhVFFrfl/6vJIeIDx/apXfieZraPTlbH.wdTxsdCp1.uO',
+        provider: 'system',
+        role: Role.ADMIN,
+        createdAt: new Date(),
+      }),
+      new User({
+        id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+        name: 'Ivan Mejia',
+        email: 'ivanlun647@gmail.com',
+        passwordHash:
+          '$2b$10$qDNDuiQ8.Vf4smtlM2D.zeIzC3lEH4zAXUAwZyW3BflCqY5lr7x3C',
+        provider: 'system',
+        role: Role.ADMIN,
+        createdAt: new Date(),
+      }),
+    ];
+
+    for (const admin of admins) {
+      this.users.set(admin.id, admin);
+    }
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     const normalized = email.trim().toLowerCase();
     for (const user of this.users.values()) {
       if (user.email.toLowerCase() === normalized) {
-        return user;
-      }
-    }
-    return null;
-  }
-
-  async findByProviderId(
-    provider: AuthProvider,
-    providerId: string,
-  ): Promise<User | null> {
-    for (const user of this.users.values()) {
-      if (user.provider === provider && user.providerId === providerId) {
         return user;
       }
     }
@@ -47,9 +69,11 @@ export class InMemoryAuthRepository implements AuthRepository {
       email: data.email.trim().toLowerCase(),
       provider: data.provider,
       passwordHash: data.passwordHash,
-      providerId: data.providerId,
       name: data.name,
       picture: data.picture,
+      role: data.role ?? Role.USER,
+      resetToken: null,
+      resetTokenExpires: null,
       createdAt: new Date(),
     });
 
@@ -65,8 +89,12 @@ export class InMemoryAuthRepository implements AuthRepository {
     if (data.name !== undefined) user.name = data.name;
     if (data.passwordHash !== undefined) user.passwordHash = data.passwordHash;
     if (data.provider !== undefined) user.provider = data.provider;
-    if (data.providerId !== undefined) user.providerId = data.providerId;
     if (data.picture !== undefined) user.picture = data.picture;
+    if (data.role !== undefined) user.role = data.role;
+    if ('resetToken' in data) user.resetToken = data.resetToken ?? null;
+    if ('resetTokenExpires' in data) {
+      user.resetTokenExpires = data.resetTokenExpires ?? null;
+    }
 
     this.users.set(id, user);
     return user;

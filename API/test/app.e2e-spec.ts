@@ -16,11 +16,17 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  it('/ (GET)', async () => {
+    const response = await request(app.getHttpServer()).get('/').expect(200);
+
+    expect(response.headers['x-request-id']).toBeDefined();
+    expect(response.body).toMatchObject({
+      success: true,
+      statusCode: 200,
+      data: 'Hello World!',
+      path: '/',
+    });
+    expect(typeof response.body.timestamp).toBe('string');
   });
 
   afterEach(async () => {

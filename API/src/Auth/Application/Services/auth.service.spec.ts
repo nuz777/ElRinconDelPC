@@ -1,22 +1,27 @@
 /* oxlint-disable typescript/unbound-method */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import { AuthService } from './auth.service.js';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type { JwtService } from '@nestjs/jwt';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { User } from '../../Domain/Entities/user.entity.js';
 import type { AuthRepository } from '../../Domain/interfaces/auth-repository.interface.js';
+import type { MailService } from '../../Infraestructure/mail/mail.service.js';
 import type { HashingService } from '../../Infraestructure/security/hashing.service.js';
-import type { JwtService } from '@nestjs/jwt';
+import { AuthService } from './auth.service.js';
 
 describe('AuthService (Unit)', () => {
   let authService: AuthService;
   let mockRepository: AuthRepository;
   let mockHashingService: HashingService;
   let mockJwtService: JwtService;
+  let mockMailService: MailService;
 
   beforeEach(() => {
     mockRepository = {
       findByEmail: vi.fn(),
-      findByProviderId: vi.fn(),
       findById: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -31,10 +36,15 @@ describe('AuthService (Unit)', () => {
       signAsync: vi.fn().mockResolvedValue('jwt_mock_token'),
     } as unknown as JwtService;
 
+    mockMailService = {
+      sendResetCode: vi.fn().mockResolvedValue(undefined),
+    } as unknown as MailService;
+
     authService = new AuthService(
       mockRepository,
       mockHashingService,
       mockJwtService,
+      mockMailService,
     );
   });
 
@@ -104,24 +114,6 @@ describe('AuthService (Unit)', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('debe lanzar UnauthorizedException si la cuenta no tiene contraseña local', async () => {
-      vi.mocked(mockRepository.findByEmail).mockResolvedValue(
-        new User({
-          id: 'u-oauth',
-          email: 'oauth@google.com',
-          provider: 'google',
-          providerId: 'g-123',
-        }),
-      );
-
-      await expect(
-        authService.login({
-          email: 'oauth@google.com',
-          password: 'SomePassword123',
-        }),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
     it('debe lanzar UnauthorizedException si la contraseña no coincide', async () => {
       vi.mocked(mockRepository.findByEmail).mockResolvedValue(
         new User('u-1', 'Nuz', 'nuz@sotano.com', 'hashed_secret'),
@@ -137,110 +129,110 @@ describe('AuthService (Unit)', () => {
     });
   });
 
-  describe('validateOAuthLogin', () => {
-    it('debe autenticar al usuario existente por providerId y actualizar foto/nombre', async () => {
-      const existingUser = new User({
-        id: 'u-existing',
-        email: 'user@gmail.com',
-        provider: 'google',
-        providerId: 'gid-123',
-        name: 'Nombre Anterior',
-      });
-
-      vi.mocked(mockRepository.findByProviderId).mockResolvedValue(existingUser);
-      vi.mocked(mockRepository.update).mockResolvedValue(
-        new User({
-          id: 'u-existing',
-          email: 'user@gmail.com',
-          provider: 'google',
-          providerId: 'gid-123',
-          name: 'Nombre Actualizado',
-          picture: 'https://new-pic.jpg',
-        }),
-      );
-
-      const result = await authService.validateOAuthLogin({
-        provider: 'google',
-        providerId: 'gid-123',
-        email: 'user@gmail.com',
-        name: 'Nombre Actualizado',
-        picture: 'https://new-pic.jpg',
-      });
-
-      expect(result.accessToken).toBe('jwt_mock_token');
-      expect(result.user.name).toBe('Nombre Actualizado');
-      expect(mockRepository.update).toHaveBeenCalled();
-    });
-
-    it('debe vincular la cuenta OAuth si el usuario ya existe por email', async () => {
-      const existingLocalUser = new User({
-        id: 'u-local',
-        email: 'dev@github.com',
-        provider: 'local',
-        passwordHash: 'hash',
-        name: 'Dev Local',
-      });
-
-      vi.mocked(mockRepository.findByProviderId).mockResolvedValue(null);
-      vi.mocked(mockRepository.findByEmail).mockResolvedValue(existingLocalUser);
-      vi.mocked(mockRepository.update).mockResolvedValue(
-        new User({
-          id: 'u-local',
-          email: 'dev@github.com',
-          provider: 'github',
-          providerId: 'gh-456',
-          name: 'Dev Local',
-          picture: 'https://avatar.github.com',
-        }),
-      );
-
-      const result = await authService.validateOAuthLogin({
-        provider: 'github',
-        providerId: 'gh-456',
-        email: 'dev@github.com',
-        name: 'Dev GitHub',
-        picture: 'https://avatar.github.com',
-      });
-
-      expect(result.accessToken).toBe('jwt_mock_token');
-      expect(mockRepository.update).toHaveBeenCalledWith('u-local', {
-        provider: 'github',
-        providerId: 'gh-456',
-        name: 'Dev Local',
-        picture: 'https://avatar.github.com',
-      });
-    });
-
-    it('debe crear un nuevo usuario si no existe ni por providerId ni por email', async () => {
-      vi.mocked(mockRepository.findByProviderId).mockResolvedValue(null);
+  describe('forgotPassword', () => {
+    it('debe retornar mensaje genérico sin enviar correo si el usuario no existe', async () => {
       vi.mocked(mockRepository.findByEmail).mockResolvedValue(null);
-      vi.mocked(mockRepository.create).mockResolvedValue(
+
+      const result = await authService.forgotPassword('noexiste@sotano.com');
+
+      expect(result).toEqual({
+        message:
+          'Si el correo está registrado, recibirás un código de verificación.',
+      });
+      expect(mockRepository.update).not.toHaveBeenCalled();
+      expect(mockMailService.sendResetCode).not.toHaveBeenCalled();
+    });
+
+    it('debe generar código de 6 dígitos, guardar expiración y enviar correo si el usuario existe', async () => {
+      const existingUser = new User(
+        'u-1',
+        'Nuz',
+        'nuz@sotano.com',
+        'hashed_secret',
+      );
+      vi.mocked(mockRepository.findByEmail).mockResolvedValue(existingUser);
+
+      const result = await authService.forgotPassword('nuz@sotano.com');
+
+      expect(result).toEqual({
+        message:
+          'Si el correo está registrado, recibirás un código de verificación.',
+      });
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        'u-1',
+        expect.objectContaining({
+          resetToken: expect.stringMatching(/^\d{6}$/) as unknown as string,
+          resetTokenExpires: expect.any(Date) as unknown as Date,
+        }),
+      );
+      expect(mockMailService.sendResetCode).toHaveBeenCalledWith(
+        'nuz@sotano.com',
+        expect.stringMatching(/^\d{6}$/),
+      );
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('debe lanzar BadRequestException si el código es incorrecto o el usuario no existe', async () => {
+      vi.mocked(mockRepository.findByEmail).mockResolvedValue(
         new User({
-          id: 'u-brand-new',
-          email: 'newuser@google.com',
-          provider: 'google',
-          providerId: 'g-789',
-          name: 'Nuevo Usuario',
-          picture: 'https://google.com/pic.png',
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          resetToken: '123456',
+          resetTokenExpires: new Date(Date.now() + 10 * 60 * 1000),
         }),
       );
 
-      const result = await authService.validateOAuthLogin({
-        provider: 'google',
-        providerId: 'g-789',
-        email: 'newuser@google.com',
-        name: 'Nuevo Usuario',
-        picture: 'https://google.com/pic.png',
-      });
+      await expect(
+        authService.resetPassword('nuz@sotano.com', '999999', 'NuevaClave123!'),
+      ).rejects.toThrowError(
+        new BadRequestException(
+          'El código ingresado es incorrecto o no existe.',
+        ),
+      );
+    });
 
-      expect(result.accessToken).toBe('jwt_mock_token');
-      expect(result.user.email).toBe('newuser@google.com');
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        email: 'newuser@google.com',
-        provider: 'google',
-        providerId: 'g-789',
-        name: 'Nuevo Usuario',
-        picture: 'https://google.com/pic.png',
+    it('debe lanzar BadRequestException si el código ha expirado', async () => {
+      vi.mocked(mockRepository.findByEmail).mockResolvedValue(
+        new User({
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          resetToken: '123456',
+          resetTokenExpires: new Date(Date.now() - 60 * 1000),
+        }),
+      );
+
+      await expect(
+        authService.resetPassword('nuz@sotano.com', '123456', 'NuevaClave123!'),
+      ).rejects.toThrowError(
+        new BadRequestException('El código de verificación ha expirado.'),
+      );
+    });
+
+    it('debe actualizar la contraseña y limpiar resetToken y resetTokenExpires', async () => {
+      vi.mocked(mockRepository.findByEmail).mockResolvedValue(
+        new User({
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          resetToken: '123456',
+          resetTokenExpires: new Date(Date.now() + 10 * 60 * 1000),
+        }),
+      );
+
+      const result = await authService.resetPassword(
+        'nuz@sotano.com',
+        '123456',
+        'NuevaClave123!',
+      );
+
+      expect(result).toEqual({
+        message: 'Contraseña actualizada exitosamente.',
+      });
+      expect(mockHashingService.hash).toHaveBeenCalledWith('NuevaClave123!');
+      expect(mockRepository.update).toHaveBeenCalledWith('u-1', {
+        passwordHash: 'hashed_secret',
+        resetToken: null,
+        resetTokenExpires: null,
       });
     });
   });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Route, Switch, Redirect } from "wouter";
 import Home from "./pages/Home";
@@ -10,6 +10,29 @@ import Auth from "./pages/Auth";
 import LoadingScreen from "./components/LoadingScreen";
 import ChatWidget from "./components/ChatWidget";
 import { AudioProvider } from "./AudioContext";
+import { AUTH_STATE_EVENT, authService } from "./services/auth.service";
+
+function AdminRoute({ children }: { children: ReactNode }) {
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => authService.isAdmin());
+
+  useEffect(() => {
+    const syncRole = () => setIsAdmin(authService.isAdmin());
+    window.addEventListener("storage", syncRole);
+    window.addEventListener("focus", syncRole);
+    window.addEventListener(AUTH_STATE_EVENT, syncRole);
+    return () => {
+      window.removeEventListener("storage", syncRole);
+      window.removeEventListener("focus", syncRole);
+      window.removeEventListener(AUTH_STATE_EVENT, syncRole);
+    };
+  }, []);
+
+  if (!isAdmin) {
+    return <Redirect to="/" />;
+  }
+
+  return <>{children}</>;
+}
 
 const HERO_IMAGES = [
   "/hero/yui.png",
@@ -34,31 +57,6 @@ function preloadImages(urls: string[]): Promise<void> {
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-
-  // Capturar credenciales si el usuario regresa de un flujo OAuth (Google / GitHub)
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get("token");
-      const userParam = params.get("user");
-      if (token) {
-        localStorage.setItem("sotano_token", token);
-        if (userParam) {
-          localStorage.setItem("sotano_user", userParam);
-        }
-        const url = new URL(window.location.href);
-        url.searchParams.delete("token");
-        url.searchParams.delete("user");
-        window.history.replaceState(
-          {},
-          document.title,
-          url.pathname + (url.search || "") + url.hash,
-        );
-      }
-    } catch {
-      // Ignorar errores de acceso al almacenamiento
-    }
-  }, []);
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
@@ -93,6 +91,16 @@ export default function App() {
               <Route path="/tools/all" component={Tools} />
               <Route path="/tools/programming" component={Programming} />
               <Route path="/tools/windows" component={WindowsTools} />
+              <Route path="/publish">
+                <AdminRoute>
+                  <Catalog />
+                </AdminRoute>
+              </Route>
+              <Route path="/dashboard/crear">
+                <AdminRoute>
+                  <Catalog />
+                </AdminRoute>
+              </Route>
               <Route path="/login">
                 <Auth initialMode="login" />
               </Route>
