@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { authService, type AuthUser } from "../services/auth.service";
+import { authService, type AuthUser, AUTH_STATE_EVENT } from "../services/auth.service";
 
 interface AuthContextType {
   isLoading: boolean;
@@ -12,9 +12,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(() => authService.getStoredUser());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(authService.getStoredUser()));
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -49,7 +49,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    const handleAuthChange = () => {
+      const stored = authService.getStoredUser();
+      setUser(stored);
+      setIsAuthenticated(Boolean(stored));
+    };
+
+    window.addEventListener(AUTH_STATE_EVENT, handleAuthChange);
     checkSession();
+
+    return () => {
+      window.removeEventListener(AUTH_STATE_EVENT, handleAuthChange);
+    };
   }, []);
 
   return (
