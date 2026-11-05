@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import Home from "./pages/Home";
 import Catalog from "./pages/Catalog";
 import Tools from "./pages/Tools";
@@ -10,25 +10,23 @@ import Auth from "./pages/Auth";
 import LoadingScreen from "./components/LoadingScreen";
 import ChatWidget from "./components/ChatWidget";
 import { AudioProvider } from "./AudioContext";
-import { AUTH_STATE_EVENT, authService } from "./services/auth.service";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { PublicRoute } from "./components/guards/PublicRoute";
+import { ProtectedRoute } from "./components/guards/ProtectedRoute";
 
 function AdminRoute({ children }: { children: ReactNode }) {
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => authService.isAdmin());
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [, setNavLocation] = useLocation();
 
   useEffect(() => {
-    const syncRole = () => setIsAdmin(authService.isAdmin());
-    window.addEventListener("storage", syncRole);
-    window.addEventListener("focus", syncRole);
-    window.addEventListener(AUTH_STATE_EVENT, syncRole);
-    return () => {
-      window.removeEventListener("storage", syncRole);
-      window.removeEventListener("focus", syncRole);
-      window.removeEventListener(AUTH_STATE_EVENT, syncRole);
-    };
-  }, []);
+    if (!isAdmin) {
+      setNavLocation("/");
+    }
+  }, [isAdmin, setNavLocation]);
 
   if (!isAdmin) {
-    return <Redirect to="/" />;
+    return null;
   }
 
   return <>{children}</>;
@@ -55,8 +53,9 @@ function preloadImages(urls: string[]): Promise<void> {
   ).then(() => undefined);
 }
 
-export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
+function AppInner() {
+  const [imageLoading, setImageLoading] = useState(true);
+  const { isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
@@ -66,9 +65,11 @@ export default function App() {
     preloadImages(HERO_IMAGES).then(() => {
       const elapsed = Date.now() - start;
       const remaining = Math.max(0, MIN_TIME - elapsed);
-      setTimeout(() => setIsLoading(false), remaining);
+      setTimeout(() => setImageLoading(false), remaining);
     });
   }, []);
+
+  const isLoading = imageLoading || authLoading;
 
   return (
     <AnimatePresence mode="wait">
@@ -84,29 +85,48 @@ export default function App() {
         >
           <AudioProvider>
             <Switch>
+              {/* Ruta raíz pública */}
               <Route path="/" component={Home} />
+
+              {/* Catálogo accesible para todos (público) */}
               <Route path="/catalogo" component={Catalog} />
               <Route path="/sotano" component={Catalog} />
+
+              {/* Herramientas públicas */}
               <Route path="/tools" component={Tools} />
               <Route path="/tools/all" component={Tools} />
               <Route path="/tools/programming" component={Programming} />
               <Route path="/tools/windows" component={WindowsTools} />
+
+              {/* Rutas protegidas - requieren autenticación */}
               <Route path="/publish">
-                <AdminRoute>
-                  <Catalog />
-                </AdminRoute>
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <Catalog />
+                  </AdminRoute>
+                </ProtectedRoute>
               </Route>
               <Route path="/dashboard/crear">
-                <AdminRoute>
-                  <Catalog />
-                </AdminRoute>
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <Catalog />
+                  </AdminRoute>
+                </ProtectedRoute>
               </Route>
+
+              {/* Rutas públicas de autenticación - solo para no autenticados */}
               <Route path="/login">
-                <Auth initialMode="login" />
+                <PublicRoute redirectTo="/catalogo">
+                  <Auth initialMode="login" />
+                </PublicRoute>
               </Route>
               <Route path="/register">
-                <Auth initialMode="register" />
+                <PublicRoute redirectTo="/catalogo">
+                  <Auth initialMode="register" />
+                </PublicRoute>
               </Route>
+
+              {/* Fallback */}
               <Route>
                 <Redirect to="/" />
               </Route>
@@ -116,5 +136,13 @@ export default function App() {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }

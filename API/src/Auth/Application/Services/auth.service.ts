@@ -6,30 +6,47 @@ import {
   Optional,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { randomInt } from 'node:crypto';
 import { Role } from '../../Domain/Entities/roles.enum.js';
 import type { User } from '../../Domain/Entities/user.entity.js';
 import {
   AUTH_REPOSITORY,
   type AuthRepository,
 } from '../../Domain/interfaces/auth-repository.interface.js';
-import { MailService } from '../../Infraestructure/mail/mail.service.js';
-import { HashingService } from '../../Infraestructure/security/hashing.service.js';
-import type { JwtPayload } from '../../Infraestructure/security/jwt.strategy.js';
-import type { AuthResponseDto } from '../../Presentation/dtos/auth-response.dto.js';
+import {
+  HASHING_SERVICE,
+  JWT_SERVICE,
+  MAIL_SERVICE,
+  type HashingService,
+  type JwtPayload,
+  type MailService,
+  type JwtService,
+} from '../../Domain/services/index.js';
 import type { LoginRequestDto } from '../../Presentation/dtos/login-request.dto.js';
 import type { RegisterRequestDto } from '../../Presentation/dtos/register-request.dto.js';
+
+export interface AuthResult {
+  accessToken: string;
+  user: {
+    id: string;
+    name?: string;
+    email: string;
+    provider: string;
+    role?: Role;
+    picture?: string;
+  };
+}
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(AUTH_REPOSITORY) private readonly authRepository: AuthRepository,
-    private readonly hashingService: HashingService,
-    private readonly jwtService: JwtService,
-    @Optional() private readonly mailService?: MailService,
+    @Inject(HASHING_SERVICE) private readonly hashingService: HashingService,
+    @Inject(JWT_SERVICE) private readonly jwtService: JwtService,
+    @Optional() @Inject(MAIL_SERVICE) private readonly mailService?: MailService,
   ) {}
 
-  async register(dto: RegisterRequestDto): Promise<AuthResponseDto> {
+  async register(dto: RegisterRequestDto): Promise<AuthResult> {
     const email = dto.email.trim().toLowerCase();
 
     const existing = await this.authRepository.findByEmail(email);
@@ -48,7 +65,7 @@ export class AuthService {
     return this.buildResponse(user);
   }
 
-  async login(dto: LoginRequestDto): Promise<AuthResponseDto> {
+  async login(dto: LoginRequestDto): Promise<AuthResult> {
     const user = await this.authRepository.findByEmail(
       dto.email.trim().toLowerCase(),
     );
@@ -78,7 +95,7 @@ export class AuthService {
       return genericResponse;
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = randomInt(100000, 1000000).toString();
     const resetTokenExpires = new Date(Date.now() + 15 * 60 * 1000);
 
     await this.authRepository.update(user.id, {
@@ -125,12 +142,42 @@ export class AuthService {
     return { message: 'Contraseña actualizada exitosamente.' };
   }
 
-  private async buildResponse(user: User): Promise<AuthResponseDto> {
-    const role = user.role ?? Role.USER;
+  async getUserSession(
+    userId: string,
+    fallback?: { email: string; role?: Role | `${Role}`; name?: string },
+  ): Promise<AuthResult['user']> {
+    const user = await this.authRepository.findById(userId);
+    if (user) {
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        provider: user.provider,
+        role: (user.role ?? Role.USER) as Role,
+        picture: user.picture,
+      };
+    }
+
+    if (!fallback) {
+      throw new UnauthorizedException('Sesión inválida');
+    }
+
+    return {
+      id: userId,
+      name: fallback.name,
+      email: fallback.email,
+      provider: 'local',
+      role: (fallback.role ?? Role.USER) as Role,
+    };
+  }
+
+  private async buildResponse(user: User): Promise<AuthResult> {
+    const role = (user.role ?? Role.USER) as Role;
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role,
+      name: user.name,
     };
     const accessToken = await this.jwtService.signAsync(payload);
 

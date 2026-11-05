@@ -4,10 +4,13 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from '../Application/Services/auth.service.js';
 import {
   AUTH_REPOSITORY,
-  AUTH_REPOSITORY_TOKEN,
 } from '../Domain/interfaces/auth-repository.interface.js';
+import {
+  HASHING_SERVICE,
+  JWT_SERVICE,
+  MAIL_SERVICE,
+} from '../Domain/services/index.js';
 import { AuthController } from '../Presentation/auth.controller.js';
-import { MailService } from './mail/mail.service.js';
 import {
   InMemoryAuthRepository,
   PostgresAuthRepository,
@@ -15,19 +18,20 @@ import {
 import { JwtAuthGuard } from './security/guards/jwt-auth.guard.js';
 import { RolesGuard } from './security/guards/roles.guard.js';
 import { HashingService } from './security/hashing.service.js';
+import { HashingServiceAdapter } from './security/hashingservice.adapter.js';
 import { getJwtExpiresIn, getJwtSecret } from './security/jwt.constants.js';
+import { JwtServiceAdapter } from './security/jwtservice.adapter.js';
 import { JwtStrategy } from './security/jwt.strategy.js';
+import { MailService } from './mail/mail.service.js';
+import { MailServiceAdapter } from './mail/mailservice.adapter.js';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    // registerAsync: el secreto se lee en tiempo de arranque (cuando .env ya fue cargado),
-    // no en tiempo de import, para que firma y verificación usen el mismo JWT_SECRET.
     JwtModule.registerAsync({
       useFactory: () => ({
         secret: getJwtSecret(),
         signOptions: {
-          // En jsonwebtoken / NestJS jwt, expiresIn acepta cadenas como '1d', '7d', '1h' o número en segundos
           expiresIn: getJwtExpiresIn() as any,
         },
       }),
@@ -36,6 +40,20 @@ import { JwtStrategy } from './security/jwt.strategy.js';
   controllers: [AuthController],
   providers: [
     AuthService,
+    // Domain ports -> Infraestructure adapters (using Symbol injection tokens)
+    {
+      provide: HASHING_SERVICE,
+      useClass: HashingServiceAdapter,
+    },
+    {
+      provide: MAIL_SERVICE,
+      useClass: MailServiceAdapter,
+    },
+    {
+      provide: JWT_SERVICE,
+      useClass: JwtServiceAdapter,
+    },
+    // Concrete infraestructure services (needed by adapters)
     HashingService,
     MailService,
     JwtStrategy,
@@ -44,16 +62,15 @@ import { JwtStrategy } from './security/jwt.strategy.js';
     InMemoryAuthRepository,
     PostgresAuthRepository,
     { provide: AUTH_REPOSITORY, useClass: PostgresAuthRepository },
-    { provide: AUTH_REPOSITORY_TOKEN, useClass: PostgresAuthRepository },
   ],
   exports: [
     AuthService,
-    HashingService,
-    MailService,
+    HASHING_SERVICE,
+    MAIL_SERVICE,
+    JWT_SERVICE,
     JwtAuthGuard,
     RolesGuard,
     AUTH_REPOSITORY,
-    AUTH_REPOSITORY_TOKEN,
     JwtModule,
     PassportModule,
   ],

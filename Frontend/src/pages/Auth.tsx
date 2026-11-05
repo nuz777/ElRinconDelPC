@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { authService } from "../services/auth.service";
 
 interface AuthProps {
@@ -22,7 +23,7 @@ type AuthMode = "login" | "register" | "forgot";
 type ForgotStep = "request" | "verify";
 
 export default function Auth({ initialMode }: AuthProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isRegisterRoute = initialMode === "register" || location.includes("register");
   const [mode, setMode] = useState<AuthMode>(isRegisterRoute ? "register" : "login");
   const [forgotStep, setForgotStep] = useState<ForgotStep>("request");
@@ -36,6 +37,7 @@ export default function Auth({ initialMode }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { checkSession } = useAuth();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const nameInputId = useId();
@@ -82,9 +84,8 @@ export default function Auth({ initialMode }: AuthProps) {
         });
       }
 
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 1000);
+      await checkSession();
+      setLocation("/catalogo");
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error

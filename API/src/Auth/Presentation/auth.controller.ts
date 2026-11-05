@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -20,8 +21,9 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
-import { AuthService } from '../Application/Services/auth.service.js';
+import type { Request, Response } from 'express';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { AuthService, type AuthResult } from '../Application/Services/auth.service.js';
 import { Role } from '../Domain/Entities/roles.enum.js';
 import { Roles } from '../Infraestructure/security/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../Infraestructure/security/guards/jwt-auth.guard.js';
@@ -33,32 +35,73 @@ import { LoginRequestDto } from './dtos/login-request.dto.js';
 import { RegisterRequestDto } from './dtos/register-request.dto.js';
 import { ResetPasswordDto } from './dtos/reset-password.dto.js';
 
+function getCookieOptions(): Record<string, unknown> {
+  // Cookie HTTP-only persistente (7 días por defecto) para mantener sesión al cerrar y reabrir el navegador.
+  return {
+    httpOnly: true,
+    secure: process.env.JWT_COOKIE_SECURE === 'true',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: parseInt(process.env.JWT_COOKIE_MAX_AGE ?? '604800000', 10),
+  };
+}
+
+function getCookieName(): string {
+  return process.env.JWT_COOKIE_NAME ?? 'access_token';
+}
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  private setAuthCookie(res: Response, token: string): void {
+    res.cookie(getCookieName(), token, getCookieOptions());
+  }
+
+  private clearAuthCookie(res: Response): void {
+    res.clearCookie(getCookieName(), {
+      httpOnly: true,
+      secure: process.env.JWT_COOKIE_SECURE === 'true',
+      sameSite: 'lax',
+      path: '/',
+    });
+  }
+
   @Post('register')
+  @UseGuards(ThrottlerGuard)
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
   @ApiCreatedResponse({ description: 'Usuario creado', type: AuthResponseDto })
   @ApiBadRequestResponse({ description: 'Datos inválidos' })
   @ApiConflictResponse({ description: 'El correo ya está registrado' })
-  register(@Body() dto: RegisterRequestDto): Promise<AuthResponseDto> {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterRequestDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result: AuthResult = await this.authService.register(dto);
+    this.setAuthCookie(res, result.accessToken);
+    return { user: result.user };
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
   @ApiOperation({ summary: 'Iniciar sesión con credenciales locales' })
   @ApiOkResponse({ description: 'Sesión iniciada', type: AuthResponseDto })
   @ApiBadRequestResponse({ description: 'Datos inválidos' })
   @ApiUnauthorizedResponse({ description: 'Credenciales inválidas' })
-  login(@Body() dto: LoginRequestDto): Promise<AuthResponseDto> {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginRequestDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result: AuthResult = await this.authService.login(dto);
+    this.setAuthCookie(res, result.accessToken);
+    return { user: result.user };
   }
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
   @ApiOperation({
     summary: 'Solicitar código de 6 dígitos para recuperación de contraseña',
   })
@@ -76,6 +119,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
   @ApiOperation({
     summary:
       'Restablecer la contraseña mediante el código de verificación de 6 dígitos',
@@ -114,6 +158,30 @@ export class AuthController {
     return {
       message: 'Acceso concedido: Bienvenido al panel de administración',
       user: req.user,
+    };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cerrar sesión y eliminar cookie de autenticación' })
+  @ApiOkResponse({ description: 'Sesión cerrada exitosamente' })
+  @ApiUnauthorizedResponse({ description: 'No autenticado' })
+  logout(@Res({ passthrough: true }) res: Response) {
+    this.clearAuthCookie(res);
+    return { statusCode: 200, message: 'Sesión cerrada correctamente' };
+  }
+
+  @Get('check')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verificar si existe una sesión válida' })
+  @ApiOkResponse({ description: 'Sesión activa', type: AuthResponseDto })
+  @ApiUnauthorizedResponse({ description: 'No autenticado o token expirado' })
+  async check(@Req() req: Request & { user: AuthenticatedUser }) {
+    const user = await this.authService.getUserSession(req.user.id, req.user);
+    return {
+      authenticated: true,
+      user,
     };
   }
 }

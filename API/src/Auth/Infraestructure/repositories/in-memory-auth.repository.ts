@@ -16,36 +16,9 @@ export class InMemoryAuthRepository implements AuthRepository {
   private readonly users = new Map<string, User>();
 
   constructor() {
-    this.seedAdmins();
-  }
-
-  private seedAdmins(): void {
-    const admins: User[] = [
-      new User({
-        id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-        name: 'Dozen_Apollo',
-        email: 'theunrealultranigg@gmail.com',
-        passwordHash:
-          '$2b$10$VjkiiKmEqhVFFrfl/6vJIeIDx/apXfieZraPTlbH.wdTxsdCp1.uO',
-        provider: 'system',
-        role: Role.ADMIN,
-        createdAt: new Date(),
-      }),
-      new User({
-        id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
-        name: 'Ivan Mejia',
-        email: 'ivanlun647@gmail.com',
-        passwordHash:
-          '$2b$10$qDNDuiQ8.Vf4smtlM2D.zeIzC3lEH4zAXUAwZyW3BflCqY5lr7x3C',
-        provider: 'system',
-        role: Role.ADMIN,
-        createdAt: new Date(),
-      }),
-    ];
-
-    for (const admin of admins) {
-      this.users.set(admin.id, admin);
-    }
+    // Repositorio vacío por defecto.
+    // Los usuarios administradores deben crearse a través del endpoint de registro
+    // o mediante un script de seed dedicado con datos de entorno (never hardcodear credenciales reales).
   }
 
   async findByEmail(email: string): Promise<User | null> {

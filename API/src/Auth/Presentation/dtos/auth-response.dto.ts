@@ -33,9 +33,6 @@ export class AuthUserDto {
 }
 
 export class AuthResponseDto {
-  @ApiProperty({ description: 'Token JWT de acceso (Bearer)' })
-  accessToken!: string;
-
   @ApiProperty({ type: AuthUserDto })
   user!: AuthUserDto;
 }

@@ -152,8 +152,7 @@ export const catalogService = {
   },
 
   async createItem(payload: CreateCatalogItemPayload): Promise<CatalogItem> {
-    const token = authService.getStoredToken();
-    if (!token) {
+    if (!authService.isAdmin()) {
       throw new Error("Se requiere iniciar sesión como administrador.");
     }
 
@@ -161,8 +160,8 @@ export const catalogService = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
+      credentials: "include",
       body: JSON.stringify(payload),
     });
 
@@ -186,16 +185,13 @@ export const catalogService = {
   },
 
   async deleteItem(id: string): Promise<void> {
-    const token = authService.getStoredToken();
-    if (!token) {
+    if (!authService.isAdmin()) {
       throw new Error("Se requiere autenticación como administrador.");
     }
 
     const res = await fetch(`${API_BASE_URL}/catalog/${id}`, {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include",
     });
 
     if (res.status === 404) {

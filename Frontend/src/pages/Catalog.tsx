@@ -26,11 +26,7 @@ import {
   type Apartado,
 } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
-import {
-  AUTH_STATE_EVENT,
-  authService,
-  type AuthUser,
-} from "../services/auth.service";
+import { useAuth } from "../context/AuthContext";
 import {
   catalogService,
   mapApartadoToSection,
@@ -104,28 +100,14 @@ export default function Catalog() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<CatalogItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(() =>
-    authService.getStoredUser(),
-  );
+  const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    const syncAuth = () => {
-      const currentUser = authService.getStoredUser();
-      setUser(currentUser);
-      if (currentUser?.role !== "admin") {
-        setIsAddModalOpen(false);
-      }
-    };
-    window.addEventListener("storage", syncAuth);
-    window.addEventListener("focus", syncAuth);
-    window.addEventListener(AUTH_STATE_EVENT, syncAuth);
-    return () => {
-      window.removeEventListener("storage", syncAuth);
-      window.removeEventListener("focus", syncAuth);
-      window.removeEventListener(AUTH_STATE_EVENT, syncAuth);
-    };
-  }, []);
+    if (!isAdmin) {
+      setIsAddModalOpen(false);
+    }
+  }, [isAdmin]);
 
   // Sync custom added items to localStorage como respaldo offline
   useEffect(() => {
@@ -271,21 +253,6 @@ export default function Catalog() {
           >
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <div
-                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs uppercase tracking-widest mb-3 border ${
-                    isLight
-                      ? "bg-zinc-100 border-zinc-300 text-zinc-700"
-                      : "bg-zinc-800/80 border-zinc-700 text-zinc-300"
-                  }`}
-                >
-                  <span
-                    className={`size-2 rounded-full ${
-                      isLight ? "bg-zinc-900" : "bg-white"
-                    }`}
-                  />
-                  Biblioteca Oficial
-                </div>
-
                 <h1
                   className={`text-3xl sm:text-5xl font-extrabold uppercase tracking-wide drop-shadow-sm ${
                     isLight ? "text-zinc-950" : "text-white"
