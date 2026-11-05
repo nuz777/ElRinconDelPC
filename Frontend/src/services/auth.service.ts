@@ -12,8 +12,12 @@ export interface AuthUser {
 }
 
 export interface AuthResponse {
-  accessToken: string;
   user: AuthUser;
+}
+
+export interface CheckSessionResponse {
+  authenticated: boolean;
+  user: AuthUser | null;
 }
 
 export interface ApiStandardResponse<T> {
@@ -46,7 +50,6 @@ export interface MessageResponse {
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-const TOKEN_STORAGE_KEY = "sotano_token";
 const USER_STORAGE_KEY = "sotano_user";
 export const AUTH_STATE_EVENT = "sotano-auth-change";
 
@@ -111,32 +114,26 @@ function decodeJwtPayload(token: string): DecodedJwtPayload | null {
   }
 }
 
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(";").shift() ?? null;
+  }
+  return null;
+}
+
 export const authService = {
   decodeToken(token: string): DecodedJwtPayload | null {
     return decodeJwtPayload(token);
   },
 
-  saveSession(accessToken: string, user?: AuthUser): void {
+  saveSession(user: AuthUser): void {
     try {
-      localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
-      const decoded = decodeJwtPayload(accessToken);
-      const enrichedUser: AuthUser | undefined = user
-        ? {
-            ...user,
-            id: user.id ?? decoded?.sub,
-            email: user.email ?? decoded?.email,
-            role: user.role ?? decoded?.role ?? "user",
-          }
-        : decoded
-          ? {
-              id: decoded.sub,
-              email: decoded.email,
-              role: decoded.role ?? "user",
-            }
-          : undefined;
-      if (enrichedUser) {
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(enrichedUser));
-      }
+      // Guardamos solo datos del usuario (no sensibles) en localStorage.
+      // El JWT viaja exclusivamente en cookie HTTP-only (inaccesible desde JS).
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
       notifyAuthChange();
     } catch {
       // Ignorar si el almacenamiento está bloqueado
@@ -144,42 +141,20 @@ export const authService = {
   },
 
   getStoredToken(): string | null {
-    if (typeof window === "undefined") return null;
-    try {
-      return localStorage.getItem(TOKEN_STORAGE_KEY);
-    } catch {
-      return null;
-    }
+    // No se puede leer una cookie httpOnly desde JavaScript.
+    // El navegador la envía automáticamente en cada petición con credentials: 'include'.
+    return getCookie("access_token");
   },
 
   getStoredUser(): AuthUser | null {
     if (typeof window === "undefined") return null;
     try {
-      const rawToken = localStorage.getItem(TOKEN_STORAGE_KEY);
       const rawUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (!rawToken && !rawUser) return null;
+      if (!rawUser) return null;
 
-      const decoded = rawToken ? decodeJwtPayload(rawToken) : null;
-
-      if (rawUser) {
-        const parsed: unknown = JSON.parse(rawUser);
-        if (parsed && typeof parsed === "object") {
-          const storedUser = parsed as AuthUser;
-          return {
-            ...storedUser,
-            id: storedUser.id ?? decoded?.sub,
-            email: storedUser.email ?? decoded?.email,
-            role: decoded?.role ?? storedUser.role ?? "user",
-          };
-        }
-      }
-      if (rawToken) {
-        return {
-          id: decoded?.sub,
-          email: decoded?.email,
-          name: decoded?.email?.split("@")[0] ?? "Usuario",
-          role: decoded?.role ?? "user",
-        };
+      const parsed: unknown = JSON.parse(rawUser);
+      if (parsed && typeof parsed === "object") {
+        return parsed as AuthUser;
       }
       return null;
     } catch {
@@ -189,14 +164,12 @@ export const authService = {
 
   isAdmin(): boolean {
     const user = this.getStoredUser();
-    const isAdmin = user?.role === "admin";
-    return isAdmin;
+    return user?.role === "admin";
   },
 
   logout(): void {
     if (typeof window === "undefined") return;
     try {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
       localStorage.removeItem(USER_STORAGE_KEY);
     } catch {
       // Ignorar errores de almacenamiento
@@ -210,6 +183,7 @@ export const authService = {
       res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Requerido para enviar/recibir cookies
         body: JSON.stringify({
           email: payload.email.trim(),
           password: payload.password,
@@ -233,11 +207,11 @@ export const authService = {
     }
 
     const authData = unwrapApiData<AuthResponse>(rawBody);
-    if (!authData?.accessToken) {
+    if (!authData?.user) {
       throw new Error("Respuesta inválida del servidor al iniciar sesión.");
     }
 
-    this.saveSession(authData.accessToken, authData.user);
+    this.saveSession(authData.user);
     return authData;
   },
 
@@ -247,6 +221,7 @@ export const authService = {
       res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Requerido para enviar/recibir cookies
         body: JSON.stringify({
           name: payload.name.trim(),
           email: payload.email.trim(),
@@ -268,11 +243,13 @@ export const authService = {
     }
 
     const authData = unwrapApiData<AuthResponse>(rawBody);
-    if (!authData?.accessToken) {
-      throw new Error("Respuesta inválida del servidor al registrar la cuenta.");
+    if (!authData?.user) {
+      throw new Error(
+        "Respuesta inválida del servidor al registrar la cuenta.",
+      );
     }
 
-    this.saveSession(authData.accessToken, authData.user);
+    this.saveSession(authData.user);
     return authData;
   },
 
@@ -282,6 +259,7 @@ export const authService = {
       res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email: email.trim() }),
       });
     } catch {
@@ -315,6 +293,7 @@ export const authService = {
       res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           email: payload.email.trim(),
           code: payload.code.trim(),
@@ -347,16 +326,9 @@ export const authService = {
   },
 
   async checkAdminAccess(): Promise<{ message: string; user: unknown }> {
-    const token = this.getStoredToken();
-    if (!token) {
-      throw new Error("No hay sesión activa.");
-    }
-
     const res = await fetch(`${API_BASE_URL}/auth/admin/only`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      credentials: "include", // La cookie se envía automáticamente
     });
 
     const rawBody: unknown = await res.json().catch(() => null);
@@ -377,8 +349,7 @@ export const authService = {
     endpoint: "games" | "mods" | "tools",
     payload: Record<string, unknown>,
   ): Promise<unknown> {
-    const token = this.getStoredToken();
-    if (!token || !this.isAdmin()) {
+    if (!this.isAdmin()) {
       throw new Error("Permisos insuficientes");
     }
 
@@ -386,8 +357,8 @@ export const authService = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
+      credentials: "include", // La cookie JWT se envía automáticamente
       body: JSON.stringify(payload),
     });
 
@@ -397,5 +368,32 @@ export const authService = {
     }
 
     return unwrapApiData(rawBody);
+  },
+
+  async checkSession(): Promise<CheckSessionResponse> {
+    const res = await fetch(`${API_BASE_URL}/auth/check`, {
+      method: "GET",
+      credentials: "include", // La cookie JWT HTTP-only se envía automáticamente
+    });
+
+    if (!res.ok) {
+      this.logout();
+      return { authenticated: false, user: null };
+    }
+
+    const rawBody: unknown = await res.json().catch(() => null);
+    const data = unwrapApiData<CheckSessionResponse>(rawBody);
+    if (!data || !data.authenticated || !data.user) {
+      this.logout();
+      return { authenticated: false, user: null };
+    }
+
+    // Guardamos los datos del usuario en localStorage para acceso rápido
+    this.saveSession(data.user);
+
+    return {
+      authenticated: true,
+      user: data.user,
+    };
   },
 };

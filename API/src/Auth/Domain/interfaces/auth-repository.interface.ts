@@ -19,4 +19,3 @@ export interface AuthRepository {
 
 /** Token de inyección para vincular la interfaz con su implementación concreta. */
 export const AUTH_REPOSITORY = Symbol('AUTH_REPOSITORY');
-export const AUTH_REPOSITORY_TOKEN = AUTH_REPOSITORY;

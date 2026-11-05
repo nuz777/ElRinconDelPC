@@ -29,44 +29,16 @@ export class User {
   public resetTokenExpires?: Date | null;
   public readonly createdAt: Date;
 
-  constructor(
-    idOrProps: string | UserProps,
-    nameOrEmail?: string,
-    emailOrHash?: string,
-    passwordHash?: string,
-    provider: AuthProvider = 'local',
-    picture?: string,
-    createdAt: Date = new Date(),
-    role: Role = DEFAULT_ROLE,
-  ) {
-    if (typeof idOrProps === 'object') {
-      this.id = idOrProps.id;
-      this.email = idOrProps.email;
-      this.provider = idOrProps.provider ?? 'local';
-      this.passwordHash = idOrProps.passwordHash;
-      this.name = idOrProps.name;
-      this.picture = idOrProps.picture;
-      this.role = idOrProps.role ?? DEFAULT_ROLE;
-      this.resetToken = idOrProps.resetToken ?? null;
-      this.resetTokenExpires = idOrProps.resetTokenExpires ?? null;
-      this.createdAt = idOrProps.createdAt ?? new Date();
-    } else {
-      this.id = idOrProps;
-      if (emailOrHash && emailOrHash.includes('@')) {
-        this.name = nameOrEmail;
-        this.email = emailOrHash;
-        this.passwordHash = passwordHash;
-        this.provider = provider;
-      } else {
-        this.email = nameOrEmail ?? '';
-        this.passwordHash = emailOrHash;
-        this.provider = provider;
-      }
-      this.picture = picture;
-      this.role = role;
-      this.resetToken = null;
-      this.resetTokenExpires = null;
-      this.createdAt = createdAt;
-    }
+  constructor(props: UserProps) {
+    this.id = props.id;
+    this.email = props.email;
+    this.provider = props.provider ?? 'local';
+    this.passwordHash = props.passwordHash;
+    this.name = props.name;
+    this.picture = props.picture;
+    this.role = props.role ?? DEFAULT_ROLE;
+    this.resetToken = props.resetToken ?? null;
+    this.resetTokenExpires = props.resetTokenExpires ?? null;
+    this.createdAt = props.createdAt ?? new Date();
   }
 }

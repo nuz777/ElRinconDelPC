@@ -4,6 +4,7 @@ import {
   type NestModule,
 } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -20,6 +21,12 @@ import { ToolsModule } from './Tools/tools.module.js';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minuto
+        limit: 10, // 10 solicitudes por minuto
+      },
+    ]),
     TypeOrmModule.forRoot(dataSourceOptions),
     AuthModule,
     CatalogModule,

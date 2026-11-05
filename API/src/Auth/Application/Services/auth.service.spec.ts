@@ -4,12 +4,14 @@ import {
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { JwtService } from '@nestjs/jwt';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { User } from '../../Domain/Entities/user.entity.js';
 import type { AuthRepository } from '../../Domain/interfaces/auth-repository.interface.js';
-import type { MailService } from '../../Infraestructure/mail/mail.service.js';
-import type { HashingService } from '../../Infraestructure/security/hashing.service.js';
+import {
+  HashingService,
+  MailService,
+  JwtService,
+} from '../../Domain/services/index.js';
 import { AuthService } from './auth.service.js';
 
 describe('AuthService (Unit)', () => {
@@ -52,7 +54,12 @@ describe('AuthService (Unit)', () => {
     it('debe registrar un usuario nuevo correctamente', async () => {
       vi.mocked(mockRepository.findByEmail).mockResolvedValue(null);
       vi.mocked(mockRepository.create).mockResolvedValue(
-        new User('u-1', 'Nuz', 'nuz@sotano.com', 'hashed_secret'),
+        new User({
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          name: 'Nuz',
+          passwordHash: 'hashed_secret',
+        }),
       );
 
       const result = await authService.register({
@@ -70,7 +77,12 @@ describe('AuthService (Unit)', () => {
 
     it('debe lanzar ConflictException si el correo ya existe', async () => {
       vi.mocked(mockRepository.findByEmail).mockResolvedValue(
-        new User('u-1', 'Existente', 'nuz@sotano.com', 'hash'),
+        new User({
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          name: 'Existente',
+          passwordHash: 'hash',
+        }),
       );
 
       await expect(
@@ -86,7 +98,12 @@ describe('AuthService (Unit)', () => {
   describe('login', () => {
     it('debe iniciar sesión correctamente con credenciales válidas', async () => {
       vi.mocked(mockRepository.findByEmail).mockResolvedValue(
-        new User('u-1', 'Nuz', 'nuz@sotano.com', 'hashed_secret'),
+        new User({
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          name: 'Nuz',
+          passwordHash: 'hashed_secret',
+        }),
       );
       vi.mocked(mockHashingService.compare).mockResolvedValue(true);
 
@@ -116,7 +133,12 @@ describe('AuthService (Unit)', () => {
 
     it('debe lanzar UnauthorizedException si la contraseña no coincide', async () => {
       vi.mocked(mockRepository.findByEmail).mockResolvedValue(
-        new User('u-1', 'Nuz', 'nuz@sotano.com', 'hashed_secret'),
+        new User({
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          name: 'Nuz',
+          passwordHash: 'hashed_secret',
+        }),
       );
       vi.mocked(mockHashingService.compare).mockResolvedValue(false);
 
@@ -144,12 +166,12 @@ describe('AuthService (Unit)', () => {
     });
 
     it('debe generar código de 6 dígitos, guardar expiración y enviar correo si el usuario existe', async () => {
-      const existingUser = new User(
-        'u-1',
-        'Nuz',
-        'nuz@sotano.com',
-        'hashed_secret',
-      );
+      const existingUser = new User({
+        id: 'u-1',
+        email: 'nuz@sotano.com',
+        name: 'Nuz',
+        passwordHash: 'hashed_secret',
+      });
       vi.mocked(mockRepository.findByEmail).mockResolvedValue(existingUser);
 
       const result = await authService.forgotPassword('nuz@sotano.com');
@@ -233,6 +255,28 @@ describe('AuthService (Unit)', () => {
         passwordHash: 'hashed_secret',
         resetToken: null,
         resetTokenExpires: null,
+      });
+    });
+  });
+
+  describe('getUserSession', () => {
+    it('debe devolver los datos completos del usuario incluyendo su nombre', async () => {
+      vi.mocked(mockRepository.findById).mockResolvedValue(
+        new User({
+          id: 'u-1',
+          email: 'nuz@sotano.com',
+          name: 'Nuz',
+          passwordHash: 'hashed_secret',
+        }),
+      );
+
+      const sessionUser = await authService.getUserSession('u-1');
+      expect(sessionUser).toMatchObject({
+        id: 'u-1',
+        name: 'Nuz',
+        email: 'nuz@sotano.com',
+        provider: 'local',
+        role: 'user',
       });
     });
   });
