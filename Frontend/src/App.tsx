@@ -6,6 +6,7 @@ import Catalog from "./pages/Catalog";
 import Tools from "./pages/Tools";
 import Programming from "./pages/Programming";
 import WindowsTools from "./pages/WindowsTools";
+import GameDetail from "./pages/GameDetail";
 import Auth from "./pages/Auth";
 import LoadingScreen from "./components/LoadingScreen";
 import ChatWidget from "./components/ChatWidget";
@@ -13,24 +14,9 @@ import { AudioProvider } from "./AudioContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { PublicRoute } from "./components/guards/PublicRoute";
 import { ProtectedRoute } from "./components/guards/ProtectedRoute";
-
-function AdminRoute({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
-  const [, setNavLocation] = useLocation();
-
-  useEffect(() => {
-    if (!isAdmin) {
-      setNavLocation("/");
-    }
-  }, [isAdmin, setNavLocation]);
-
-  if (!isAdmin) {
-    return null;
-  }
-
-  return <>{children}</>;
-}
+import { AdminRoute } from "./components/guards/AdminRoute";
+import CreateGamePage from "./pages/admin/CreateGamePage";
+import UploadModPage from "./pages/admin/UploadModPage";
 
 const HERO_IMAGES = [
   "/hero/yui.png",
@@ -111,6 +97,23 @@ function AppInner() {
                   <AdminRoute>
                     <Catalog />
                   </AdminRoute>
+                </ProtectedRoute>
+              </Route>
+
+              {/* Administración: publicar nuevo juego (solo ADMIN) */}
+              <Route path="/admin/juegos/nuevo">
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <CreateGamePage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              </Route>
+
+              {/* Detalle de juego y subida de mods */}
+              <Route path="/juegos/:id" component={GameDetail} />
+              <Route path="/juegos/:id/subir-mod">
+                <ProtectedRoute>
+                  <UploadModPage />
                 </ProtectedRoute>
               </Route>
 
