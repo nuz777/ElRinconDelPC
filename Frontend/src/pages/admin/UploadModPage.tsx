@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { useTheme } from "../../ThemeContext";
 import { modsService } from "../../services/mods.service";
@@ -7,7 +7,7 @@ import { modsService } from "../../services/mods.service";
 export default function UploadModPage() {
   const { theme } = useTheme();
   const isLight = theme === "light";
-  const [location, setNavLocation] = useLocation();
+  const [, setNavLocation] = useLocation();
   const [, params] = useRoute("/juegos/:id/subir-mod");
   const gameId = params?.id ?? "";
 

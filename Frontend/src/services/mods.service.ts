@@ -132,15 +132,21 @@ export const modsService = {
 
   /** Crear un nuevo mod (requiere autenticación). */
   async createMod(payload: CreateModPayload): Promise<ModApiResponse> {
-    if (!authService.isAuthenticated) {
+    if (!authService.getStoredUser()) {
       throw new Error("Se requiere iniciar sesión para publicar un mod.");
+    }
+
+    const token = authService.getStoredToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const res = await fetch(`${API_BASE_URL}/mods`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       credentials: "include",
       body: JSON.stringify(payload),
     });

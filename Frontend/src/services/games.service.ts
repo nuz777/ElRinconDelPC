@@ -148,11 +148,17 @@ export const gamesService = {
       throw new Error("Se requiere iniciar sesión como administrador.");
     }
 
+    const token = authService.getStoredToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE_URL}/games`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       credentials: "include",
       body: JSON.stringify(payload),
     });
@@ -183,11 +189,17 @@ export const gamesService = {
       throw new Error("Se requiere iniciar sesión como administrador.");
     }
 
+    const token = authService.getStoredToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE_URL}/games/${encodeURIComponent(id)}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       credentials: "include",
       body: JSON.stringify(payload),
     });
@@ -218,8 +230,15 @@ export const gamesService = {
       throw new Error("Se requiere autenticación como administrador.");
     }
 
+    const token = authService.getStoredToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE_URL}/games/${encodeURIComponent(id)}`, {
       method: "DELETE",
+      headers,
       credentials: "include",
     });
 
