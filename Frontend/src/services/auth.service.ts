@@ -51,6 +51,7 @@ export interface MessageResponse {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const USER_STORAGE_KEY = "sotano_user";
+const TOKEN_STORAGE_KEY = "sotano_token";
 export const AUTH_STATE_EVENT = "sotano-auth-change";
 
 function notifyAuthChange(): void {
@@ -129,11 +130,12 @@ export const authService = {
     return decodeJwtPayload(token);
   },
 
-  saveSession(user: AuthUser): void {
+  saveSession(user: AuthUser, token?: string): void {
     try {
-      // Guardamos solo datos del usuario (no sensibles) en localStorage.
-      // El JWT viaja exclusivamente en cookie HTTP-only (inaccesible desde JS).
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      if (token) {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      }
       notifyAuthChange();
     } catch {
       // Ignorar si el almacenamiento está bloqueado
@@ -141,9 +143,8 @@ export const authService = {
   },
 
   getStoredToken(): string | null {
-    // No se puede leer una cookie httpOnly desde JavaScript.
-    // El navegador la envía automáticamente en cada petición con credentials: 'include'.
-    return getCookie("access_token");
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(TOKEN_STORAGE_KEY) || getCookie("access_token");
   },
 
   getStoredUser(): AuthUser | null {
@@ -171,13 +172,14 @@ export const authService = {
     if (typeof window === "undefined") return;
     try {
       localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
     } catch {
       // Ignorar errores de almacenamiento
     }
     notifyAuthChange();
   },
 
-  async login(payload: LoginPayload): Promise<AuthResponse> {
+  async login(payload: LoginPayload): Promise<AuthResponse & { token?: string }> {
     let res: Response;
     try {
       res = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -206,16 +208,16 @@ export const authService = {
       );
     }
 
-    const authData = unwrapApiData<AuthResponse>(rawBody);
+    const authData = unwrapApiData<AuthResponse & { token?: string }>(rawBody);
     if (!authData?.user) {
       throw new Error("Respuesta inválida del servidor al iniciar sesión.");
     }
 
-    this.saveSession(authData.user);
+    this.saveSession(authData.user, authData.token);
     return authData;
   },
 
-  async register(payload: RegisterPayload): Promise<AuthResponse> {
+  async register(payload: RegisterPayload): Promise<AuthResponse & { token?: string }> {
     let res: Response;
     try {
       res = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -242,14 +244,14 @@ export const authService = {
       );
     }
 
-    const authData = unwrapApiData<AuthResponse>(rawBody);
+    const authData = unwrapApiData<AuthResponse & { token?: string }>(rawBody);
     if (!authData?.user) {
       throw new Error(
         "Respuesta inválida del servidor al registrar la cuenta.",
       );
     }
 
-    this.saveSession(authData.user);
+    this.saveSession(authData.user, authData.token);
     return authData;
   },
 
@@ -371,8 +373,15 @@ export const authService = {
   },
 
   async checkSession(): Promise<CheckSessionResponse> {
+    const token = this.getStoredToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE_URL}/auth/check`, {
       method: "GET",
+      headers,
       credentials: "include", // La cookie JWT HTTP-only se envía automáticamente
     });
 
@@ -389,7 +398,7 @@ export const authService = {
     }
 
     // Guardamos los datos del usuario en localStorage para acceso rápido
-    this.saveSession(data.user);
+    this.saveSession(data.user, token ?? undefined);
 
     return {
       authenticated: true,

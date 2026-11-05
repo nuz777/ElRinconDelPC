@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 import { DataSource } from 'typeorm';
 import type { Role } from '../../Auth/Domain/Entities/roles.enum.js';
+import { dataSourceOptions } from '../data-source.js';
 
 config();
 config({ path: resolve(process.cwd(), '.env') });
@@ -39,17 +40,7 @@ const INITIAL_ADMINS: AdminSeedData[] = [
 ];
 
 export async function seedAdmins(existingDataSource?: DataSource): Promise<void> {
-  const ds =
-    existingDataSource ??
-    new DataSource({
-      type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432', 10),
-      username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-      database: process.env.DB_NAME || 'el_rincon_del_pc_db',
-      synchronize: false,
-    });
+  const ds = existingDataSource ?? new DataSource(dataSourceOptions);
 
   const shouldDestroy = !ds.isInitialized;
 

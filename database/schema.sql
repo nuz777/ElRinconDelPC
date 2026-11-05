@@ -89,3 +89,67 @@ CREATE TRIGGER trg_catalog_items_updated_at
     BEFORE UPDATE ON catalog_items
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Tabla: games (módulo de juegos)
+CREATE TABLE IF NOT EXISTS games (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(200) NOT NULL,
+    slug VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+    price NUMERIC(10, 2) NOT NULL,
+    discount_price NUMERIC(10, 2) NULL,
+    stock INTEGER NOT NULL,
+    genres TEXT[] NOT NULL DEFAULT '{}',
+    cover_image TEXT NOT NULL,
+    banner_image TEXT NULL,
+    developer VARCHAR(150) NOT NULL,
+    publisher VARCHAR(150) NOT NULL,
+    release_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_games_slug ON games (slug);
+CREATE INDEX IF NOT EXISTS idx_games_title ON games (title);
+CREATE INDEX IF NOT EXISTS idx_games_is_active ON games (is_active);
+
+DROP TRIGGER IF EXISTS trg_games_updated_at ON games;
+CREATE TRIGGER trg_games_updated_at
+    BEFORE UPDATE ON games
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Tabla: mods (módulo de mods asociados a juegos y usuarios)
+CREATE TABLE IF NOT EXISTS mods (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(200) NOT NULL,
+    slug VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    download_url TEXT NOT NULL,
+    file_size VARCHAR(50) NULL,
+    thumbnail_url TEXT NULL,
+    game_id UUID NOT NULL,
+    author_id UUID NOT NULL,
+    downloads_count INTEGER NOT NULL DEFAULT 0,
+    is_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_mods_game FOREIGN KEY (game_id) REFERENCES games (id) ON DELETE CASCADE,
+    CONSTRAINT fk_mods_author FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mods_game_slug ON mods (game_id, slug);
+CREATE INDEX IF NOT EXISTS idx_mods_game_id ON mods (game_id);
+CREATE INDEX IF NOT EXISTS idx_mods_author_id ON mods (author_id);
+CREATE INDEX IF NOT EXISTS idx_mods_is_approved ON mods (is_approved);
+CREATE INDEX IF NOT EXISTS idx_mods_is_active ON mods (is_active);
+
+DROP TRIGGER IF EXISTS trg_mods_updated_at ON mods;
+CREATE TRIGGER trg_mods_updated_at
+    BEFORE UPDATE ON mods
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+

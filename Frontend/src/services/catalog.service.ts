@@ -156,11 +156,17 @@ export const catalogService = {
       throw new Error("Se requiere iniciar sesión como administrador.");
     }
 
+    const token = authService.getStoredToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE_URL}/catalog`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       credentials: "include",
       body: JSON.stringify(payload),
     });
@@ -189,8 +195,15 @@ export const catalogService = {
       throw new Error("Se requiere autenticación como administrador.");
     }
 
+    const token = authService.getStoredToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE_URL}/catalog/${id}`, {
       method: "DELETE",
+      headers,
       credentials: "include",
     });
 

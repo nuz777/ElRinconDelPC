@@ -36,11 +36,12 @@ import { RegisterRequestDto } from './dtos/register-request.dto.js';
 import { ResetPasswordDto } from './dtos/reset-password.dto.js';
 
 function getCookieOptions(): Record<string, unknown> {
-  // Cookie HTTP-only persistente (7 días por defecto) para mantener sesión al cerrar y reabrir el navegador.
+  const isProd = process.env.NODE_ENV === 'production';
+  const isSecure = isProd || process.env.JWT_COOKIE_SECURE === 'true';
   return {
     httpOnly: true,
-    secure: process.env.JWT_COOKIE_SECURE === 'true',
-    sameSite: 'lax',
+    secure: isSecure,
+    sameSite: isSecure ? 'none' : 'lax',
     path: '/',
     maxAge: parseInt(process.env.JWT_COOKIE_MAX_AGE ?? '604800000', 10),
   };
@@ -60,10 +61,12 @@ export class AuthController {
   }
 
   private clearAuthCookie(res: Response): void {
+    const isProd = process.env.NODE_ENV === 'production';
+    const isSecure = isProd || process.env.JWT_COOKIE_SECURE === 'true';
     res.clearCookie(getCookieName(), {
       httpOnly: true,
-      secure: process.env.JWT_COOKIE_SECURE === 'true',
-      sameSite: 'lax',
+      secure: isSecure,
+      sameSite: isSecure ? 'none' : 'lax',
       path: '/',
     });
   }
@@ -77,10 +80,10 @@ export class AuthController {
   async register(
     @Body() dto: RegisterRequestDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponseDto> {
+  ): Promise<AuthResponseDto & { token: string }> {
     const result: AuthResult = await this.authService.register(dto);
     this.setAuthCookie(res, result.accessToken);
-    return { user: result.user };
+    return { user: result.user, token: result.accessToken };
   }
 
   @Post('login')
@@ -93,10 +96,10 @@ export class AuthController {
   async login(
     @Body() dto: LoginRequestDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponseDto> {
+  ): Promise<AuthResponseDto & { token: string }> {
     const result: AuthResult = await this.authService.login(dto);
     this.setAuthCookie(res, result.accessToken);
-    return { user: result.user };
+    return { user: result.user, token: result.accessToken };
   }
 
   @Post('forgot-password')
