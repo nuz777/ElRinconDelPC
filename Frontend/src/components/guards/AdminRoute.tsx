@@ -17,6 +17,13 @@ export function AdminRoute({
   const { isLoading, isAuthenticated, user } = useAuth();
   const isAdmin = user?.role === "admin";
 
+  // Si no está autenticado ni es admin, redirigir al catálogo
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      setNavLocation(redirectTo);
+    }
+  }, [isLoading, isAuthenticated, user, isAdmin, setNavLocation, redirectTo]);
+
   // Mientras se verifica la cookie, mostrar loader
   if (isLoading) {
     return (
@@ -25,13 +32,6 @@ export function AdminRoute({
       </div>
     );
   }
-
-  // Si no está autenticado ni es admin, redirigir al catálogo
-  useEffect(() => {
-    if (!isLoading && !isAdmin) {
-      setNavLocation(redirectTo);
-    }
-  }, [isLoading, isAuthenticated, user, isAdmin, setNavLocation, redirectTo]);
 
   if (!isAdmin) {
     return null;

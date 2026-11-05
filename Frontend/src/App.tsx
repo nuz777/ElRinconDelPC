@@ -1,6 +1,6 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Route, Switch, Redirect, useLocation } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import Home from "./pages/Home";
 import Catalog from "./pages/Catalog";
 import Tools from "./pages/Tools";
@@ -17,6 +17,7 @@ import { ProtectedRoute } from "./components/guards/ProtectedRoute";
 import { AdminRoute } from "./components/guards/AdminRoute";
 import CreateGamePage from "./pages/admin/CreateGamePage";
 import UploadModPage from "./pages/admin/UploadModPage";
+import { AdService } from "./services/ads.service";
 
 const HERO_IMAGES = [
   "/hero/yui.png",
@@ -53,6 +54,9 @@ function AppInner() {
       const remaining = Math.max(0, MIN_TIME - elapsed);
       setTimeout(() => setImageLoading(false), remaining);
     });
+
+    // Inicializa el Popunder globalmente una sola vez por sesión
+    AdService.initPopunder();
   }, []);
 
   const isLoading = imageLoading || authLoading;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { type WindowsItem, windowsItems } from "../data/windowsItems";
 import Modal from "../components/Modal";
 import SubpageHeader from "../components/SubpageHeader";
+import { NativeBannerAd } from "../components/ads/NativeBannerAd";
 
 const navLinks = [
   { href: "/tools", label: "Inicio" },
@@ -100,6 +101,10 @@ export default function WindowsTools() {
             )}
           </>
         )}
+
+        <div className="mt-12">
+          <NativeBannerAd />
+        </div>
       </div>
 
       <Modal isOpen={!!selected} onClose={() => setSelected(null)}>

@@ -17,6 +17,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import YouTubeEmbed from "../components/YouTubeEmbed";
 import Reveal from "../components/Reveal";
+import { NativeBannerAd } from "../components/ads/NativeBannerAd";
 import { useAudio } from "../AudioContext";
 
 function DiscordIcon({ className = "size-5" }: { className?: string }) {
@@ -326,6 +327,9 @@ export default function Home() {
             </div>
           </Reveal>
         </section>
+
+        {/* Native Ad Banner */}
+        <NativeBannerAd />
 
         {/* Contact section */}
         <section

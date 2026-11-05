@@ -132,7 +132,7 @@ export const modsService = {
 
   /** Crear un nuevo mod (requiere autenticación). */
   async createMod(payload: CreateModPayload): Promise<ModApiResponse> {
-    if (!authService.isAuthenticated) {
+    if (!authService.getStoredUser()) {
       throw new Error("Se requiere iniciar sesión para publicar un mod.");
     }
 

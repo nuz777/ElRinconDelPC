@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { CatalogItem } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
+import { NativeBannerAd } from "./ads/NativeBannerAd";
 
 interface FullscreenDetailModalProps {
   item: CatalogItem | null;
@@ -592,6 +593,9 @@ export default function FullscreenDetailModal({
               )}
             </div>
           </div>
+
+          {/* Native Ad Banner dentro del detalle de descarga */}
+          <NativeBannerAd />
         </div>
       </motion.div>
     </AnimatePresence>

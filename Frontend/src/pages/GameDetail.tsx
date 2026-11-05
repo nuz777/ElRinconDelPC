@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Download, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, AlertCircle, Loader2 } from "lucide-react";
 import { useTheme } from "../ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { gamesService } from "../services/games.service";
 import { modsService } from "../services/mods.service";
+import { NativeBannerAd } from "../components/ads/NativeBannerAd";
 
 export interface ModCardData {
   id: string;
@@ -22,7 +23,7 @@ export interface ModCardData {
 export default function GameDetail() {
   const { theme } = useTheme();
   const isLight = theme === "light";
-  const [location, setNavLocation] = useLocation();
+  const [, setNavLocation] = useLocation();
   const [, params] = useRoute("/juegos/:id");
   const gameId = params?.id ?? "";
   const [tab, setTab] = useState<"detalle" | "mods">("detalle");
@@ -31,7 +32,7 @@ export default function GameDetail() {
   const [mods, setMods] = useState<ModCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (!gameId) return;
@@ -358,6 +359,9 @@ export default function GameDetail() {
           </section>
         )}
       </main>
+
+      {/* Banner publicitario nativo */}
+      <NativeBannerAd />
     </div>
   );
 }

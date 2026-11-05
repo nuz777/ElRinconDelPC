@@ -20,6 +20,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import FullscreenDetailModal from "../components/FullscreenDetailModal";
 import AddItemModal from "../components/AddItemModal";
+import { NativeBannerAd } from "../components/ads/NativeBannerAd";
 import {
   initialCatalogItems,
   type CatalogItem,
@@ -702,6 +703,9 @@ export default function Catalog() {
             ))
           )}
         </section>
+
+        {/* Native Banner Ad (se oculta cuando el modal de detalle está abierto para evitar duplicar el ID del contenedor) */}
+        {!selectedItem && <NativeBannerAd />}
       </main>
 
       {/* Hamburger Menu Drawer for Changing Apartado & Genres */}

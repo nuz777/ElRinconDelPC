@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { toolCategories } from "../data/toolsCategories";
 import RedirectScreen from "../components/RedirectScreen";
+import { NativeBannerAd } from "../components/ads/NativeBannerAd";
 
 export default function Tools() {
   const [redirect, setRedirect] = useState<string | null>(null);
@@ -124,6 +125,11 @@ export default function Tools() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* Native Ad Banner */}
+          <div className="mt-12">
+            <NativeBannerAd />
           </div>
 
           {/* Footer */}
