@@ -12,13 +12,26 @@ const currentDir = dirname(currentFile);
 const isCompiledJs =
   currentFile.endsWith('.js') || process.env.NODE_ENV === 'production';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const sslEnabled =
+  process.env.DB_SSL === 'true' ||
+  (isProduction && process.env.DB_SSL !== 'false');
+
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'el_rincon_del_pc_db',
+  ...(process.env.DATABASE_URL
+    ? {
+        url: process.env.DATABASE_URL,
+        ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+      }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432', 10),
+        username: process.env.DB_USERNAME || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgres',
+        database: process.env.DB_NAME || 'el_rincon_del_pc_db',
+        ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+      }),
   entities: [
     isCompiledJs
       ? join(currentDir, '..', '**', '*{.entity,.typeorm-entity}.js')
@@ -30,7 +43,7 @@ export const dataSourceOptions: DataSourceOptions = {
       : 'src/database/migrations/*.ts',
   ],
   synchronize: false,
-  logging: process.env.NODE_ENV !== 'production',
+  logging: !isProduction,
 };
 
 const dataSource = new DataSource(dataSourceOptions);
