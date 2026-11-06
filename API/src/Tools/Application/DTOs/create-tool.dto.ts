@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
 } from 'class-validator';
 
@@ -13,6 +14,15 @@ export class CreateToolDto {
   @IsNotEmpty({ message: 'El nombre de la herramienta es obligatorio' })
   @MaxLength(150)
   title!: string;
+
+  @ApiPropertyOptional({
+    example: '7-zip',
+    description: 'Slug amigable para URL (se genera automáticamente si se omite)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  slug?: string;
 
   @ApiProperty({
     example: 'Compresor y descompresor de archivos libre y de código abierto.',
@@ -28,6 +38,7 @@ export class CreateToolDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   category?: string;
 
   @ApiPropertyOptional({
@@ -36,11 +47,13 @@ export class CreateToolDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   version?: string;
 
   @ApiPropertyOptional({ example: '1.6 MB', description: 'Tamaño del archivo' })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   size?: string;
 
   @ApiPropertyOptional({
@@ -49,7 +62,8 @@ export class CreateToolDto {
   })
   @IsOptional()
   @IsString()
-  downloadUrl?: string;
+  @IsUrl({}, { message: 'El enlace de descarga debe ser una URL válida' })
+  downloadUrl?: string | null;
 
   @ApiPropertyOptional({
     example: '/catalogo/7zip.png',
@@ -57,58 +71,13 @@ export class CreateToolDto {
   })
   @IsOptional()
   @IsString()
-  imageUrl?: string;
+  @IsUrl({}, { message: 'La imagen debe ser una URL válida' })
+  imageUrl?: string | null;
 
   @ApiPropertyOptional({
     example: ['Windows', 'Compresión'],
     description: 'Etiquetas de la herramienta',
   })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
-}
-
-export class UpdateToolDto {
-  @ApiPropertyOptional({ example: '7-Zip ZS' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(150)
-  title?: string;
-
-  @ApiPropertyOptional({
-    example: 'Descripción actualizada de la herramienta',
-  })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiPropertyOptional({ example: 'Utilidades' })
-  @IsOptional()
-  @IsString()
-  category?: string;
-
-  @ApiPropertyOptional({ example: 'v24.09' })
-  @IsOptional()
-  @IsString()
-  version?: string;
-
-  @ApiPropertyOptional({ example: '1.8 MB' })
-  @IsOptional()
-  @IsString()
-  size?: string;
-
-  @ApiPropertyOptional({ example: 'https://www.7-zip.org/download.html' })
-  @IsOptional()
-  @IsString()
-  downloadUrl?: string;
-
-  @ApiPropertyOptional({ example: '/catalogo/7zip.png' })
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
-
-  @ApiPropertyOptional({ example: ['Windows'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
