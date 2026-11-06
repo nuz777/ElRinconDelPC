@@ -65,6 +65,17 @@ export class CreateGameDto {
   @IsNotEmpty({ message: 'La descripción es obligatoria' })
   description!: string;
 
+  @ApiProperty({ example: 0, description: 'Precio del juego en moneda local' })
+  @IsNumber()
+  @Min(0, { message: 'El precio no puede ser negativo' })
+  price!: number;
+
+  @ApiPropertyOptional({ example: 0, description: 'Precio con descuento (opcional)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0, { message: 'El precio con descuento no puede ser negativo' })
+  discountPrice?: number | null;
+
   @ApiProperty({ example: 100, description: 'Cantidad de licencias o claves disponibles' })
   @IsNumber()
   @Min(0, { message: 'El stock no puede ser negativo' })

@@ -14,6 +14,12 @@ export class GameTypeormEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  price!: number;
+
+  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  discountPrice!: number | null;
+
   @Column({ type: 'varchar', length: 200 })
   title!: string;
 

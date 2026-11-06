@@ -57,6 +57,8 @@ export class GamesService {
       title,
       slug,
       description: dto.description.trim(),
+      price: dto.price ?? 0,
+      discountPrice: dto.discountPrice ?? null,
       stock: dto.stock,
       genres: dto.genres ?? [],
       coverImage: dto.coverImage,
@@ -79,6 +81,8 @@ export class GamesService {
       search: filters.search?.trim() || undefined,
       genre: filters.genre?.trim() || undefined,
       sortBy: filters.sortBy,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
       page,
       limit,
     };
@@ -148,6 +152,8 @@ export class GamesService {
     if (dto.releaseDate !== undefined)
       data.releaseDate = new Date(dto.releaseDate);
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.price !== undefined) data.price = dto.price;
+    if (dto.discountPrice !== undefined) data.discountPrice = dto.discountPrice;
     if (dto.minimumRequirements !== undefined)
       data.minimumRequirements = dto.minimumRequirements;
 

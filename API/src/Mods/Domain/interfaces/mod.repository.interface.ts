@@ -29,7 +29,8 @@ export type UpdateModData = Partial<CreateModData>;
 export interface ModRepository {
   create(data: CreateModData): Promise<Mod>;
   findById(id: string): Promise<Mod | null>;
-  findBySlug(slug: string): Promise<Mod | null>;
+  findBySlug(slug: string, gameId: string): Promise<Mod | null>;
+  gameExists(gameId: string): Promise<boolean>;
   findByGameId(
     gameId: string,
     filters: ModFilters,
@@ -41,6 +42,11 @@ export interface ModRepository {
   incrementDownloads(id: string): Promise<void>;
   /** Aprueba un mod pendiente (marca isApproved = true). */
   approve(id: string): Promise<boolean>;
+  /** Obtiene detalles relacionados (juego y autor) sin exponer datos sensibles del autor. */
+  getModDetails(id: string): Promise<{
+    game: { id: string; title: string } | null;
+    author: { id: string } | null;
+  } | null>;
 }
 
 /** Token de inyección para vincular la interfaz con su implementación concreta. */

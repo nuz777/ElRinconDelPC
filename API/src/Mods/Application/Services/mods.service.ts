@@ -5,7 +5,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import type { Mod } from '../../Domain/Entities/mod.entity.js';
 import {
   MODS_REPOSITORY,
@@ -29,40 +28,30 @@ function slugify(title: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-interface GameRow {
-  id: string;
-  title: string;
-}
-
-interface AuthorRow {
-  id: string;
-  email: string;
-  role: string;
-}
-
 @Injectable()
 export class ModsService {
   constructor(
     @Inject(MODS_REPOSITORY)
     private readonly modsRepository: ModRepository,
-    private readonly dataSource: DataSource,
   ) {}
 
   async createMod(userId: string, dto: CreateModDto): Promise<Mod> {
-    // Validar que el juego exista
-    const gameRows = await this.dataSource.query<GameRow[]>(
-      `SELECT id, title FROM games WHERE id = $1 LIMIT 1`,
-      [dto.gameId],
-    );
-    if (gameRows.length === 0) {
+    // Validar que el juego exista antes de intentar crear el mod.
+    // Esto evita que TypeORM lance un QueryFailedError (500) por violación de FK
+    // y permite devolver un 404 NotFoundException controlado.
+    const gameExists = await this.modsRepository.gameExists(dto.gameId);
+    if (!gameExists) {
       throw new NotFoundException('El juego especificado no existe');
     }
 
-    const slug = slugify(dto.title);
+    const slug = dto.slug?.trim() || slugify(dto.title);
 
-    // Validar que el slug no exista para este juego
-    const existingBySlug = await this.modsRepository.findBySlug(slug);
-    if (existingBySlug && existingBySlug.gameId === dto.gameId) {
+    // Validar que el slug no exista para este juego (unicidad compuesta)
+    const existingBySlug = await this.modsRepository.findBySlug(
+      slug,
+      dto.gameId,
+    );
+    if (existingBySlug) {
       throw new ConflictException(
         `Ya existe un mod con el slug "${slug}" para este juego`,
       );
@@ -109,28 +98,19 @@ export class ModsService {
   async getModById(id: string): Promise<{
     mod: Mod;
     game: { id: string; title: string } | null;
-    author: { id: string; email: string; role: string } | null;
+    author: { id: string } | null;
   }> {
     const mod = await this.modsRepository.findById(id);
     if (!mod) {
       throw new NotFoundException(`Mod con id "${id}" no encontrado`);
     }
 
-    const [gameRows, authorRows] = await Promise.all([
-      this.dataSource.query<GameRow[]>(
-        `SELECT id, title FROM games WHERE id = $1 LIMIT 1`,
-        [mod.gameId],
-      ),
-      this.dataSource.query<AuthorRow[]>(
-        `SELECT id, email, role FROM users WHERE id = $1 LIMIT 1`,
-        [mod.authorId],
-      ),
-    ]);
+    const details = await this.modsRepository.getModDetails(id);
 
     return {
       mod,
-      game: gameRows[0] ?? null,
-      author: authorRows[0] ?? null,
+      game: details?.game ?? null,
+      author: details?.author ?? null,
     };
   }
 
@@ -170,7 +150,10 @@ export class ModsService {
 
     // Validar que el slug destino no lo use otro mod del mismo juego
     if (slug !== existing.slug) {
-      const existingBySlug = await this.modsRepository.findBySlug(slug);
+      const existingBySlug = await this.modsRepository.findBySlug(
+        slug,
+        existing.gameId,
+      );
       if (existingBySlug && existingBySlug.id !== id) {
         throw new ConflictException(`Ya existe un mod con el slug "${slug}"`);
       }

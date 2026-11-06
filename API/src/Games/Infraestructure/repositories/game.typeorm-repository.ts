@@ -19,6 +19,8 @@ interface GameRow {
   title: string;
   slug: string;
   description: string;
+  price: number | string;
+  discount_price: number | string | null;
   stock: number;
   genres: string[];
   cover_image: string;
@@ -50,6 +52,13 @@ function mapRowToGame(row: GameRow): Game {
     title: row.title,
     slug: row.slug,
     description: row.description,
+    price: typeof row.price === 'string' ? Number(row.price) : row.price ?? 0,
+    discountPrice:
+      row.discount_price !== null && row.discount_price !== undefined
+        ? typeof row.discount_price === 'string'
+          ? Number(row.discount_price)
+          : row.discount_price
+        : null,
     stock: row.stock,
     genres: row.genres ?? [],
     coverImage: row.cover_image,
@@ -93,17 +102,19 @@ export class TypeormGameRepository implements GameRepository {
     const rows = await this.dataSource.query<GameRow[]>(
       `
       INSERT INTO games (
-        title, slug, description, stock, genres, cover_image, banner_image,
+        title, slug, description, price, discount_price, stock, genres, cover_image, banner_image,
         developer, publisher, release_date, is_active,
         min_os, min_storage, min_ram, min_cpu, min_gpu, minimum_requirements
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *;
       `,
       [
         data.title,
         data.slug,
         data.description,
+        data.price ?? 0,
+        data.discountPrice ?? null,
         data.stock,
         data.genres ?? [],
         data.coverImage,
@@ -144,7 +155,8 @@ export class TypeormGameRepository implements GameRepository {
   }
 
   async findAll(filters: GameFilters): Promise<PaginatedResult<Game>> {
-    const { search, genre, isActive, sortBy, page, limit } = filters;
+    const { search, genre, isActive, sortBy, minPrice, maxPrice, page, limit } =
+      filters;
     const take = limit ?? 10;
     const skip = ((page ?? 1) - 1) * take;
     const isActiveValue = isActive ?? true;
@@ -167,10 +179,23 @@ export class TypeormGameRepository implements GameRepository {
       paramIndex++;
     }
 
+    if (minPrice !== undefined && minPrice !== null) {
+      conditions.push(`price >= $${paramIndex}`);
+      params.push(minPrice);
+      paramIndex++;
+    }
+
+    if (maxPrice !== undefined && maxPrice !== null) {
+      conditions.push(`price <= $${paramIndex}`);
+      params.push(maxPrice);
+      paramIndex++;
+    }
+
     const sortColumnMap: Record<string, string> = {
       createdAt: 'created_at',
       title: 'title',
       stock: 'stock',
+      price: 'price',
       releaseDate: 'release_date',
     };
     const orderField =
@@ -233,6 +258,9 @@ export class TypeormGameRepository implements GameRepository {
     if (data.releaseDate !== undefined)
       addSet('release_date', new Date(data.releaseDate));
     if (data.isActive !== undefined) addSet('is_active', data.isActive);
+    if (data.price !== undefined) addSet('price', data.price);
+    if (data.discountPrice !== undefined)
+      addSet('discount_price', data.discountPrice ?? null);
 
     if (data.minimumRequirements) {
       if (data.minimumRequirements.os !== undefined)

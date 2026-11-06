@@ -11,6 +11,8 @@ export interface GameProps {
   title: string;
   slug: string;
   description: string;
+  price: number;
+  discountPrice?: number | null;
   stock: number;
   genres: string[];
   coverImage: string;
@@ -33,6 +35,8 @@ export class Game {
   public title: string;
   public slug: string;
   public description: string;
+  public price: number;
+  public discountPrice: number | null;
   public stock: number;
   public genres: string[];
   public coverImage: string;
@@ -50,6 +54,8 @@ export class Game {
     this.title = (props.title ?? '').trim();
     this.slug = (props.slug ?? '').toLowerCase().trim();
     this.description = (props.description ?? '').trim();
+    this.price = props.price ?? 0;
+    this.discountPrice = props.discountPrice ?? null;
     this.stock = props.stock;
     this.genres = props.genres ?? [];
     this.coverImage = props.coverImage ?? '';

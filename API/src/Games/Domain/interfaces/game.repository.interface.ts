@@ -6,6 +6,8 @@ export interface GameFilters {
   genre?: string;
   isActive?: boolean;
   sortBy?: string;
+  minPrice?: number;
+  maxPrice?: number;
   page: number;
   limit: number;
 }

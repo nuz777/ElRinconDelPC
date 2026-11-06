@@ -34,6 +34,17 @@ interface ModRow {
   updated_at: Date | string;
 }
 
+interface GameRow {
+  id: string;
+  title: string;
+}
+
+interface AuthorRow {
+  id: string;
+  email: string;
+  role: string;
+}
+
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
 function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (char) => `\\${char}`);
@@ -130,8 +141,8 @@ export class TypeormModRepository implements ModRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async findBySlug(slug: string): Promise<Mod | null> {
-    const row = await this.repository.findOne({ where: { slug } });
+  async findBySlug(slug: string, gameId: string): Promise<Mod | null> {
+    const row = await this.repository.findOne({ where: { slug, gameId } });
     return row ? this.toDomain(row) : null;
   }
 
@@ -223,5 +234,37 @@ export class TypeormModRepository implements ModRepository {
     existing.isApproved = true;
     const saved = await this.repository.save(existing);
     return saved.isApproved === true;
+  }
+
+  async gameExists(gameId: string): Promise<boolean> {
+    const rows = await this.dataSource.query<{ count: string }[]>(
+      `SELECT COUNT(*)::int AS count FROM games WHERE id = $1 LIMIT 1`,
+      [gameId],
+    );
+    return Number(rows[0]?.count ?? 0) > 0;
+  }
+
+  async getModDetails(id: string): Promise<{
+    game: { id: string; title: string } | null;
+    author: { id: string } | null;
+  } | null> {
+    const mod = await this.repository.findOne({ where: { id } });
+    if (!mod) return null;
+
+    const [gameRows, authorRows] = await Promise.all([
+      this.dataSource.query<GameRow[]>(
+        `SELECT id, title FROM games WHERE id = $1 LIMIT 1`,
+        [mod.gameId],
+      ),
+      this.dataSource.query<AuthorRow[]>(
+        `SELECT id FROM users WHERE id = $1 LIMIT 1`,
+        [mod.authorId],
+      ),
+    ]);
+
+    return {
+      game: gameRows[0] ?? null,
+      author: authorRows[0] ?? null,
+    };
   }
 }
