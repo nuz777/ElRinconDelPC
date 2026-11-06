@@ -76,6 +76,38 @@ describe('CatalogService (Unit)', () => {
     expect(result.version).toBe('v1.0');
   });
 
+  it('createItem recorta espacios en minimumRequirements (os, cpu, ram, storage, gpu)', async () => {
+    vi.mocked(repository.create).mockResolvedValue(buildItem());
+
+    await service.createItem({
+      section: CatalogSection.JUEGOS,
+      title: 'Elden Ring',
+      genre: 'Aventura / RPG',
+      shortDescription: 'RPG de acción.',
+      minimumRequirements: {
+        os: '  Windows 10 64-bit  ',
+        cpu: '  Intel Core i5-8400  ',
+        ram: '  12 GB RAM  ',
+        storage: '  60 GB libres  ',
+        gpu: '  NVIDIA GTX 1060 3GB  ',
+      },
+    });
+
+    expect(repository.create).toHaveBeenCalledWith({
+      section: CatalogSection.JUEGOS,
+      title: 'Elden Ring',
+      genre: 'Aventura / RPG',
+      shortDescription: 'RPG de acción.',
+      minimumRequirements: {
+        os: 'Windows 10 64-bit',
+        cpu: 'Intel Core i5-8400',
+        ram: '12 GB RAM',
+        storage: '60 GB libres',
+        gpu: 'NVIDIA GTX 1060 3GB',
+      },
+    });
+  });
+
   it('updateItem lanza NotFoundException si el repositorio retorna null', async () => {
     vi.mocked(repository.update).mockResolvedValue(null);
     await expect(service.updateItem(ID, { title: 'Nuevo' })).rejects.toThrow(

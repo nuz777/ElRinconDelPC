@@ -10,7 +10,36 @@ import {
   IsUrl,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class MinimumRequirementsDto {
+  @ApiProperty({ example: 'Windows 10 64-bit', description: 'Sistema operativo mínimo' })
+  @IsString()
+  @IsNotEmpty()
+  os!: string;
+
+  @ApiProperty({ example: '50 GB', description: 'Almacenamiento mínimo (ROM)' })
+  @IsString()
+  @IsNotEmpty()
+  storage!: string;
+
+  @ApiProperty({ example: '8 GB', description: 'Memoria RAM mínima' })
+  @IsString()
+  @IsNotEmpty()
+  ram!: string;
+
+  @ApiProperty({ example: 'Intel Core i5', description: 'Procesador mínimo' })
+  @IsString()
+  @IsNotEmpty()
+  cpu!: string;
+
+  @ApiProperty({ example: 'NVIDIA GTX 1060', description: 'Tarjeta gráfica mínima' })
+  @IsString()
+  @IsNotEmpty()
+  gpu!: string;
+}
 
 export class CreateGameDto {
   @ApiProperty({ example: 'Hollow Knight', description: 'Título del juego' })
@@ -35,17 +64,6 @@ export class CreateGameDto {
   @IsString()
   @IsNotEmpty({ message: 'La descripción es obligatoria' })
   description!: string;
-
-  @ApiProperty({ example: 19.99, description: 'Precio del juego' })
-  @IsNumber()
-  @Min(0, { message: 'El precio no puede ser negativo' })
-  price!: number;
-
-  @ApiPropertyOptional({ example: 14.99, description: 'Precio con descuento aplicado' })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  discountPrice?: number;
 
   @ApiProperty({ example: 100, description: 'Cantidad de licencias o claves disponibles' })
   @IsNumber()
@@ -103,4 +121,10 @@ export class CreateGameDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({ type: MinimumRequirementsDto, description: 'Requisitos mínimos del sistema' })
+  @IsNotEmpty({ message: 'Los requisitos mínimos son obligatorios' })
+  @ValidateNested()
+  @Type(() => MinimumRequirementsDto)
+  minimumRequirements!: MinimumRequirementsDto;
 }

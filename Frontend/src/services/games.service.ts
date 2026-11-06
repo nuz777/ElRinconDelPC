@@ -7,8 +7,8 @@ export interface GameApiResponse {
   title: string;
   slug: string;
   description: string;
-  price: number;
-  discountPrice: number | null;
+  price?: number;
+  discountPrice?: number | null;
   stock: number;
   genres: string[];
   coverImage: string;
@@ -17,6 +17,13 @@ export interface GameApiResponse {
   publisher: string;
   releaseDate: string;
   isActive: boolean;
+  minimumRequirements?: {
+    os: string;
+    storage: string;
+    ram: string;
+    cpu: string;
+    gpu: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -33,8 +40,6 @@ export interface CreateGamePayload {
   title: string;
   slug?: string;
   description: string;
-  price: number;
-  discountPrice?: number | null;
   stock: number;
   genres?: string[];
   coverImage: string;
@@ -43,14 +48,19 @@ export interface CreateGamePayload {
   publisher: string;
   releaseDate?: string;
   isActive?: boolean;
+  minimumRequirements: {
+    os: string;
+    storage: string;
+    ram: string;
+    cpu: string;
+    gpu: string;
+  };
 }
 
 export interface UpdateGamePayload {
   title?: string;
   slug?: string;
   description?: string;
-  price?: number;
-  discountPrice?: number | null;
   stock?: number;
   genres?: string[];
   coverImage?: string;
@@ -59,6 +69,13 @@ export interface UpdateGamePayload {
   publisher?: string;
   releaseDate?: string;
   isActive?: boolean;
+  minimumRequirements?: {
+    os: string;
+    storage: string;
+    ram: string;
+    cpu: string;
+    gpu: string;
+  };
 }
 
 export interface GameFilterParams {

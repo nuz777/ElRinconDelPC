@@ -109,6 +109,13 @@ export default function AddItemModal({
   const [shortDesc, setShortDesc] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
 
+  // Requisitos mínimos del sistema
+  const [minOs, setMinOs] = useState("");
+  const [minCpu, setMinCpu] = useState("");
+  const [minRam, setMinRam] = useState("");
+  const [minStorage, setMinStorage] = useState("");
+  const [minGpu, setMinGpu] = useState("");
+
   // Portada (dispositivo local o url)
   const [imageMode, setImageMode] = useState<"device" | "url">("device");
   const [deviceImage, setDeviceImage] = useState<string | null>(null);
@@ -135,6 +142,11 @@ export default function AddItemModal({
     setImageMode("device");
     setShortDesc("");
     setDownloadUrl("");
+    setMinOs("");
+    setMinCpu("");
+    setMinRam("");
+    setMinStorage("");
+    setMinGpu("");
   };
 
   const handleApartadoChange = (newAp: Apartado) => {
@@ -232,11 +244,11 @@ export default function AddItemModal({
         "Instalación limpia y rápida",
       ],
       requirements: {
-        os: "Windows 10 / 11 64-bit",
-        cpu: "Procesador de 2 o 4 núcleos",
-        ram: "4 GB RAM",
-        gpu: "GPU compatible con DirectX 11",
-        storage: size.trim() || "2 GB libres",
+        os: minOs.trim() || "Windows 10 / 11 64-bit",
+        cpu: minCpu.trim() || "Procesador de 2 o 4 núcleos",
+        ram: minRam.trim() || "4 GB RAM",
+        gpu: minGpu.trim() || "GPU compatible con DirectX 11",
+        storage: minStorage.trim() || size.trim() || "2 GB libres",
       },
       downloadLinks: [
         {
@@ -738,6 +750,132 @@ export default function AddItemModal({
                     : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
                 }`}
               />
+            </div>
+
+            {/* Requisitos Mínimos del Sistema */}
+            <div
+              className={`p-4 rounded-xl border space-y-3 ${
+                isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/50 border-zinc-800"
+              }`}
+            >
+              <h3
+                className={`text-xs uppercase tracking-wider font-bold ${
+                  isLight ? "text-zinc-800" : "text-zinc-200"
+                }`}
+              >
+                Requisitos Mínimos del Sistema
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label
+                    className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                      isLight ? "text-zinc-600" : "text-zinc-400"
+                    }`}
+                  >
+                    Procesador (CPU) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={minCpu}
+                    onChange={(e) => setMinCpu(e.target.value)}
+                    placeholder="Ej: Intel Core i5-8400 / Ryzen 5 2600"
+                    className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                      isLight
+                        ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                      isLight ? "text-zinc-600" : "text-zinc-400"
+                    }`}
+                  >
+                    Memoria RAM *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={minRam}
+                    onChange={(e) => setMinRam(e.target.value)}
+                    placeholder="Ej: 8 GB RAM"
+                    className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                      isLight
+                        ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                      isLight ? "text-zinc-600" : "text-zinc-400"
+                    }`}
+                  >
+                    Memoria ROM (Almacenamiento) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={minStorage}
+                    onChange={(e) => setMinStorage(e.target.value)}
+                    placeholder="Ej: 50 GB libres"
+                    className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                      isLight
+                        ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                      isLight ? "text-zinc-600" : "text-zinc-400"
+                    }`}
+                  >
+                    Sistema Operativo (OS) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={minOs}
+                    onChange={(e) => setMinOs(e.target.value)}
+                    placeholder="Ej: Windows 10 / 11 64-bit"
+                    className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                      isLight
+                        ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                    }`}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label
+                    className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                      isLight ? "text-zinc-600" : "text-zinc-400"
+                    }`}
+                  >
+                    Tarjeta Gráfica (GPU) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={minGpu}
+                    onChange={(e) => setMinGpu(e.target.value)}
+                    placeholder="Ej: NVIDIA GTX 1060 6GB / AMD RX 580"
+                    className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                      isLight
+                        ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                    }`}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Submit & Cancel */}

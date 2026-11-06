@@ -19,10 +19,11 @@ import {
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService, type AuthResult } from '../Application/Services/auth.service.js';
 import { Role } from '../Domain/Entities/roles.enum.js';
 import { Roles } from '../Infraestructure/security/decorators/roles.decorator.js';
@@ -72,11 +73,14 @@ export class AuthController {
   }
 
   @Post('register')
-  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
   @ApiCreatedResponse({ description: 'Usuario creado', type: AuthResponseDto })
   @ApiBadRequestResponse({ description: 'Datos inválidos' })
   @ApiConflictResponse({ description: 'El correo ya está registrado' })
+  @ApiTooManyRequestsResponse({
+    description: 'Demasiados intentos de registro. Intente más tarde.',
+  })
   async register(
     @Body() dto: RegisterRequestDto,
     @Res({ passthrough: true }) res: Response,
@@ -88,11 +92,14 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Iniciar sesión con credenciales locales' })
   @ApiOkResponse({ description: 'Sesión iniciada', type: AuthResponseDto })
   @ApiBadRequestResponse({ description: 'Datos inválidos' })
   @ApiUnauthorizedResponse({ description: 'Credenciales inválidas' })
+  @ApiTooManyRequestsResponse({
+    description: 'Demasiados intentos de inicio de sesión. Intente más tarde.',
+  })
   async login(
     @Body() dto: LoginRequestDto,
     @Res({ passthrough: true }) res: Response,
@@ -104,7 +111,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: 'Solicitar código de 6 dígitos para recuperación de contraseña',
   })
@@ -114,6 +121,9 @@ export class AuthController {
       'Si el correo está registrado, se envía el código de verificación de 6 dígitos (expira en 15 minutos)',
   })
   @ApiBadRequestResponse({ description: 'Correo electrónico inválido' })
+  @ApiTooManyRequestsResponse({
+    description: 'Demasiadas solicitudes de recuperación. Intente más tarde.',
+  })
   forgotPassword(
     @Body() dto: ForgotPasswordDto,
   ): Promise<{ message: string }> {
@@ -122,7 +132,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary:
       'Restablecer la contraseña mediante el código de verificación de 6 dígitos',
@@ -133,6 +143,9 @@ export class AuthController {
   })
   @ApiBadRequestResponse({
     description: 'Código incorrecto, expirado o datos inválidos',
+  })
+  @ApiTooManyRequestsResponse({
+    description: 'Demasiados intentos de restablecimiento. Intente más tarde.',
   })
   resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
     return this.authService.resetPassword(

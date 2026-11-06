@@ -25,6 +25,11 @@ interface ModRow {
   downloads_count: number;
   is_approved: boolean;
   is_active: boolean;
+  min_os: string | null;
+  min_storage: string | null;
+  min_ram: string | null;
+  min_cpu: string | null;
+  min_gpu: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -49,6 +54,13 @@ function mapRowToMod(row: ModRow): Mod {
     downloadsCount: row.downloads_count,
     isApproved: row.is_approved,
     isActive: row.is_active,
+    minimumRequirements: {
+      os: row.min_os ?? '',
+      storage: row.min_storage ?? '',
+      ram: row.min_ram ?? '',
+      cpu: row.min_cpu ?? '',
+      gpu: row.min_gpu ?? '',
+    },
     createdAt: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
     updatedAt: row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
   });
@@ -77,6 +89,13 @@ export class TypeormModRepository implements ModRepository {
       downloadsCount: row.downloadsCount,
       isApproved: row.isApproved,
       isActive: row.isActive,
+      minimumRequirements: {
+        os: row.minOs ?? '',
+        storage: row.minStorage ?? '',
+        ram: row.minRam ?? '',
+        cpu: row.minCpu ?? '',
+        gpu: row.minGpu ?? '',
+      },
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -96,6 +115,11 @@ export class TypeormModRepository implements ModRepository {
       downloadsCount: data.downloadsCount ?? 0,
       isApproved: data.isApproved ?? false,
       isActive: data.isActive ?? true,
+      minOs: data.minimumRequirements?.os ?? null,
+      minStorage: data.minimumRequirements?.storage ?? null,
+      minRam: data.minimumRequirements?.ram ?? null,
+      minCpu: data.minimumRequirements?.cpu ?? null,
+      minGpu: data.minimumRequirements?.gpu ?? null,
     });
     const saved = await this.repository.save(entity);
     return this.toDomain(saved);
@@ -171,6 +195,11 @@ export class TypeormModRepository implements ModRepository {
     const merged = this.repository.merge(existing, {
       ...data,
       slug: data.slug ?? existing.slug,
+      minOs: data.minimumRequirements?.os ?? existing.minOs,
+      minStorage: data.minimumRequirements?.storage ?? existing.minStorage,
+      minRam: data.minimumRequirements?.ram ?? existing.minRam,
+      minCpu: data.minimumRequirements?.cpu ?? existing.minCpu,
+      minGpu: data.minimumRequirements?.gpu ?? existing.minGpu,
     });
     const saved = await this.repository.save(merged);
     return this.toDomain(saved);

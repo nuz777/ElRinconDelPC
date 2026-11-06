@@ -81,6 +81,7 @@ export class ModsService {
       downloadsCount: 0,
       isApproved: false,
       isActive: true,
+      minimumRequirements: dto.minimumRequirements,
     };
 
     return this.modsRepository.create(data);
@@ -184,6 +185,8 @@ export class ModsService {
     if (dto.fileSize !== undefined) data.fileSize = dto.fileSize;
     if (dto.thumbnailUrl !== undefined)
       data.thumbnailUrl = dto.thumbnailUrl;
+    if (dto.minimumRequirements !== undefined)
+      data.minimumRequirements = dto.minimumRequirements;
 
     const updated = await this.modsRepository.update(id, data);
     if (!updated) {

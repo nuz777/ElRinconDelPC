@@ -36,6 +36,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       downloadUrl: row.downloadUrl,
       developer: row.developer,
       shortDescription: row.shortDescription,
+      minimumRequirements: row.minimumRequirements ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -94,6 +95,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       downloadUrl: item.downloadUrl ?? null,
       developer: item.developer ?? null,
       shortDescription: item.shortDescription,
+      minimumRequirements: item.minimumRequirements ?? null,
     });
     const saved = await this.repository.save(entity);
     return this.toDomain(saved);

@@ -23,12 +23,6 @@ export class GameTypeormEntity {
   @Column({ type: 'text' })
   description!: string;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2 })
-  price!: number;
-
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
-  discountPrice!: number | null;
-
   @Column({ type: 'integer' })
   stock!: number;
 
@@ -47,11 +41,27 @@ export class GameTypeormEntity {
   @Column({ type: 'varchar', length: 150 })
   publisher!: string;
 
-  @Column({ name: 'release_date', type: 'timestamptz' })
-  releaseDate!: Date;
+  @Column({ name: 'release_date', type: 'timestamptz', nullable: true })
+  releaseDate!: Date | null;
 
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
+
+  // Requisitos mínimos
+  @Column({ name: 'min_os', type: 'varchar', length: 100, nullable: true })
+  minOs!: string | null;
+
+  @Column({ name: 'min_storage', type: 'varchar', length: 100, nullable: true })
+  minStorage!: string | null;
+
+  @Column({ name: 'min_ram', type: 'varchar', length: 100, nullable: true })
+  minRam!: string | null;
+
+  @Column({ name: 'min_cpu', type: 'varchar', length: 100, nullable: true })
+  minCpu!: string | null;
+
+  @Column({ name: 'min_gpu', type: 'varchar', length: 100, nullable: true })
+  minGpu!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

@@ -64,6 +64,15 @@ export class CatalogService {
         result[key] = value.trim() as T[keyof T];
       }
     }
+    if (result.minimumRequirements) {
+      result.minimumRequirements = {
+        os: result.minimumRequirements.os.trim(),
+        cpu: result.minimumRequirements.cpu.trim(),
+        ram: result.minimumRequirements.ram.trim(),
+        storage: result.minimumRequirements.storage.trim(),
+        gpu: result.minimumRequirements.gpu.trim(),
+      };
+    }
     return result;
   }
 }

@@ -18,8 +18,6 @@ const GENRES = [
 interface CreateGameFormData {
   title: string;
   description: string;
-  price: string;
-  discountPrice: string;
   stock: string;
   genres: string[];
   coverImage: string;
@@ -28,13 +26,18 @@ interface CreateGameFormData {
   publisher: string;
   releaseDate: string;
   isActive: boolean;
+  minimumRequirements: {
+    os: string;
+    storage: string;
+    ram: string;
+    cpu: string;
+    gpu: string;
+  };
 }
 
 const initialForm: CreateGameFormData = {
   title: "",
   description: "",
-  price: "",
-  discountPrice: "",
   stock: "0",
   genres: [],
   coverImage: "",
@@ -43,6 +46,13 @@ const initialForm: CreateGameFormData = {
   publisher: "",
   releaseDate: "",
   isActive: true,
+  minimumRequirements: {
+    os: "",
+    storage: "",
+    ram: "",
+    cpu: "",
+    gpu: "",
+  },
 };
 
 export default function CreateGamePage() {
@@ -60,6 +70,15 @@ export default function CreateGamePage() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
     };
+
+  const handleChangeNested = (key: keyof CreateGameFormData["minimumRequirements"]) => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      minimumRequirements: { ...prev.minimumRequirements, [key]: e.target.value },
+    }));
+  };
 
   const handleToggleGenre = (genre: string) => {
     setForm((prev) => {
@@ -84,8 +103,6 @@ export default function CreateGamePage() {
       const payload = {
         title: form.title.trim(),
         description: form.description.trim(),
-        price: Number(form.price) || 0,
-        discountPrice: form.discountPrice.trim() ? Number(form.discountPrice) : null,
         stock: Number(form.stock) || 0,
         genres: form.genres,
         coverImage: form.coverImage.trim(),
@@ -94,6 +111,13 @@ export default function CreateGamePage() {
         publisher: form.publisher.trim(),
         releaseDate: form.releaseDate || undefined,
         isActive: form.isActive,
+        minimumRequirements: {
+          os: form.minimumRequirements.os.trim(),
+          storage: form.minimumRequirements.storage.trim(),
+          ram: form.minimumRequirements.ram.trim(),
+          cpu: form.minimumRequirements.cpu.trim(),
+          gpu: form.minimumRequirements.gpu.trim(),
+        },
       };
 
       // El slug se genera automáticamente en la API si no se envía.
@@ -224,48 +248,8 @@ export default function CreateGamePage() {
             </div>
           </div>
 
-          {/* Precio, Descuento y Stock */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
-                Precio (USD) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                value={form.price}
-                onChange={handleChange("price")}
-                placeholder="0.00"
-                className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
-                  isLight
-                    ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
-                }`}
-              />
-            </div>
-            <div>
-              <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
-                Precio con Descuento
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.discountPrice}
-                onChange={handleChange("discountPrice")}
-                placeholder="Opcional"
-                className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
-                  isLight
-                    ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
-                }`}
-              />
-              <p className="text-[11px] mt-1 text-zinc-400">
-                Si se omite, se usa el precio normal.
-              </p>
-            </div>
+          {/* Stock y Géneros */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
                 Stock (licencias) *
@@ -284,35 +268,33 @@ export default function CreateGamePage() {
                 }`}
               />
             </div>
-          </div>
-
-          {/* Géneros */}
-          <div>
-            <label className="block text-xs uppercase tracking-wider mb-2 font-semibold text-zinc-500">
-              Géneros
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {GENRES.map((genre) => {
-                const active = form.genres.includes(genre);
-                return (
-                  <button
-                    key={genre}
-                    type="button"
-                    onClick={() => handleToggleGenre(genre)}
-                    className={`px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer border ${
-                      active
-                        ? isLight
-                          ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
-                          : "bg-white text-zinc-950 border-white shadow-sm"
-                        : isLight
-                        ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600 border-zinc-200"
-                        : "bg-zinc-900/40 hover:bg-zinc-800 text-zinc-300 hover:text-white border-zinc-800/80"
-                    }`}
-                  >
-                    {genre}
-                  </button>
-                );
-              })}
+            <div>
+              <label className="block text-xs uppercase tracking-wider mb-2 font-semibold text-zinc-500">
+                Géneros
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {GENRES.map((genre) => {
+                  const active = form.genres.includes(genre);
+                  return (
+                    <button
+                      key={genre}
+                      type="button"
+                      onClick={() => handleToggleGenre(genre)}
+                      className={`px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer border ${
+                        active
+                          ? isLight
+                            ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
+                            : "bg-white text-zinc-950 border-white shadow-sm"
+                          : isLight
+                          ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600 border-zinc-200"
+                          : "bg-zinc-900/40 hover:bg-zinc-800 text-zinc-300 hover:text-white border-zinc-800/80"
+                      }`}
+                    >
+                      {genre}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -407,6 +389,104 @@ export default function CreateGamePage() {
               <p className="text-[11px] mt-1 text-zinc-400">
                 Opcional. Formato ISO 8601.
               </p>
+            </div>
+          </div>
+
+          {/* Requisitos Mínimos del Sistema */}
+          <div className={`p-4 rounded-xl border transition-colors ${
+            isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/40 border-zinc-800"
+          }`}>
+            <h4 className={`text-sm font-bold uppercase tracking-wider mb-4 ${
+              isLight ? "text-zinc-700" : "text-zinc-200"
+            }`}>
+              Requisitos Mínimos del Sistema
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Sistema Operativo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.os}
+                  onChange={handleChangeNested("os")}
+                  placeholder="Ej: Windows 10 64-bit"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Almacenamiento (ROM) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.storage}
+                  onChange={handleChangeNested("storage")}
+                  placeholder="Ej: 50 GB"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Memoria RAM *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.ram}
+                  onChange={handleChangeNested("ram")}
+                  placeholder="Ej: 8 GB"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Procesador *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.cpu}
+                  onChange={handleChangeNested("cpu")}
+                  placeholder="Ej: Intel Core i5"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Tarjeta Gráfica *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.gpu}
+                  onChange={handleChangeNested("gpu")}
+                  placeholder="Ej: NVIDIA GTX 1060"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
             </div>
           </div>
 

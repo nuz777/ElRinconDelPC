@@ -163,7 +163,7 @@ export default function GameDetail() {
                       ? "bg-zinc-100 border-zinc-300 text-zinc-800"
                       : "bg-zinc-900 border-zinc-800 text-zinc-200 border-zinc-700"
                   }`}>
-                    ${game.price.toFixed(2)}
+                    {typeof game.price === "number" ? `$${game.price.toFixed(2)}` : `Stock: ${game.stock ?? 0}`}
                   </span>
                 </div>
               </div>
@@ -214,6 +214,87 @@ export default function GameDetail() {
             </button>
           </div>
         </section>
+
+        {/* Tab: Detalle del Juego */}
+        {tab === "detalle" && (
+          <section className="space-y-6">
+            <div
+              className={`p-6 sm:p-8 rounded-2xl border shadow-xl transition-colors ${
+                isLight ? "bg-white border-zinc-200" : "bg-zinc-950 border-zinc-800"
+              }`}
+            >
+              <h3 className="text-lg sm:text-xl font-bold uppercase tracking-wider mb-4">
+                Requisitos Mínimos del Sistema
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs sm:text-sm">
+                <div
+                  className={`p-4 rounded-xl border ${
+                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
+                  }`}
+                >
+                  <span className="text-zinc-500 uppercase tracking-wider block text-[11px] mb-1">
+                    Procesador (CPU)
+                  </span>
+                  <span className="font-semibold">
+                    {game.minimumRequirements?.cpu || "No especificado"}
+                  </span>
+                </div>
+
+                <div
+                  className={`p-4 rounded-xl border ${
+                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
+                  }`}
+                >
+                  <span className="text-zinc-500 uppercase tracking-wider block text-[11px] mb-1">
+                    Memoria RAM
+                  </span>
+                  <span className="font-semibold">
+                    {game.minimumRequirements?.ram || "No especificado"}
+                  </span>
+                </div>
+
+                <div
+                  className={`p-4 rounded-xl border ${
+                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
+                  }`}
+                >
+                  <span className="text-zinc-500 uppercase tracking-wider block text-[11px] mb-1">
+                    Memoria ROM (Almacenamiento)
+                  </span>
+                  <span className="font-semibold">
+                    {game.minimumRequirements?.storage || "No especificado"}
+                  </span>
+                </div>
+
+                <div
+                  className={`p-4 rounded-xl border ${
+                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
+                  }`}
+                >
+                  <span className="text-zinc-500 uppercase tracking-wider block text-[11px] mb-1">
+                    Sistema Operativo (OS)
+                  </span>
+                  <span className="font-semibold">
+                    {game.minimumRequirements?.os || "No especificado"}
+                  </span>
+                </div>
+
+                <div
+                  className={`p-4 rounded-xl border sm:col-span-2 lg:col-span-2 ${
+                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
+                  }`}
+                >
+                  <span className="text-zinc-500 uppercase tracking-wider block text-[11px] mb-1">
+                    Tarjeta Gráfica (GPU)
+                  </span>
+                  <span className="font-semibold">
+                    {game.minimumRequirements?.gpu || "No especificado"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Tab: Mods */}
         {tab === "mods" && (

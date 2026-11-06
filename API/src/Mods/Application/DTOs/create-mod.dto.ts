@@ -6,7 +6,36 @@ import {
   IsUrl,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class MinimumRequirementsDto {
+  @ApiProperty({ example: 'Windows 10 64-bit', description: 'Sistema operativo mínimo' })
+  @IsString()
+  @IsNotEmpty()
+  os!: string;
+
+  @ApiProperty({ example: '50 GB', description: 'Almacenamiento mínimo (ROM)' })
+  @IsString()
+  @IsNotEmpty()
+  storage!: string;
+
+  @ApiProperty({ example: '8 GB', description: 'Memoria RAM mínima' })
+  @IsString()
+  @IsNotEmpty()
+  ram!: string;
+
+  @ApiProperty({ example: 'Intel Core i5', description: 'Procesador mínimo' })
+  @IsString()
+  @IsNotEmpty()
+  cpu!: string;
+
+  @ApiProperty({ example: 'NVIDIA GTX 1060', description: 'Tarjeta gráfica mínima' })
+  @IsString()
+  @IsNotEmpty()
+  gpu!: string;
+}
 
 export class CreateModDto {
   @ApiProperty({ example: 'Sodium', description: 'Nombre del mod' })
@@ -14,6 +43,15 @@ export class CreateModDto {
   @IsNotEmpty({ message: 'El nombre del mod es obligatorio' })
   @MaxLength(200)
   title!: string;
+
+  @ApiPropertyOptional({
+    example: 'sodium-optimizacion',
+    description: 'Slug amigable para URL (se genera automáticamente si se omite)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  slug?: string;
 
   @ApiProperty({
     example: 'Mod de optimización gráfica de alto rendimiento.',
@@ -59,4 +97,10 @@ export class CreateModDto {
   @IsOptional()
   @IsString()
   fileSize?: string;
+
+  @ApiProperty({ type: MinimumRequirementsDto, description: 'Requisitos mínimos del sistema' })
+  @IsNotEmpty({ message: 'Los requisitos mínimos son obligatorios' })
+  @ValidateNested()
+  @Type(() => MinimumRequirementsDto)
+  minimumRequirements!: MinimumRequirementsDto;
 }

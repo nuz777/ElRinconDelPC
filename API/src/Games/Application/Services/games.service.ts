@@ -57,8 +57,6 @@ export class GamesService {
       title,
       slug,
       description: dto.description.trim(),
-      price: dto.price,
-      discountPrice: dto.discountPrice ?? null,
       stock: dto.stock,
       genres: dto.genres ?? [],
       coverImage: dto.coverImage,
@@ -67,6 +65,7 @@ export class GamesService {
       publisher: dto.publisher.trim(),
       releaseDate: dto.releaseDate ? new Date(dto.releaseDate) : new Date(),
       isActive: dto.isActive ?? true,
+      minimumRequirements: dto.minimumRequirements,
     };
 
     return this.gamesRepository.create(data);
@@ -79,8 +78,6 @@ export class GamesService {
     const gameFilters: GameFilters = {
       search: filters.search?.trim() || undefined,
       genre: filters.genre?.trim() || undefined,
-      minPrice: filters.minPrice,
-      maxPrice: filters.maxPrice,
       sortBy: filters.sortBy,
       page,
       limit,
@@ -142,8 +139,6 @@ export class GamesService {
     if (dto.title !== undefined) data.title = dto.title.trim();
     if (slug !== existing.slug) data.slug = slug;
     if (dto.description !== undefined) data.description = dto.description.trim();
-    if (dto.price !== undefined) data.price = dto.price;
-    if (dto.discountPrice !== undefined) data.discountPrice = dto.discountPrice;
     if (dto.stock !== undefined) data.stock = dto.stock;
     if (dto.genres !== undefined) data.genres = dto.genres;
     if (dto.coverImage !== undefined) data.coverImage = dto.coverImage;
@@ -153,6 +148,8 @@ export class GamesService {
     if (dto.releaseDate !== undefined)
       data.releaseDate = new Date(dto.releaseDate);
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.minimumRequirements !== undefined)
+      data.minimumRequirements = dto.minimumRequirements;
 
     const updated = await this.gamesRepository.update(existing.id, data);
     if (!updated) {

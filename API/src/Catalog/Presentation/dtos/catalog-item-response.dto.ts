@@ -35,6 +35,15 @@ export class CatalogItemResponseDto {
   @ApiProperty()
   shortDescription!: string;
 
+  @ApiPropertyOptional({ nullable: true })
+  minimumRequirements!: {
+    os: string;
+    cpu: string;
+    ram: string;
+    storage: string;
+    gpu: string;
+  } | null;
+
   @ApiProperty()
   createdAt!: Date;
 

@@ -2,6 +2,14 @@ import type { CatalogSection } from './catalog-section.enum.js';
 
 export const DEFAULT_CATALOG_VERSION = 'v1.0';
 
+export interface CatalogMinimumRequirements {
+  os: string;
+  cpu: string;
+  ram: string;
+  storage: string;
+  gpu: string;
+}
+
 export interface CatalogItemProps {
   id: string;
   section: CatalogSection;
@@ -14,6 +22,7 @@ export interface CatalogItemProps {
   downloadUrl?: string | null;
   developer?: string | null;
   shortDescription: string;
+  minimumRequirements?: CatalogMinimumRequirements | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -34,6 +43,7 @@ export class CatalogItem {
   public downloadUrl: string | null;
   public developer: string | null;
   public shortDescription: string;
+  public minimumRequirements: CatalogMinimumRequirements | null;
   public readonly createdAt: Date;
   public updatedAt: Date;
 
@@ -49,6 +59,7 @@ export class CatalogItem {
     this.downloadUrl = props.downloadUrl ?? null;
     this.developer = props.developer ?? null;
     this.shortDescription = props.shortDescription;
+    this.minimumRequirements = props.minimumRequirements ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }
