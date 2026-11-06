@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsNumber,
@@ -10,12 +11,14 @@ import {
 export class FilterModsDto {
   @ApiPropertyOptional({ example: 1, description: 'Página actual' })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   page?: number;
 
   @ApiPropertyOptional({ example: 10, description: 'Elementos por página' })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   limit?: number;

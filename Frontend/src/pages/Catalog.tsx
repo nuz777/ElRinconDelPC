@@ -147,6 +147,7 @@ export default function Catalog() {
         downloadUrl: validDownloadUrl,
         developer: newItem.developer,
         shortDescription: newItem.fullDesc || newItem.shortDesc,
+        minimumRequirements: newItem.requirements,
       });
 
       // Añadir al estado directamente con el UUID de la base de datos

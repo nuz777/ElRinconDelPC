@@ -1,3 +1,11 @@
+export interface MinimumRequirements {
+  os: string;
+  storage: string;
+  ram: string;
+  cpu: string;
+  gpu: string;
+}
+
 export interface ModProps {
   id: string;
   title: string;
@@ -12,6 +20,7 @@ export interface ModProps {
   downloadsCount?: number;
   isApproved?: boolean;
   isActive?: boolean;
+  minimumRequirements?: MinimumRequirements;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -34,6 +43,7 @@ export class Mod {
   public downloadsCount: number;
   public isApproved: boolean;
   public isActive: boolean;
+  public minimumRequirements: MinimumRequirements;
   public readonly createdAt: Date;
   public updatedAt: Date;
 
@@ -51,6 +61,13 @@ export class Mod {
     this.downloadsCount = props.downloadsCount ?? 0;
     this.isApproved = props.isApproved ?? false;
     this.isActive = props.isActive ?? true;
+    this.minimumRequirements = props.minimumRequirements ?? {
+      os: '',
+      storage: '',
+      ram: '',
+      cpu: '',
+      gpu: '',
+    };
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }

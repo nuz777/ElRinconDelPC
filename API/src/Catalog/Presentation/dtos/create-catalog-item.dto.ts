@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsEnum,
   IsNotEmpty,
@@ -7,11 +8,44 @@ import {
   IsUrl,
   Matches,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 
 /** Acepta URLs http(s), rutas relativas del frontend (/img/...) o data URLs de imagen. */
 const COVER_URL_PATTERN = /^(https?:\/\/\S+|\/\S*|data:image\/[a-z0-9.+-]+;base64,\S+)$/i;
+
+export class CatalogMinimumRequirementsDto {
+  @ApiProperty({ example: 'Windows 10 / 11 64-bit', description: 'Sistema Operativo (OS)' })
+  @IsString()
+  @IsNotEmpty({ message: 'El sistema operativo (OS) es obligatorio' })
+  @MaxLength(150)
+  os!: string;
+
+  @ApiProperty({ example: 'Intel Core i5-8400 / Ryzen 5 2600', description: 'Procesador (CPU)' })
+  @IsString()
+  @IsNotEmpty({ message: 'El procesador es obligatorio' })
+  @MaxLength(150)
+  cpu!: string;
+
+  @ApiProperty({ example: '8 GB RAM', description: 'Memoria RAM' })
+  @IsString()
+  @IsNotEmpty({ message: 'La memoria RAM es obligatoria' })
+  @MaxLength(100)
+  ram!: string;
+
+  @ApiProperty({ example: '50 GB libres', description: 'Memoria ROM / Almacenamiento' })
+  @IsString()
+  @IsNotEmpty({ message: 'La memoria ROM (almacenamiento) es obligatoria' })
+  @MaxLength(100)
+  storage!: string;
+
+  @ApiProperty({ example: 'NVIDIA GTX 1060 6GB / RX 580', description: 'Tarjeta Gráfica (GPU)' })
+  @IsString()
+  @IsNotEmpty({ message: 'La tarjeta gráfica es obligatoria' })
+  @MaxLength(150)
+  gpu!: string;
+}
 
 export class CreateCatalogItemDto {
   @ApiProperty({
@@ -88,4 +122,13 @@ export class CreateCatalogItemDto {
   @IsNotEmpty({ message: 'La descripción breve es obligatoria' })
   @MaxLength(500)
   shortDescription!: string;
+
+  @ApiPropertyOptional({
+    type: CatalogMinimumRequirementsDto,
+    description: 'Requisitos mínimos del sistema (OS, Procesador, Memoria RAM, Memoria ROM, Tarjeta Gráfica)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CatalogMinimumRequirementsDto)
+  minimumRequirements?: CatalogMinimumRequirementsDto;
 }

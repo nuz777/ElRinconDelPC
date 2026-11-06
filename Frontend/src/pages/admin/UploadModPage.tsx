@@ -18,6 +18,13 @@ export default function UploadModPage() {
     downloadUrl: "",
     thumbnailUrl: "",
     fileSize: "",
+    minimumRequirements: {
+      os: "",
+      storage: "",
+      ram: "",
+      cpu: "",
+      gpu: "",
+    },
   });
 
   const [loading, setLoading] = useState(false);
@@ -28,6 +35,15 @@ export default function UploadModPage() {
     (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
     };
+
+  const handleChangeNested = (key: keyof typeof form.minimumRequirements) => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      minimumRequirements: { ...prev.minimumRequirements, [key]: e.target.value },
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +60,13 @@ export default function UploadModPage() {
         gameId: gameId || "",
         thumbnailUrl: form.thumbnailUrl.trim() || undefined,
         fileSize: form.fileSize.trim() || undefined,
+        minimumRequirements: {
+          os: form.minimumRequirements.os.trim(),
+          storage: form.minimumRequirements.storage.trim(),
+          ram: form.minimumRequirements.ram.trim(),
+          cpu: form.minimumRequirements.cpu.trim(),
+          gpu: form.minimumRequirements.gpu.trim(),
+        },
       });
       setSuccess("Mod publicado correctamente. Está pendiente de revisión por un administrador.");
       setForm({
@@ -53,6 +76,13 @@ export default function UploadModPage() {
         downloadUrl: "",
         thumbnailUrl: "",
         fileSize: "",
+        minimumRequirements: {
+          os: "",
+          storage: "",
+          ram: "",
+          cpu: "",
+          gpu: "",
+        },
       });
     } catch (err) {
       setError(
@@ -253,6 +283,104 @@ export default function UploadModPage() {
               <p className="text-[11px] mt-1 text-zinc-400">
                 Opcional. Tamaño del archivo del mod.
               </p>
+            </div>
+          </div>
+
+          {/* Requisitos Mínimos del Sistema */}
+          <div className={`p-4 rounded-xl border transition-colors ${
+            isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/40 border-zinc-800"
+          }`}>
+            <h4 className={`text-sm font-bold uppercase tracking-wider mb-4 ${
+              isLight ? "text-zinc-700" : "text-zinc-200"
+            }`}>
+              Requisitos Mínimos del Sistema
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Sistema Operativo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.os}
+                  onChange={handleChangeNested("os")}
+                  placeholder="Ej: Windows 10 64-bit"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Almacenamiento (ROM) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.storage}
+                  onChange={handleChangeNested("storage")}
+                  placeholder="Ej: 50 GB"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Memoria RAM *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.ram}
+                  onChange={handleChangeNested("ram")}
+                  placeholder="Ej: 8 GB"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Procesador *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.cpu}
+                  onChange={handleChangeNested("cpu")}
+                  placeholder="Ej: Intel Core i5"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-1 font-semibold text-zinc-500">
+                  Tarjeta Gráfica *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={form.minimumRequirements.gpu}
+                  onChange={handleChangeNested("gpu")}
+                  placeholder="Ej: NVIDIA GTX 1060"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                    isLight
+                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                  }`}
+                />
+              </div>
             </div>
           </div>
 

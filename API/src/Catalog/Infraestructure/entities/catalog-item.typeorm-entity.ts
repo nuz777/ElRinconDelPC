@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { CatalogMinimumRequirements } from '../../Domain/Entities/catalog-item.entity.js';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 
 @Entity({ name: 'catalog_items' })
@@ -43,6 +44,9 @@ export class CatalogItemTypeormEntity {
 
   @Column({ name: 'short_description', type: 'text' })
   shortDescription!: string;
+
+  @Column({ name: 'minimum_requirements', type: 'jsonb', nullable: true })
+  minimumRequirements!: CatalogMinimumRequirements | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

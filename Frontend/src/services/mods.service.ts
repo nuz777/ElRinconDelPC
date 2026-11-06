@@ -37,6 +37,13 @@ export interface CreateModPayload {
   gameId: string;
   thumbnailUrl?: string | null;
   fileSize?: string | null;
+  minimumRequirements: {
+    os: string;
+    storage: string;
+    ram: string;
+    cpu: string;
+    gpu: string;
+  };
 }
 
 export interface ModFilterParams {

@@ -3,6 +3,14 @@ import type { Apartado, CatalogItem } from "../data/catalog";
 
 export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS";
 
+export interface CatalogMinimumRequirementsPayload {
+  os: string;
+  cpu: string;
+  ram: string;
+  storage: string;
+  gpu: string;
+}
+
 export interface CreateCatalogItemPayload {
   section: CatalogSectionApi;
   title: string;
@@ -14,6 +22,7 @@ export interface CreateCatalogItemPayload {
   downloadUrl?: string;
   developer?: string;
   shortDescription: string;
+  minimumRequirements?: CatalogMinimumRequirementsPayload;
 }
 
 export interface CatalogItemApiResponse {
@@ -28,6 +37,7 @@ export interface CatalogItemApiResponse {
   downloadUrl: string | null;
   developer: string | null;
   shortDescription: string;
+  minimumRequirements: CatalogMinimumRequirementsPayload | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -108,11 +118,11 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
       "Sin software malicioso ni añadidos innecesarios",
     ],
     requirements: {
-      os: "Windows 10 / 11 64-bit",
-      cpu: "Procesador de 2 o 4 núcleos",
-      ram: "4 GB RAM",
-      gpu: "GPU compatible con DirectX 11",
-      storage: api.size || "1 GB libre",
+      os: api.minimumRequirements?.os || "Windows 10 / 11 64-bit",
+      cpu: api.minimumRequirements?.cpu || "Procesador de 2 o 4 núcleos",
+      ram: api.minimumRequirements?.ram || "4 GB RAM",
+      gpu: api.minimumRequirements?.gpu || "GPU compatible con DirectX 11",
+      storage: api.minimumRequirements?.storage || api.size || "1 GB libre",
     },
     downloadLinks: [
       {

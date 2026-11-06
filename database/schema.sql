@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS catalog_items (
     download_url TEXT NULL,
     developer VARCHAR(150) NULL,
     short_description TEXT NOT NULL,
+    minimum_requirements JSONB NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -96,16 +97,22 @@ CREATE TABLE IF NOT EXISTS games (
     title VARCHAR(200) NOT NULL,
     slug VARCHAR(200) NOT NULL,
     description TEXT NOT NULL,
-    price NUMERIC(10, 2) NOT NULL,
+    price NUMERIC(10, 2) NOT NULL DEFAULT 0,
     discount_price NUMERIC(10, 2) NULL,
-    stock INTEGER NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
     genres TEXT[] NOT NULL DEFAULT '{}',
     cover_image TEXT NOT NULL,
     banner_image TEXT NULL,
     developer VARCHAR(150) NOT NULL,
     publisher VARCHAR(150) NOT NULL,
-    release_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    release_date TIMESTAMP WITH TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    min_os VARCHAR(100) NULL,
+    min_storage VARCHAR(100) NULL,
+    min_ram VARCHAR(100) NULL,
+    min_cpu VARCHAR(100) NULL,
+    min_gpu VARCHAR(100) NULL,
+    minimum_requirements JSONB NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

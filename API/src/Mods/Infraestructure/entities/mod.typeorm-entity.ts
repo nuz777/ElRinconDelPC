@@ -31,10 +31,10 @@ export class ModTypeormEntity {
   @Column({ type: 'varchar', length: 50 })
   version!: string;
 
-  @Column({ type: 'text' })
+  @Column({ name: 'download_url', type: 'text' })
   downloadUrl!: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'file_size', type: 'varchar', length: 50, nullable: true })
   fileSize!: string | null;
 
   @Column({ name: 'thumbnail_url', type: 'text', nullable: true })
@@ -46,14 +46,30 @@ export class ModTypeormEntity {
   @Column({ name: 'author_id', type: 'uuid' })
   authorId!: string;
 
-  @Column({ type: 'integer', default: 0 })
+  @Column({ name: 'downloads_count', type: 'integer', default: 0 })
   downloadsCount!: number;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ name: 'is_approved', type: 'boolean', default: false })
   isApproved!: boolean;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
+
+  // Requisitos mínimos
+  @Column({ name: 'min_os', type: 'varchar', length: 100, nullable: true })
+  minOs!: string | null;
+
+  @Column({ name: 'min_storage', type: 'varchar', length: 100, nullable: true })
+  minStorage!: string | null;
+
+  @Column({ name: 'min_ram', type: 'varchar', length: 100, nullable: true })
+  minRam!: string | null;
+
+  @Column({ name: 'min_cpu', type: 'varchar', length: 100, nullable: true })
+  minCpu!: string | null;
+
+  @Column({ name: 'min_gpu', type: 'varchar', length: 100, nullable: true })
+  minGpu!: string | null;
 
   @ManyToOne(() => GameTypeormEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'game_id' })

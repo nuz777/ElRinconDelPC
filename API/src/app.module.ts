@@ -3,8 +3,8 @@ import {
   Module,
   type NestModule,
 } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -23,8 +23,9 @@ import { ToolsModule } from './Tools/tools.module.js';
   imports: [
     ThrottlerModule.forRoot([
       {
-        ttl: 60000, // 1 minuto
-        limit: 10, // 10 solicitudes por minuto
+        name: 'default',
+        ttl: 60000, // 1 minuto (60,000 ms)
+        limit: 60, // 60 solicitudes por minuto por IP
       },
     ]),
     TypeOrmModule.forRoot(dataSourceOptions),
@@ -37,6 +38,10 @@ import { ToolsModule } from './Tools/tools.module.js';
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingBenchmarkInterceptor,

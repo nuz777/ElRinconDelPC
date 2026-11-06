@@ -583,7 +583,7 @@ export default function FullscreenDetailModal({
                         isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
                       }`}
                     >
-                      <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">Almacenamiento</span>
+                      <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">Memoria ROM (Almacenamiento)</span>
                       <span className={`font-medium ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
                         {item.requirements.storage}
                       </span>

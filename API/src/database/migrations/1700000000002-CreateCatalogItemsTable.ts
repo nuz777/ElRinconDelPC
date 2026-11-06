@@ -19,6 +19,7 @@ export class CreateCatalogItemsTable1700000000002 implements MigrationInterface 
         "download_url" TEXT NULL,
         "developer" VARCHAR(150) NULL,
         "short_description" TEXT NOT NULL,
+        "minimum_requirements" JSONB NULL,
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
       );

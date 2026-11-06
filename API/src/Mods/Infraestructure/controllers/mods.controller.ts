@@ -17,8 +17,10 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Role } from '../../../Auth/Domain/Entities/roles.enum.js';
 import { Roles } from '../../../Auth/Infraestructure/security/decorators/roles.decorator.js';
@@ -28,9 +30,9 @@ import type { AuthenticatedUser } from '../../../Auth/Infraestructure/security/j
 import { ModsService } from '../../Application/Services/mods.service.js';
 import type { Mod } from '../../Domain/Entities/mod.entity.js';
 import type { PaginatedResult } from '../../Domain/interfaces/mod.repository.interface.js';
-import type { CreateModDto } from '../../Application/DTOs/create-mod.dto.js';
-import type { UpdateModDto } from '../../Application/DTOs/update-mod.dto.js';
-import type { FilterModsDto } from '../../Application/DTOs/filter-mods.dto.js';
+import { CreateModDto } from '../../Application/DTOs/create-mod.dto.js';
+import { UpdateModDto } from '../../Application/DTOs/update-mod.dto.js';
+import { FilterModsDto } from '../../Application/DTOs/filter-mods.dto.js';
 
 @ApiTags('Mods')
 @Controller('mods')
@@ -48,11 +50,15 @@ export class ModsController {
   }
 
   @Post(':id/download')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'Incrementar el contador de descargas y obtener la URL de descarga',
   })
   @ApiOkResponse({ description: 'Contador incrementado y URL de descarga' })
   @ApiUnauthorizedResponse({ description: 'Mod no encontrado' })
+  @ApiTooManyRequestsResponse({
+    description: 'Demasiadas descargas seguidas. Intente más tarde.',
+  })
   async downloadMod(@Param('id') id: string) {
     await this.modsService.incrementDownloadCount(id);
     const { mod } = await this.modsService.getModById(id);
@@ -63,12 +69,16 @@ export class ModsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Crear un nuevo mod (asignado al usuario autenticado)',
   })
   @ApiCreatedResponse({ description: 'Mod creado exitosamente' })
   @ApiUnauthorizedResponse({ description: 'Token JWT ausente o inválido' })
+  @ApiTooManyRequestsResponse({
+    description: 'Límite de publicación de mods excedido. Intente más tarde.',
+  })
   async createMod(
     @Body() dto: CreateModDto,
     @Req() req: Request & { user: AuthenticatedUser },

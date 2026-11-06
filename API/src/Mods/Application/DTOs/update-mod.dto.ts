@@ -1,5 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { OmitType, PartialType } from '@nestjs/mapped-types';
+import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { CreateModDto } from './create-mod.dto.js';
 
