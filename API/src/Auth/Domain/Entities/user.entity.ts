@@ -41,4 +41,30 @@ export class User {
     this.resetTokenExpires = props.resetTokenExpires ?? null;
     this.createdAt = props.createdAt ?? new Date();
   }
+
+  hasRole(role: Role): boolean {
+    return this.role === role;
+  }
+
+  isAdmin(): boolean {
+    return this.role === 'admin';
+  }
+
+  setResetToken(token: string, expires: Date): void {
+    this.resetToken = token;
+    this.resetTokenExpires = expires;
+  }
+
+  clearResetToken(): void {
+    this.resetToken = null;
+    this.resetTokenExpires = null;
+  }
+
+  isResetTokenValid(now: Date = new Date()): boolean {
+    return (
+      !!this.resetToken &&
+      !!this.resetTokenExpires &&
+      this.resetTokenExpires > now
+    );
+  }
 }

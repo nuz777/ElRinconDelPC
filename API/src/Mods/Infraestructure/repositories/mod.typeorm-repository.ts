@@ -237,11 +237,15 @@ export class TypeormModRepository implements ModRepository {
   }
 
   async gameExists(gameId: string): Promise<boolean> {
-    const rows = await this.dataSource.query<{ count: string }[]>(
-      `SELECT COUNT(*)::int AS count FROM games WHERE id = $1 LIMIT 1`,
-      [gameId],
-    );
-    return Number(rows[0]?.count ?? 0) > 0;
+    try {
+      const rows = await this.dataSource.query<{ count: string }[]>(
+        `SELECT COUNT(*)::int AS count FROM games WHERE id = $1 LIMIT 1`,
+        [gameId],
+      );
+      return Number(rows[0]?.count ?? 0) > 0;
+    } catch {
+      return false;
+    }
   }
 
   async getModDetails(id: string): Promise<{
@@ -252,14 +256,18 @@ export class TypeormModRepository implements ModRepository {
     if (!mod) return null;
 
     const [gameRows, authorRows] = await Promise.all([
-      this.dataSource.query<GameRow[]>(
-        `SELECT id, title FROM games WHERE id = $1 LIMIT 1`,
-        [mod.gameId],
-      ),
-      this.dataSource.query<AuthorRow[]>(
-        `SELECT id FROM users WHERE id = $1 LIMIT 1`,
-        [mod.authorId],
-      ),
+      this.dataSource
+        .query<GameRow[]>(
+          `SELECT id, title FROM games WHERE id = $1 LIMIT 1`,
+          [mod.gameId],
+        )
+        .catch(() => []),
+      this.dataSource
+        .query<AuthorRow[]>(
+          `SELECT id FROM users WHERE id = $1 LIMIT 1`,
+          [mod.authorId],
+        )
+        .catch(() => []),
     ]);
 
     return {

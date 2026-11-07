@@ -21,17 +21,14 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { Role } from '../../../Auth/Domain/Entities/roles.enum.js';
-import { Roles } from '../../../Auth/Infraestructure/security/decorators/roles.decorator.js';
-import { JwtAuthGuard } from '../../../Auth/Infraestructure/security/guards/jwt-auth.guard.js';
-import { RolesGuard } from '../../../Auth/Infraestructure/security/guards/roles.guard.js';
-import type { AuthenticatedUser } from '../../../Auth/Infraestructure/security/jwt.strategy.js';
-import { ToolsService } from '../../Application/Services/tools.service.js';
-import type { Tool } from '../../Domain/Entities/tool.entity.js';
-import type { PaginatedResult } from '../../Domain/interfaces/tool.repository.interface.js';
-import { CreateToolDto } from '../../Application/DTOs/create-tool.dto.js';
-import { UpdateToolDto } from '../../Application/DTOs/update-tool.dto.js';
-import { FilterToolsDto } from '../../Application/DTOs/filter-tools.dto.js';
+import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
+import type { AuthenticatedUser } from '../../Auth/Infraestructure/security/jwt.strategy.js';
+import { ToolsService } from '../Application/Services/tools.service.js';
+import type { Tool } from '../Domain/Entities/tool.entity.js';
+import type { PaginatedResult } from '../Domain/interfaces/tool.repository.interface.js';
+import { CreateToolDto } from '../Application/DTOs/create-tool.dto.js';
+import { UpdateToolDto } from '../Application/DTOs/update-tool.dto.js';
+import { FilterToolsDto } from '../Application/DTOs/filter-tools.dto.js';
 
 @ApiTags('Tools')
 @Controller('tools')

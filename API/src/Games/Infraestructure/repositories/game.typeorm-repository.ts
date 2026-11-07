@@ -106,7 +106,7 @@ export class TypeormGameRepository implements GameRepository {
         developer, publisher, release_date, is_active,
         min_os, min_storage, min_ram, min_cpu, min_gpu, minimum_requirements
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *;
       `,
       [

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsNumber,
@@ -41,7 +41,11 @@ export class FilterToolsDto {
 
   @ApiPropertyOptional({ example: true, description: 'Filtrar por estado activo' })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 }

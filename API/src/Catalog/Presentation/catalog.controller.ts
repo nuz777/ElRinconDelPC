@@ -19,20 +19,17 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Role } from '../../Auth/Domain/Entities/roles.enum.js';
-import { Roles } from '../../Auth/Infraestructure/security/decorators/roles.decorator.js';
-import { JwtAuthGuard } from '../../Auth/Infraestructure/security/guards/jwt-auth.guard.js';
-import { RolesGuard } from '../../Auth/Infraestructure/security/guards/roles.guard.js';
+import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
 import { CatalogService } from '../Application/Services/catalog.service.js';
 import type { CatalogItem } from '../Domain/Entities/catalog-item.entity.js';
 import type { PaginatedResult } from '../Domain/interfaces/catalog.repository.interface.js';
 import {
   CatalogItemResponseDto,
   PaginatedCatalogResponseDto,
-} from './dtos/catalog-item-response.dto.js';
-import { CreateCatalogItemDto } from './dtos/create-catalog-item.dto.js';
-import { FilterCatalogDto } from './dtos/filter-catalog.dto.js';
-import { UpdateCatalogItemDto } from './dtos/update-catalog-item.dto.js';
+} from '../Application/DTOs/catalog-item-response.dto.js';
+import { CreateCatalogItemDto } from '../Application/DTOs/create-catalog-item.dto.js';
+import { FilterCatalogDto } from '../Application/DTOs/filter-catalog.dto.js';
+import { UpdateCatalogItemDto } from '../Application/DTOs/update-catalog-item.dto.js';
 
 const ID_PARAM = { name: 'id', format: 'uuid', description: 'UUID del ítem' };
 

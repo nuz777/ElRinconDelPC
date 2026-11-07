@@ -22,8 +22,8 @@ import {
   type MailService,
   type JwtService,
 } from '../../Domain/services/index.js';
-import type { LoginRequestDto } from '../../Presentation/dtos/login-request.dto.js';
-import type { RegisterRequestDto } from '../../Presentation/dtos/register-request.dto.js';
+import type { LoginRequestDto } from '../DTOs/login-request.dto.js';
+import type { RegisterRequestDto } from '../DTOs/register-request.dto.js';
 
 export interface AuthResult {
   accessToken: string;

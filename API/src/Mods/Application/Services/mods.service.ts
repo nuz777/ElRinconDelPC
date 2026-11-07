@@ -14,19 +14,10 @@ import {
   type PaginatedResult,
   type UpdateModData,
 } from '../../Domain/interfaces/mod.repository.interface.js';
+import { slugify } from '../../../Common/utils/slugify.js';
 import type { CreateModDto } from '../DTOs/create-mod.dto.js';
 import type { FilterModsDto } from '../DTOs/filter-mods.dto.js';
 import type { UpdateModDto } from '../DTOs/update-mod.dto.js';
-
-/** Convierte un título en un slug válido para URLs. */
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 @Injectable()
 export class ModsService {
@@ -134,7 +125,7 @@ export class ModsService {
     }
 
     // Solo el autor o un administrador pueden editar
-    if (existing.authorId !== userId && userRole !== 'admin') {
+    if (!existing.canBeModifiedBy(userId, userRole)) {
       throw new ForbiddenException(
         'No tienes permiso para editar este mod',
       );
@@ -189,7 +180,7 @@ export class ModsService {
     }
 
     // Solo el autor o un administrador pueden eliminar
-    if (existing.authorId !== userId && userRole !== 'admin') {
+    if (!existing.canBeModifiedBy(userId, userRole)) {
       throw new ForbiddenException(
         'No tienes permiso para eliminar este mod',
       );

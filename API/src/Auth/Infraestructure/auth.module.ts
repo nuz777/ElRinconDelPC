@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from '../Application/Services/auth.service.js';
@@ -15,8 +15,8 @@ import {
   InMemoryAuthRepository,
   PostgresAuthRepository,
 } from './repositories/auth.repository.js';
-import { JwtAuthGuard } from './security/guards/jwt-auth.guard.js';
-import { RolesGuard } from './security/guards/roles.guard.js';
+import { JwtAuthGuard } from '../../Guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../Guards/roles.guard.js';
 import { HashingService } from './security/hashing.service.js';
 import { HashingServiceAdapter } from './security/hashingservice.adapter.js';
 import { getJwtExpiresIn, getJwtSecret } from './security/jwt.constants.js';
@@ -25,6 +25,7 @@ import { JwtStrategy } from './security/jwt.strategy.js';
 import { MailService } from './mail/mail.service.js';
 import { MailServiceAdapter } from './mail/mailservice.adapter.js';
 
+@Global()
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),

@@ -54,4 +54,21 @@ export class Tool {
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }
+
+  isOwnedBy(userId: string): boolean {
+    return this.authorId === userId;
+  }
+
+  canBeModifiedBy(userId: string, userRole: string): boolean {
+    return this.isOwnedBy(userId) || userRole === 'admin';
+  }
+
+  deactivate(): void {
+    this.isActive = false;
+    this.updatedAt = new Date();
+  }
+
+  incrementDownloads(): void {
+    this.downloadsCount += 1;
+  }
 }

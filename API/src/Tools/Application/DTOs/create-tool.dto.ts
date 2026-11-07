@@ -5,8 +5,13 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   MaxLength,
 } from 'class-validator';
+
+/** Acepta URLs http(s), rutas relativas (/catalogo/..., /img/...) o data URLs de imagen. */
+const IMAGE_URL_PATTERN =
+  /^(https?:\/\/\S+|\/\S*|data:image\/[a-z0-9.+-]+;base64,\S+)$/i;
 
 export class CreateToolDto {
   @ApiProperty({ example: '7-Zip', description: 'Nombre de la herramienta' })
@@ -56,22 +61,25 @@ export class CreateToolDto {
   @MaxLength(50)
   size?: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'https://www.7-zip.org/download.html',
-    description: 'Enlace de descarga',
+    description: 'Enlace de descarga de la herramienta',
   })
-  @IsOptional()
   @IsString()
+  @IsNotEmpty({ message: 'El enlace de descarga es obligatorio' })
   @IsUrl({}, { message: 'El enlace de descarga debe ser una URL válida' })
-  downloadUrl?: string | null;
+  downloadUrl!: string;
 
   @ApiPropertyOptional({
     example: '/catalogo/7zip.png',
-    description: 'Imagen de la herramienta',
+    description: 'URL http(s), ruta relativa (/img/...) o data URL de imagen',
   })
   @IsOptional()
   @IsString()
-  @IsUrl({}, { message: 'La imagen debe ser una URL válida' })
+  @Matches(IMAGE_URL_PATTERN, {
+    message:
+      'imageUrl debe ser una URL válida, una ruta relativa o una imagen en base64',
+  })
   imageUrl?: string | null;
 
   @ApiPropertyOptional({

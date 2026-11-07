@@ -25,16 +25,13 @@ import {
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService, type AuthResult } from '../Application/Services/auth.service.js';
-import { Role } from '../Domain/Entities/roles.enum.js';
-import { Roles } from '../Infraestructure/security/decorators/roles.decorator.js';
-import { JwtAuthGuard } from '../Infraestructure/security/guards/jwt-auth.guard.js';
-import { RolesGuard } from '../Infraestructure/security/guards/roles.guard.js';
+import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
 import type { AuthenticatedUser } from '../Infraestructure/security/jwt.strategy.js';
-import { AuthResponseDto } from './dtos/auth-response.dto.js';
-import { ForgotPasswordDto } from './dtos/forgot-password.dto.js';
-import { LoginRequestDto } from './dtos/login-request.dto.js';
-import { RegisterRequestDto } from './dtos/register-request.dto.js';
-import { ResetPasswordDto } from './dtos/reset-password.dto.js';
+import { AuthResponseDto } from '../Application/DTOs/auth-response.dto.js';
+import { ForgotPasswordDto } from '../Application/DTOs/forgot-password.dto.js';
+import { LoginRequestDto } from '../Application/DTOs/login-request.dto.js';
+import { RegisterRequestDto } from '../Application/DTOs/register-request.dto.js';
+import { ResetPasswordDto } from '../Application/DTOs/reset-password.dto.js';
 
 function getCookieOptions(): Record<string, unknown> {
   const isProd = process.env.NODE_ENV === 'production';

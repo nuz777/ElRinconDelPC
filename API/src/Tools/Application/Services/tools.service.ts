@@ -14,19 +14,10 @@ import {
   type ToolRepository,
   type UpdateToolData,
 } from '../../Domain/interfaces/tool.repository.interface.js';
+import { slugify } from '../../../Common/utils/slugify.js';
 import type { CreateToolDto } from '../DTOs/create-tool.dto.js';
 import type { FilterToolsDto } from '../DTOs/filter-tools.dto.js';
 import type { UpdateToolDto } from '../DTOs/update-tool.dto.js';
-
-/** Convierte un título en un slug válido para URLs. */
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 @Injectable()
 export class ToolsService {
@@ -53,7 +44,7 @@ export class ToolsService {
       category: dto.category ?? 'Utilidades',
       version: dto.version ?? 'v1.0',
       size: dto.size ?? null,
-      downloadUrl: dto.downloadUrl ?? '',
+      downloadUrl: dto.downloadUrl,
       imageUrl: dto.imageUrl ?? null,
       tags: dto.tags ?? [],
       authorId,
@@ -99,7 +90,7 @@ export class ToolsService {
     }
 
     // Solo el autor o un administrador pueden editar
-    if (existing.authorId !== userId && userRole !== 'admin') {
+    if (!existing.canBeModifiedBy(userId, userRole)) {
       throw new ForbiddenException(
         'No tienes permiso para editar esta herramienta',
       );
@@ -153,7 +144,7 @@ export class ToolsService {
     }
 
     // Solo el autor o un administrador pueden eliminar
-    if (existing.authorId !== userId && userRole !== 'admin') {
+    if (!existing.canBeModifiedBy(userId, userRole)) {
       throw new ForbiddenException(
         'No tienes permiso para eliminar esta herramienta',
       );
