@@ -2,7 +2,7 @@
 import { type ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Role } from '../../../Domain/Entities/roles.enum.js';
+import { Role } from '../Auth/Domain/Entities/roles.enum.js';
 import { RolesGuard } from './roles.guard.js';
 
 describe('RolesGuard (Unit)', () => {

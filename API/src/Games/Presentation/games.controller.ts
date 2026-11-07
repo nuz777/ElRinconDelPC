@@ -19,20 +19,17 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Role } from '../../../Auth/Domain/Entities/roles.enum.js';
-import { Roles } from '../../../Auth/Infraestructure/security/decorators/roles.decorator.js';
-import { JwtAuthGuard } from '../../../Auth/Infraestructure/security/guards/jwt-auth.guard.js';
-import { RolesGuard } from '../../../Auth/Infraestructure/security/guards/roles.guard.js';
-import { GamesService } from '../../Application/Services/games.service.js';
-import { ModsService } from '../../../Mods/Application/Services/mods.service.js';
-import type { Game } from '../../Domain/Entities/game.entity.js';
-import type { PaginatedResult } from '../../Domain/interfaces/game.repository.interface.js';
-import type { PaginatedResult as ModsPaginatedResult } from '../../../Mods/Domain/interfaces/mod.repository.interface.js';
-import type { Mod } from '../../../Mods/Domain/Entities/mod.entity.js';
-import { CreateGameDto } from '../../Application/DTOs/create-game.dto.js';
-import { FilterGamesDto } from '../../Application/DTOs/filter-games.dto.js';
-import { UpdateGameDto } from '../../Application/DTOs/update-game.dto.js';
-import type { FilterModsDto } from '../../../Mods/Application/DTOs/filter-mods.dto.js';
+import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
+import { GamesService } from '../Application/Services/games.service.js';
+import { ModsService } from '../../Mods/Application/Services/mods.service.js';
+import type { Game } from '../Domain/Entities/game.entity.js';
+import type { PaginatedResult } from '../Domain/interfaces/game.repository.interface.js';
+import type { PaginatedResult as ModsPaginatedResult } from '../../Mods/Domain/interfaces/mod.repository.interface.js';
+import type { Mod } from '../../Mods/Domain/Entities/mod.entity.js';
+import { CreateGameDto } from '../Application/DTOs/create-game.dto.js';
+import { FilterGamesDto } from '../Application/DTOs/filter-games.dto.js';
+import { UpdateGameDto } from '../Application/DTOs/update-game.dto.js';
+import type { FilterModsDto } from '../../Mods/Application/DTOs/filter-mods.dto.js';
 
 @ApiTags('Games')
 @Controller('games')

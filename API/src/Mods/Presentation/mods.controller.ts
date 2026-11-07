@@ -22,17 +22,14 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
-import { Role } from '../../../Auth/Domain/Entities/roles.enum.js';
-import { Roles } from '../../../Auth/Infraestructure/security/decorators/roles.decorator.js';
-import { JwtAuthGuard } from '../../../Auth/Infraestructure/security/guards/jwt-auth.guard.js';
-import { RolesGuard } from '../../../Auth/Infraestructure/security/guards/roles.guard.js';
-import type { AuthenticatedUser } from '../../../Auth/Infraestructure/security/jwt.strategy.js';
-import { ModsService } from '../../Application/Services/mods.service.js';
-import type { Mod } from '../../Domain/Entities/mod.entity.js';
-import type { PaginatedResult } from '../../Domain/interfaces/mod.repository.interface.js';
-import { CreateModDto } from '../../Application/DTOs/create-mod.dto.js';
-import { UpdateModDto } from '../../Application/DTOs/update-mod.dto.js';
-import { FilterModsDto } from '../../Application/DTOs/filter-mods.dto.js';
+import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
+import type { AuthenticatedUser } from '../../Auth/Infraestructure/security/jwt.strategy.js';
+import { ModsService } from '../Application/Services/mods.service.js';
+import type { Mod } from '../Domain/Entities/mod.entity.js';
+import type { PaginatedResult } from '../Domain/interfaces/mod.repository.interface.js';
+import { CreateModDto } from '../Application/DTOs/create-mod.dto.js';
+import { UpdateModDto } from '../Application/DTOs/update-mod.dto.js';
+import { FilterModsDto } from '../Application/DTOs/filter-mods.dto.js';
 
 @ApiTags('Mods')
 @Controller('mods')

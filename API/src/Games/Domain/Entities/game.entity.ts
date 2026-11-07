@@ -74,4 +74,25 @@ export class Game {
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }
+
+  hasDiscount(): boolean {
+    return (
+      this.discountPrice !== null &&
+      this.discountPrice !== undefined &&
+      this.discountPrice < this.price
+    );
+  }
+
+  effectivePrice(): number {
+    return this.hasDiscount() ? this.discountPrice! : this.price;
+  }
+
+  hasStock(quantity: number = 1): boolean {
+    return this.stock >= quantity;
+  }
+
+  deactivate(): void {
+    this.isActive = false;
+    this.updatedAt = new Date();
+  }
 }

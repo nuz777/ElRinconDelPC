@@ -13,19 +13,10 @@ import {
   type PaginatedResult,
   type UpdateGameData,
 } from '../../Domain/interfaces/game.repository.interface.js';
+import { slugify } from '../../../Common/utils/slugify.js';
 import type { CreateGameDto } from '../DTOs/create-game.dto.js';
 import type { FilterGamesDto } from '../DTOs/filter-games.dto.js';
 import type { UpdateGameDto } from '../DTOs/update-game.dto.js';
-
-/** Convierte un título en un slug válido para URLs. */
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 @Injectable()
 export class GamesService {
