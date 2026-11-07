@@ -345,13 +345,15 @@ export default function Home() {
               <p className="text-zinc-300 mb-8 text-sm">
                 Envía tus peticiones de nuevos juegos, mods o reporta enlaces caídos.
               </p>
-              <button
-                type="button"
+              <a
+                href="https://discord.gg/MnDpU7hNV"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2.5 h-12 px-6 bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold text-sm uppercase tracking-wider rounded-xl border border-[#7983f5]/40 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#5865F2]/30 cursor-pointer"
               >
                 <DiscordIcon className="size-5" />
                 Servidor de Discord
-              </button>
+              </a>
             </div>
           </Reveal>
         </section>
