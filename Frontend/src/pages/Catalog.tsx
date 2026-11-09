@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search,
   X,
@@ -44,6 +44,28 @@ const APARTADOS_CONFIG: {
   { id: "herramientas", label: "Herramientas de PC", icon: Wrench },
 ];
 
+function highlightMatch(text: string, query: string) {
+  const q = query.trim();
+  if (!q) return text;
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escaped})`, "gi");
+  const parts = text.split(regex);
+  const qLower = q.toLowerCase();
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === qLower ? (
+          <strong key={i} className="font-extrabold text-blue-500 dark:text-blue-400">
+            {part}
+          </strong>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export default function Catalog() {
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === "light";
@@ -79,6 +101,91 @@ export default function Catalog() {
   }, [customItems]);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Debounce de ~250ms para sugerencias de búsqueda
+  useEffect(() => {
+    if (search.trim().length >= 2) {
+      setIsSearching(true);
+      setIsDropdownOpen(true);
+    } else {
+      setIsSearching(false);
+      setIsDropdownOpen(false);
+      setDebouncedSearch("");
+      setSelectedIndex(-1);
+    }
+
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setIsSearching(false);
+      setSelectedIndex(-1);
+    }, 250);
+
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Cerrar el panel al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Coincidencias de autocompletado (hasta 6 sugerencias)
+  const suggestions = useMemo(() => {
+    const q = debouncedSearch.toLowerCase().trim();
+    if (q.length < 2) return [];
+    return items
+      .filter((item) => {
+        return (
+          item.title.toLowerCase().includes(q) ||
+          item.genre.toLowerCase().includes(q) ||
+          item.tag.toLowerCase().includes(q) ||
+          item.developer.toLowerCase().includes(q)
+        );
+      })
+      .slice(0, 6);
+  }, [items, debouncedSearch]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isDropdownOpen || debouncedSearch.trim().length < 2) {
+      if (e.key === "Enter") {
+        setIsDropdownOpen(false);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === "Enter") {
+      if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+        e.preventDefault();
+        setSelectedItem(suggestions[selectedIndex]);
+        setIsDropdownOpen(false);
+      } else {
+        // Enter sin selección activa: aplica el filtro normal en la cuadrícula y cierra sugerencias
+        setIsDropdownOpen(false);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setIsDropdownOpen(false);
+    }
+  };
   const [selectedApartado, setSelectedApartado] = useState<"todos" | Apartado>("todos");
   const [selectedGenre, setSelectedGenre] = useState<string>("todos");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -197,10 +304,143 @@ export default function Catalog() {
     return groups;
   }, [filteredItems]);
 
+  const isSearchActive = Boolean(search.trim());
+
   const handleApartadoSwitch = (ap: "todos" | Apartado) => {
     setSelectedApartado(ap);
     setSelectedGenre("todos");
   };
+
+  const renderCard = (item: CatalogItem) => (
+    <div
+      key={item.id}
+      onClick={() => setSelectedItem(item)}
+      className={`group flex flex-col rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-colors cursor-pointer ${
+        isLight
+          ? "bg-white border-zinc-200 hover:border-zinc-400 text-zinc-900"
+          : "bg-zinc-900 border-zinc-800 hover:border-zinc-600 text-zinc-100"
+      }`}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") setSelectedItem(item);
+      }}
+    >
+      {/* Card Image Thumbnail */}
+      <div className="relative aspect-video w-full overflow-hidden bg-zinc-900">
+        <img
+          src={item.img}
+          alt={item.title}
+          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 ease-out"
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (!target.src.endsWith("/img/SN-tools.jpg")) {
+              target.src = "/img/SN-tools.jpg";
+            }
+          }}
+        />
+        <div
+          className={`absolute inset-0 bg-gradient-to-t opacity-70 pointer-events-none ${
+            isLight
+              ? "from-zinc-900 via-transparent to-transparent"
+              : "from-zinc-950 via-transparent to-transparent"
+          }`}
+        />
+
+        {/* Top Badges */}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 pointer-events-none">
+            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
+              {item.apartado === "juegos"
+                ? "Juego"
+                : item.apartado === "mods"
+                ? "Mod"
+                : "Tool"}
+            </span>
+
+            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white text-zinc-950 shadow-sm">
+              {item.tag}
+            </span>
+          </div>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setItemToDelete(item);
+              }}
+              title="Eliminar elemento del catálogo"
+              className="p-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Bottom Tag */}
+        <div className="absolute bottom-2 left-2.5 pointer-events-none">
+          <span className="text-[11px] font-mono text-zinc-300 bg-black/85 px-2 py-0.5 rounded">
+            {item.version}
+          </span>
+        </div>
+      </div>
+
+      {/* Card Body */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+        <div>
+          <span
+            className={`text-[11px] uppercase tracking-wider block mb-1 ${
+              isLight ? "text-zinc-500" : "text-zinc-400"
+            }`}
+          >
+            {item.genre}
+          </span>
+          <h3
+            className={`text-base font-bold line-clamp-1 transition-colors ${
+              isLight ? "text-zinc-900 group-hover:text-black" : "text-white group-hover:text-zinc-200"
+            }`}
+          >
+            {item.title}
+          </h3>
+          <p
+            className={`text-xs mt-2 line-clamp-2 leading-relaxed ${
+              isLight ? "text-zinc-600" : "text-zinc-400"
+            }`}
+          >
+            {item.shortDesc}
+          </p>
+        </div>
+
+        {/* Card Footer */}
+        <div
+          className={`pt-3 border-t flex items-center justify-between text-xs ${
+            isLight ? "border-zinc-200" : "border-zinc-800/80"
+          }`}
+        >
+          <span
+            className={`flex items-center gap-1.5 font-mono ${
+              isLight ? "text-zinc-600" : "text-zinc-400"
+            }`}
+          >
+            <HardDrive className="size-3.5 text-zinc-400" />
+            {item.size}
+          </span>
+
+          <span
+            className={`inline-flex items-center gap-1 font-semibold group-hover:translate-x-1 transition-transform ${
+              isLight ? "text-zinc-900" : "text-white"
+            }`}
+          >
+            <span>Ver info</span>
+            <Download className="size-3.5" />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -291,97 +531,236 @@ export default function Catalog() {
           </div>
         </section>
 
-        {/* Filter Bar & Search Controls (Optimized: No heavy backdrop-filter blur on scroll) */}
-        <section className="sticky top-16 md:top-20 z-30 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10">
-          <div
-            className={`p-3 sm:p-4 rounded-2xl border shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${
-              isLight
-                ? "bg-white/95 border-zinc-200 shadow-zinc-200/40"
-                : "bg-zinc-950/95 border-zinc-800"
-            }`}
-          >
-            {/* Desktop Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
-              {APARTADOS_CONFIG.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = selectedApartado === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleApartadoSwitch(tab.id)}
-                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs uppercase tracking-wider font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                      isActive
-                        ? isLight
-                          ? "bg-zinc-900 text-white shadow font-bold"
-                          : "bg-white text-zinc-950 shadow-md font-bold"
-                        : isLight
-                        ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600 hover:text-zinc-950 border border-transparent"
-                        : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-transparent hover:border-zinc-700"
-                    }`}
-                  >
-                    <Icon className="size-3.5" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Search Input & Hamburger Filter Trigger */}
-            <div className="flex items-center gap-2.5 w-full md:w-auto">
-              <div className="relative flex-1 md:w-72">
-                <Search
-                  className={`absolute left-3.5 top-1/2 -translate-y-1/2 size-4 pointer-events-none ${
-                    isLight ? "text-zinc-400" : "text-zinc-500"
-                  }`}
-                />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar juegos, mods, herramientas..."
-                  className={`w-full pl-9 pr-8 py-2 rounded-xl text-xs sm:text-sm focus:outline-none transition-colors border ${
-                    isLight
-                      ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
-                      : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-zinc-500"
-                  }`}
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${
-                      isLight ? "text-zinc-400 hover:text-black" : "text-zinc-500 hover:text-white"
-                    }`}
-                  >
-                    <X size={14} />
-                  </button>
-                )}
+        {/* Filter Bar & Search Controls: sticky con z-40 y fondo sólido para que el contenido pase por debajo sin solaparse */}
+        <section
+          className={`sticky top-16 z-40 w-full py-3 mb-6 transition-colors shadow-sm ${
+            isLight ? "bg-[#f4f4f5]" : "bg-zinc-950"
+          }`}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div
+              className={`p-3 sm:p-4 rounded-2xl border shadow-md flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${
+                isLight
+                  ? "bg-white border-zinc-200 shadow-zinc-200/50"
+                  : "bg-zinc-900 border-zinc-800"
+              }`}
+            >
+              {/* Desktop Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
+                {APARTADOS_CONFIG.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = selectedApartado === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleApartadoSwitch(tab.id)}
+                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs uppercase tracking-wider font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                        isActive
+                          ? isLight
+                            ? "bg-zinc-900 text-white shadow font-bold"
+                            : "bg-white text-zinc-950 shadow-md font-bold"
+                          : isLight
+                          ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600 hover:text-zinc-950 border border-transparent"
+                          : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-transparent hover:border-zinc-700"
+                      }`}
+                    >
+                      <Icon className="size-3.5" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Hamburger Button for Genres */}
-              <button
-                onClick={() => setFilterDrawerOpen(true)}
-                title="Abrir menú de géneros y apartados"
-                className={`p-2 sm:px-3 sm:py-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 text-xs shrink-0 ${
-                  isLight
-                    ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300"
-                    : "bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
-                }`}
-              >
-                <SlidersHorizontal size={16} />
-                <span className="hidden sm:inline">Menú Filtros</span>
-              </button>
+              {/* Search Input & Hamburger Filter Trigger */}
+              <div className="flex items-center gap-2.5 w-full md:w-auto">
+                <div ref={searchContainerRef} className="relative flex-1 md:w-80">
+                  <Search
+                    className={`absolute left-3.5 top-1/2 -translate-y-1/2 size-4 pointer-events-none ${
+                      isLight ? "text-zinc-400" : "text-zinc-500"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={isDropdownOpen && search.trim().length >= 2}
+                    aria-haspopup="listbox"
+                    aria-controls="catalog-search-listbox"
+                    aria-activedescendant={
+                      selectedIndex >= 0 ? `suggestion-item-${selectedIndex}` : undefined
+                    }
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                    onFocus={() => {
+                      if (search.trim().length >= 2) setIsDropdownOpen(true);
+                    }}
+                    placeholder="Buscar juegos, mods, herramientas..."
+                    className={`w-full pl-9 pr-8 py-2 rounded-xl text-xs sm:text-sm focus:outline-none transition-colors border ${
+                      isLight
+                        ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-zinc-500"
+                    }`}
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch("");
+                        setIsDropdownOpen(false);
+                      }}
+                      className={`absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer ${
+                        isLight ? "text-zinc-400 hover:text-black" : "text-zinc-500 hover:text-white"
+                      }`}
+                      aria-label="Limpiar campo de búsqueda"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+
+                  {/* Autocomplete Suggestions Dropdown (estilo Steam) */}
+                  {isDropdownOpen && search.trim().length >= 2 && (
+                    <div
+                      id="catalog-search-listbox"
+                      role="listbox"
+                      className={`absolute top-full left-0 mt-2 w-full md:w-96 rounded-xl border shadow-2xl overflow-hidden z-50 transition-colors ${
+                        isLight
+                          ? "bg-white border-zinc-200 text-zinc-900 shadow-zinc-400/40"
+                          : "bg-zinc-900 border-zinc-800 text-zinc-100 shadow-black/90"
+                      }`}
+                    >
+                      {isSearching ? (
+                        /* Skeletons mientras carga/debounce */
+                        <div className="p-2 space-y-2">
+                          {[1, 2, 3].map((n) => (
+                            <div key={n} className="flex items-center gap-3 p-2 rounded-lg animate-pulse">
+                              <div
+                                className={`w-[60px] h-[28px] rounded shrink-0 ${
+                                  isLight ? "bg-zinc-200" : "bg-zinc-800"
+                                }`}
+                              />
+                              <div className="flex-1 space-y-1.5">
+                                <div
+                                  className={`h-3 w-3/4 rounded ${
+                                    isLight ? "bg-zinc-200" : "bg-zinc-800"
+                                  }`}
+                                />
+                                <div
+                                  className={`h-2.5 w-1/3 rounded ${
+                                    isLight ? "bg-zinc-200" : "bg-zinc-800"
+                                  }`}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : suggestions.length === 0 ? (
+                        /* Estado vacío */
+                        <div
+                          className={`p-4 text-center text-xs ${
+                            isLight ? "text-zinc-500" : "text-zinc-400"
+                          }`}
+                        >
+                          Sin resultados para &quot;{debouncedSearch}&quot;
+                        </div>
+                      ) : (
+                        /* Lista de sugerencias */
+                        <div className="p-1.5 space-y-0.5 max-h-80 overflow-y-auto">
+                          {suggestions.map((item, idx) => {
+                            const isSelected = selectedIndex === idx;
+                            return (
+                              <div
+                                key={item.id}
+                                id={`suggestion-item-${idx}`}
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                  setSelectedItem(item);
+                                  setIsDropdownOpen(false);
+                                }}
+                                onMouseEnter={() => setSelectedIndex(idx)}
+                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? isLight
+                                      ? "bg-zinc-100 text-black font-medium"
+                                      : "bg-zinc-800 text-white font-medium"
+                                    : isLight
+                                    ? "hover:bg-zinc-50 text-zinc-800"
+                                    : "hover:bg-zinc-800/60 text-zinc-200"
+                                }`}
+                              >
+                                <img
+                                  src={item.img}
+                                  alt={item.title}
+                                  loading="lazy"
+                                  className="w-[60px] h-[28px] object-cover rounded shrink-0 bg-zinc-950 border border-zinc-700/50"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = "/img/SN-tools.jpg";
+                                  }}
+                                />
+                                <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                                  <div className="text-xs sm:text-sm truncate">
+                                    {highlightMatch(item.title, debouncedSearch)}
+                                  </div>
+                                  <span
+                                    className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono font-bold tracking-wider shrink-0 border ${
+                                      item.apartado === "juegos"
+                                        ? isLight
+                                          ? "bg-zinc-100 text-zinc-700 border-zinc-300"
+                                          : "bg-zinc-950 text-zinc-300 border-zinc-700"
+                                        : item.apartado === "mods"
+                                        ? isLight
+                                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                                          : "bg-blue-950/60 text-blue-300 border-blue-800"
+                                        : isLight
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        : "bg-emerald-950/60 text-emerald-300 border-emerald-800"
+                                    }`}
+                                  >
+                                    {item.apartado === "juegos"
+                                      ? "Juego"
+                                      : item.apartado === "mods"
+                                      ? "Mod"
+                                      : "Tool"}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Hamburger Button for Genres */}
+                <button
+                  onClick={() => setFilterDrawerOpen(true)}
+                  title="Abrir menú de géneros y apartados"
+                  className={`p-2 sm:px-3 sm:py-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 text-xs shrink-0 ${
+                    isLight
+                      ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300"
+                      : "bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
+                  }`}
+                >
+                  <SlidersHorizontal size={16} />
+                  <span className="hidden sm:inline">Menú Filtros</span>
+                </button>
+              </div>
             </div>
           </div>
+        </section>
 
-          {/* Active Filter Tags */}
-          {(selectedGenre !== "todos" || search) && (
-            <div className="flex items-center gap-2 mt-3 px-2 flex-wrap">
-              <span className={`text-xs uppercase tracking-widest ${isLight ? "text-zinc-500" : "text-zinc-500"}`}>
+        {/* Active Filter Tags (en el flujo normal, entre la barra y la cuadrícula, con margen inferior de ~16px) */}
+        {(selectedGenre !== "todos" || isSearchActive) && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-xs uppercase tracking-widest ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
                 Filtros activos:
               </span>
               {selectedGenre !== "todos" && (
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${
                     isLight
                       ? "bg-white border-zinc-300 text-zinc-800 shadow-sm"
                       : "bg-zinc-900 border-zinc-700 text-zinc-200"
@@ -389,16 +768,18 @@ export default function Catalog() {
                 >
                   <span>Género: {selectedGenre}</span>
                   <button
+                    type="button"
                     onClick={() => setSelectedGenre("todos")}
-                    className={isLight ? "hover:text-black text-zinc-500" : "hover:text-white text-zinc-400"}
+                    className={`cursor-pointer ${isLight ? "hover:text-black text-zinc-500" : "hover:text-white text-zinc-400"}`}
+                    aria-label="Quitar filtro de género"
                   >
                     <X size={12} />
                   </button>
                 </span>
               )}
-              {search && (
+              {isSearchActive && (
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium ${
                     isLight
                       ? "bg-white border-zinc-300 text-zinc-800 shadow-sm"
                       : "bg-zinc-900 border-zinc-700 text-zinc-200"
@@ -406,31 +787,34 @@ export default function Catalog() {
                 >
                   <span>Búsqueda: "{search}"</span>
                   <button
+                    type="button"
                     onClick={() => setSearch("")}
-                    className={isLight ? "hover:text-black text-zinc-500" : "hover:text-white text-zinc-400"}
+                    className={`cursor-pointer ${isLight ? "hover:text-black text-zinc-500" : "hover:text-white text-zinc-400"}`}
+                    aria-label="Limpiar búsqueda"
                   >
                     <X size={12} />
                   </button>
                 </span>
               )}
               <button
+                type="button"
                 onClick={() => {
                   setSelectedGenre("todos");
                   setSearch("");
                 }}
-                className={`text-xs underline underline-offset-2 ml-2 ${
+                className={`text-xs underline underline-offset-2 ml-2 cursor-pointer transition-colors ${
                   isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 Limpiar todo
               </button>
             </div>
-          )}
-        </section>
+          </div>
+        )}
 
-        {/* Catalog Items Section: Grouped by Genre */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
-          {Object.keys(itemsByGenre).length === 0 ? (
+        {/* Catalog Items Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          {filteredItems.length === 0 ? (
             /* Empty State */
             <div
               className={`flex flex-col items-center justify-center py-24 text-center border border-dashed rounded-3xl p-8 ${
@@ -491,10 +875,47 @@ export default function Catalog() {
                 )}
               </div>
             </div>
+          ) : isSearchActive ? (
+            /* Search Active: Unified grid without category headers to prevent overlap */
+            <div className="space-y-6">
+              <div
+                className={`flex items-center justify-between border-b pb-3 ${
+                  isLight ? "border-zinc-300" : "border-zinc-800"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`size-2.5 rounded-full ${
+                      isLight ? "bg-zinc-900" : "bg-white"
+                    }`}
+                  />
+                  <h2
+                    className={`text-xl sm:text-2xl font-bold uppercase tracking-wider ${
+                      isLight ? "text-zinc-950" : "text-white"
+                    }`}
+                  >
+                    Resultados de búsqueda
+                  </h2>
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                      isLight
+                        ? "bg-zinc-100 border-zinc-300 text-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400"
+                    }`}
+                  >
+                    {filteredItems.length} {filteredItems.length === 1 ? "resultado" : "resultados"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredItems.map(renderCard)}
+              </div>
+            </div>
           ) : (
-            /* Render Grouped by Genre */
+            /* Normal Mode (No search): Grouped by genre with scroll-margin-top */
             Object.entries(itemsByGenre).map(([genreTitle, genreItems]) => (
-              <div key={genreTitle} className="space-y-6">
+              <div key={genreTitle} className="space-y-6 scroll-mt-28">
                 {/* Genre Header */}
                 <div
                   className={`flex items-center justify-between border-b pb-3 ${
@@ -534,138 +955,9 @@ export default function Catalog() {
                   </span>
                 </div>
 
-                {/* Cards Grid (Optimized: Hardware accelerated GPU CSS transforms, zero JS motion overhead) */}
+                {/* Cards Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {genreItems.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => setSelectedItem(item)}
-                      className={`group flex flex-col rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-1.5 cursor-pointer will-change-transform transform-gpu ${
-                        isLight
-                          ? "bg-white border-zinc-200 hover:border-zinc-400 text-zinc-900"
-                          : "bg-zinc-950 border-zinc-800 hover:border-zinc-500 text-zinc-100"
-                      }`}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") setSelectedItem(item);
-                      }}
-                    >
-                      {/* Card Image Thumbnail */}
-                      <div className="relative aspect-video w-full overflow-hidden bg-zinc-900">
-                        <img
-                          src={item.img}
-                          alt={item.title}
-                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 ease-out will-change-transform"
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            if (!target.src.endsWith("/img/SN-tools.jpg")) {
-                              target.src = "/img/SN-tools.jpg";
-                            }
-                          }}
-                        />
-                        <div
-                          className={`absolute inset-0 bg-gradient-to-t opacity-70 pointer-events-none ${
-                            isLight
-                              ? "from-zinc-900 via-transparent to-transparent"
-                              : "from-zinc-950 via-transparent to-transparent"
-                          }`}
-                        />
-
-                        {/* Top Badges (Solid background instead of heavy backdrop-blur) */}
-                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 pointer-events-none">
-                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
-                              {item.apartado === "juegos"
-                                ? "Juego"
-                                : item.apartado === "mods"
-                                ? "Mod"
-                                : "Tool"}
-                            </span>
-
-                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white text-zinc-950 shadow-sm">
-                              {item.tag}
-                            </span>
-                          </div>
-
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setItemToDelete(item);
-                              }}
-                              title="Eliminar elemento del catálogo"
-                              className="p-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Bottom Tag */}
-                        <div className="absolute bottom-2 left-2.5 pointer-events-none">
-                          <span className="text-[11px] font-mono text-zinc-300 bg-black/85 px-2 py-0.5 rounded">
-                            {item.version}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Card Body */}
-                      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
-                        <div>
-                          <span
-                            className={`text-[11px] uppercase tracking-wider block mb-1 ${
-                              isLight ? "text-zinc-500" : "text-zinc-500"
-                            }`}
-                          >
-                            {item.genre}
-                          </span>
-                          <h3
-                            className={`text-base font-bold line-clamp-1 transition-colors ${
-                              isLight ? "text-zinc-900 group-hover:text-black" : "text-white group-hover:text-zinc-200"
-                            }`}
-                          >
-                            {item.title}
-                          </h3>
-                          <p
-                            className={`text-xs mt-2 line-clamp-2 leading-relaxed ${
-                              isLight ? "text-zinc-600" : "text-zinc-400"
-                            }`}
-                          >
-                            {item.shortDesc}
-                          </p>
-                        </div>
-
-                        {/* Card Footer */}
-                        <div
-                          className={`pt-3 border-t flex items-center justify-between text-xs ${
-                            isLight ? "border-zinc-200" : "border-zinc-800/80"
-                          }`}
-                        >
-                          <span
-                            className={`flex items-center gap-1.5 font-mono ${
-                              isLight ? "text-zinc-600" : "text-zinc-400"
-                            }`}
-                          >
-                            <HardDrive className="size-3.5 text-zinc-400" />
-                            {item.size}
-                          </span>
-
-                          <span
-                            className={`inline-flex items-center gap-1 font-semibold group-hover:translate-x-1 transition-transform ${
-                              isLight ? "text-zinc-900" : "text-white"
-                            }`}
-                          >
-                            <span>Ver info</span>
-                            <Download className="size-3.5" />
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  {genreItems.map(renderCard)}
                 </div>
               </div>
             ))
