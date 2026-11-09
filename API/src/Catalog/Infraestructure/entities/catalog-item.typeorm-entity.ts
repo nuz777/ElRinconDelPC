@@ -36,6 +36,9 @@ export class CatalogItemTypeormEntity {
   @Column({ name: 'cover_url', type: 'text', nullable: true })
   coverUrl!: string | null;
 
+  @Column({ name: 'banner_url', type: 'text', nullable: true })
+  bannerUrl!: string | null;
+
   @Column({ name: 'download_url', type: 'text', nullable: true })
   downloadUrl!: string | null;
 

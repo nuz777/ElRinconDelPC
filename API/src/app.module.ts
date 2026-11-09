@@ -120,6 +120,7 @@ export class AppModule implements NestModule, OnModuleInit {
         "version" VARCHAR(50) NULL DEFAULT 'v1.0',
         "badge" VARCHAR(50) NULL,
         "cover_url" TEXT NULL,
+        "banner_url" TEXT NULL,
         "download_url" TEXT NULL,
         "developer" VARCHAR(150) NULL,
         "short_description" TEXT NOT NULL,
@@ -142,6 +143,9 @@ export class AppModule implements NestModule, OnModuleInit {
     );
     await this.runSafeQuery(
       `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "cover_url" TEXT NULL;`,
+    );
+    await this.runSafeQuery(
+      `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "banner_url" TEXT NULL;`,
     );
     await this.runSafeQuery(
       `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "download_url" TEXT NULL;`,

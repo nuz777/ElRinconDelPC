@@ -168,8 +168,8 @@ export default function FullscreenDetailModal({
             {/* Background Image Banner */}
             <div className="relative h-72 sm:h-96 w-full overflow-hidden">
               <img
-                src={item.img}
-                alt={item.title}
+                src={item.bannerImg || item.img}
+                alt={`Banner de ${item.title}`}
                 className="w-full h-full object-cover object-center scale-105"
                 onError={(e) => {
                   const target = e.currentTarget;
@@ -195,8 +195,31 @@ export default function FullscreenDetailModal({
             </div>
 
             {/* Hero Details Overlay */}
-            <div className="relative -mt-28 sm:-mt-36 p-6 sm:p-10 z-10">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="relative -mt-28 sm:-mt-36 p-6 sm:p-10 z-10 flex flex-col md:flex-row gap-6 sm:gap-8 items-start">
+              {/* Portada Vertical (Cover Art Poster) */}
+              <div
+                className={`shrink-0 w-36 sm:w-48 md:w-56 aspect-[3/4] rounded-2xl overflow-hidden border-2 shadow-2xl relative group self-center md:self-start transition-colors ${
+                  isLight
+                    ? "bg-white border-zinc-300 shadow-zinc-400/40"
+                    : "bg-zinc-900 border-zinc-700/80 shadow-black/80"
+                }`}
+              >
+                <img
+                  src={item.img}
+                  alt={`Portada de ${item.title}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.endsWith("/img/indicado.webp")) {
+                      target.src = "/img/indicado.webp";
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Info Column */}
+              <div className="flex-1 min-w-0 w-full">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span
                   className={`px-3 py-1 rounded-md text-[11px] uppercase tracking-widest font-bold shadow-md ${
                     isLight
@@ -305,6 +328,7 @@ export default function FullscreenDetailModal({
               </div>
             </div>
           </div>
+        </div>
 
           {/* Main 2-Column Content Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

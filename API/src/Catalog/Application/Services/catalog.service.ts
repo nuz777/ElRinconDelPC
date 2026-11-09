@@ -128,7 +128,7 @@ export class CatalogService {
         stock: 100,
         genres: [saved.genre],
         coverImage: saved.coverUrl ?? '/img/indicado.webp',
-        bannerImage: null,
+        bannerImage: saved.bannerUrl ?? null,
         developer: saved.developer ?? 'Comunidad El Sótano',
         publisher: saved.developer ?? 'Comunidad El Sótano',
         releaseDate: saved.createdAt,

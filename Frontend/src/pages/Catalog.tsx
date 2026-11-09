@@ -221,6 +221,7 @@ export default function Catalog() {
       version: newItem.version,
       badge: newItem.tag,
       coverUrl: newItem.img,
+      bannerUrl: newItem.bannerImg,
       downloadUrl: validDownloadUrl,
       developer: newItem.developer,
       shortDescription: newItem.fullDesc || newItem.shortDesc,
@@ -326,8 +327,8 @@ export default function Catalog() {
         if (e.key === "Enter" || e.key === " ") setSelectedItem(item);
       }}
     >
-      {/* Card Image Thumbnail */}
-      <div className="relative aspect-video w-full overflow-hidden bg-zinc-900">
+      {/* Card Image Thumbnail (Portada Vertical 3:4) */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-900">
         <img
           src={item.img}
           alt={item.title}

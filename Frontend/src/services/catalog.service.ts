@@ -19,6 +19,7 @@ export interface CreateCatalogItemPayload {
   version?: string;
   badge?: string;
   coverUrl?: string;
+  bannerUrl?: string;
   downloadUrl?: string;
   developer?: string;
   shortDescription: string;
@@ -34,6 +35,7 @@ export interface CatalogItemApiResponse {
   version: string;
   badge: string | null;
   coverUrl: string | null;
+  bannerUrl: string | null;
   downloadUrl: string | null;
   developer: string | null;
   shortDescription: string;
@@ -110,6 +112,7 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
     releaseDate: api.createdAt ? new Date(api.createdAt).getFullYear().toString() : "2026",
     developer: api.developer || "Comunidad El Sótano",
     img: api.coverUrl || "/img/indicado.webp",
+    bannerImg: api.bannerUrl || undefined,
     shortDesc: api.shortDescription,
     fullDesc: `${api.shortDescription} Publicado oficialmente en la biblioteca de El Sótano del PC.`,
     features: [

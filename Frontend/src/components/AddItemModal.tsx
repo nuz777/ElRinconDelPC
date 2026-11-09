@@ -42,8 +42,8 @@ const GENRE_SUGGESTIONS: Record<Apartado, string[]> = {
   ],
 };
 
-// Optimiza la imagen de forma cliente para no saturar localStorage y mantener 120 FPS
-async function optimizeImageFile(file: File): Promise<string> {
+// Optimiza la imagen de forma cliente para no saturar memoria y mantener 120 FPS
+async function optimizeImageFile(file: File, maxDimension = 1400): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("Error leyendo el archivo"));
@@ -52,18 +52,16 @@ async function optimizeImageFile(file: File): Promise<string> {
       const img = new Image();
       img.onerror = () => resolve(dataUrl);
       img.onload = () => {
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 800;
         let width = img.width;
         let height = img.height;
 
-        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
-          if (width / height > MAX_WIDTH / MAX_HEIGHT) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
           } else {
-            width = Math.round((width * MAX_HEIGHT) / height);
-            height = MAX_HEIGHT;
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
           }
         }
 
@@ -116,17 +114,28 @@ export default function AddItemModal({
   const [minStorage, setMinStorage] = useState("");
   const [minGpu, setMinGpu] = useState("");
 
-  // Portada (dispositivo local o url)
-  const [imageMode, setImageMode] = useState<"device" | "url">("device");
-  const [deviceImage, setDeviceImage] = useState<string | null>(null);
-  const [deviceFileName, setDeviceFileName] = useState("");
-  const [deviceFileSize, setDeviceFileSize] = useState("");
-  const [urlImage, setUrlImage] = useState("");
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  // Portada (Vertical 3:4)
+  const [coverMode, setCoverMode] = useState<"device" | "url">("device");
+  const [deviceCover, setDeviceCover] = useState<string | null>(null);
+  const [deviceCoverFileName, setDeviceCoverFileName] = useState("");
+  const [deviceCoverFileSize, setDeviceCoverFileSize] = useState("");
+  const [urlCover, setUrlCover] = useState("");
+  const [isProcessingCover, setIsProcessingCover] = useState(false);
+  const [isCoverDragOver, setIsCoverDragOver] = useState(false);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Banner (Horizontal 16:9)
+  const [bannerMode, setBannerMode] = useState<"device" | "url">("device");
+  const [deviceBanner, setDeviceBanner] = useState<string | null>(null);
+  const [deviceBannerFileName, setDeviceBannerFileName] = useState("");
+  const [deviceBannerFileSize, setDeviceBannerFileSize] = useState("");
+  const [urlBanner, setUrlBanner] = useState("");
+  const [isProcessingBanner, setIsProcessingBanner] = useState(false);
+  const [isBannerDragOver, setIsBannerDragOver] = useState(false);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen || !authService.isAdmin()) return null;
 
@@ -137,11 +146,16 @@ export default function AddItemModal({
     setSize("");
     setVersion("v1.0");
     setDeveloper("");
-    setDeviceImage(null);
-    setDeviceFileName("");
-    setDeviceFileSize("");
-    setUrlImage("");
-    setImageMode("device");
+    setDeviceCover(null);
+    setDeviceCoverFileName("");
+    setDeviceCoverFileSize("");
+    setUrlCover("");
+    setCoverMode("device");
+    setDeviceBanner(null);
+    setDeviceBannerFileName("");
+    setDeviceBannerFileSize("");
+    setUrlBanner("");
+    setBannerMode("device");
     setShortDesc("");
     setDownloadUrl("");
     setMinOs("");
@@ -157,53 +171,71 @@ export default function AddItemModal({
     setGenre(GENRE_SUGGESTIONS[newAp][0]);
   };
 
-  const handleFile = async (file: File) => {
+  const handleCoverFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       alert("Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP, etc.).");
       return;
     }
     try {
-      setIsProcessingImage(true);
+      setIsProcessingCover(true);
       const optimized = await optimizeImageFile(file);
-      setDeviceImage(optimized);
-      setDeviceFileName(file.name);
+      setDeviceCover(optimized);
+      setDeviceCoverFileName(file.name);
       const kb = (file.size / 1024).toFixed(0);
-      setDeviceFileSize(`${kb} KB`);
+      setDeviceCoverFileSize(`${kb} KB`);
     } catch (err) {
-      console.error("Error optimizando imagen:", err);
+      console.error("Error optimizando portada:", err);
       const reader = new FileReader();
       reader.onload = (e) => {
-        setDeviceImage(e.target?.result as string);
-        setDeviceFileName(file.name);
+        setDeviceCover(e.target?.result as string);
+        setDeviceCoverFileName(file.name);
       };
       reader.readAsDataURL(file);
     } finally {
-      setIsProcessingImage(false);
+      setIsProcessingCover(false);
     }
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFile(file);
+  const handleBannerFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP, etc.).");
+      return;
+    }
+    try {
+      setIsProcessingBanner(true);
+      const optimized = await optimizeImageFile(file);
+      setDeviceBanner(optimized);
+      setDeviceBannerFileName(file.name);
+      const kb = (file.size / 1024).toFixed(0);
+      setDeviceBannerFileSize(`${kb} KB`);
+    } catch (err) {
+      console.error("Error optimizando banner:", err);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setDeviceBanner(e.target?.result as string);
+        setDeviceBannerFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsProcessingBanner(false);
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      handleFile(file);
+  const handleRemoveDeviceCover = () => {
+    setDeviceCover(null);
+    setDeviceCoverFileName("");
+    setDeviceCoverFileSize("");
+    if (coverFileInputRef.current) {
+      coverFileInputRef.current.value = "";
     }
   };
 
-  const handleRemoveDeviceImage = () => {
-    setDeviceImage(null);
-    setDeviceFileName("");
-    setDeviceFileSize("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleRemoveDeviceBanner = () => {
+    setDeviceBanner(null);
+    setDeviceBannerFileName("");
+    setDeviceBannerFileSize("");
+    if (bannerFileInputRef.current) {
+      bannerFileInputRef.current.value = "";
     }
   };
 
@@ -217,15 +249,26 @@ export default function AddItemModal({
     if (!authService.isAdmin() || isSubmitting) return;
     if (!title.trim() || !shortDesc.trim()) return;
 
-    let finalImg = "/img/indicado.webp";
-    if (imageMode === "device" && deviceImage) {
-      finalImg = deviceImage;
-    } else if (imageMode === "url" && urlImage.trim()) {
-      finalImg = urlImage.trim();
-    } else if (deviceImage) {
-      finalImg = deviceImage;
-    } else if (urlImage.trim()) {
-      finalImg = urlImage.trim();
+    let finalCover = "/img/indicado.webp";
+    if (coverMode === "device" && deviceCover) {
+      finalCover = deviceCover;
+    } else if (coverMode === "url" && urlCover.trim()) {
+      finalCover = urlCover.trim();
+    } else if (deviceCover) {
+      finalCover = deviceCover;
+    } else if (urlCover.trim()) {
+      finalCover = urlCover.trim();
+    }
+
+    let finalBanner: string | undefined = undefined;
+    if (bannerMode === "device" && deviceBanner) {
+      finalBanner = deviceBanner;
+    } else if (bannerMode === "url" && urlBanner.trim()) {
+      finalBanner = urlBanner.trim();
+    } else if (deviceBanner) {
+      finalBanner = deviceBanner;
+    } else if (urlBanner.trim()) {
+      finalBanner = urlBanner.trim();
     }
 
     const newItem: CatalogItem = {
@@ -238,7 +281,8 @@ export default function AddItemModal({
       size: size.trim() || "1.0 GB",
       releaseDate: new Date().getFullYear().toString(),
       developer: developer.trim() || "Comunidad El Sótano",
-      img: finalImg,
+      img: finalCover,
+      bannerImg: finalBanner,
       shortDesc: shortDesc.trim(),
       fullDesc: `${shortDesc.trim()} Añadido recientemente a la biblioteca de El sótano del pc por la comunidad.`,
       features: [
@@ -473,19 +517,30 @@ export default function AddItemModal({
               </div>
             </div>
 
-            {/* Portada / Subir imagen o URL */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label
-                  className={`block text-xs uppercase tracking-wider font-semibold ${
-                    isLight ? "text-zinc-600" : "text-zinc-400"
-                  }`}
-                >
-                  Portada del Item
-                </label>
+            {/* 1. Portada Vertical (Carátula Principal 3:4) */}
+            <div className={`p-4 rounded-2xl border space-y-3 ${
+              isLight ? "bg-zinc-50/70 border-zinc-200" : "bg-zinc-900/40 border-zinc-800"
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <label className={`block text-xs uppercase tracking-wider font-bold ${
+                      isLight ? "text-zinc-900" : "text-white"
+                    }`}>
+                      1. Portada del Item (Vertical 3:4) *
+                    </label>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                      Carátula
+                    </span>
+                  </div>
+                  <p className={`text-[11px] mt-0.5 ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
+                    Formato vertical (póster tipo Steam/Epic). Se muestra en las tarjetas y ficha del juego.
+                  </p>
+                </div>
+
                 {/* Selector de modo: Dispositivo vs URL */}
                 <div
-                  className={`inline-flex p-0.5 rounded-lg border text-xs font-semibold ${
+                  className={`inline-flex p-0.5 rounded-lg border text-xs font-semibold shrink-0 self-start sm:self-auto ${
                     isLight
                       ? "bg-zinc-100 border-zinc-200"
                       : "bg-zinc-900 border-zinc-800"
@@ -493,9 +548,9 @@ export default function AddItemModal({
                 >
                   <button
                     type="button"
-                    onClick={() => setImageMode("device")}
+                    onClick={() => setCoverMode("device")}
                     className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
-                      imageMode === "device"
+                      coverMode === "device"
                         ? isLight
                           ? "bg-white text-zinc-950 shadow-sm"
                           : "bg-zinc-800 text-white shadow-sm"
@@ -505,13 +560,13 @@ export default function AddItemModal({
                     }`}
                   >
                     <Upload className="size-3.5" />
-                    <span>Mi Dispositivo</span>
+                    <span>Dispositivo</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setImageMode("url")}
+                    onClick={() => setCoverMode("url")}
                     className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
-                      imageMode === "url"
+                      coverMode === "url"
                         ? isLight
                           ? "bg-white text-zinc-950 shadow-sm"
                           : "bg-zinc-800 text-white shadow-sm"
@@ -521,35 +576,38 @@ export default function AddItemModal({
                     }`}
                   >
                     <LinkIcon className="size-3.5" />
-                    <span>Enlace URL</span>
+                    <span>URL</span>
                   </button>
                 </div>
               </div>
 
               {/* Subir archivo desde PC / Dispositivo */}
-              {imageMode === "device" && (
+              {coverMode === "device" && (
                 <div>
                   <input
-                    ref={fileInputRef}
+                    ref={coverFileInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleFileInputChange}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleCoverFile(file);
+                    }}
                     className="hidden"
                   />
 
-                  {deviceImage ? (
+                  {deviceCover ? (
                     <div
                       className={`relative flex items-center gap-4 p-3 rounded-xl border ${
                         isLight
-                          ? "bg-zinc-50 border-zinc-200"
-                          : "bg-zinc-900/80 border-zinc-800"
+                          ? "bg-white border-zinc-200"
+                          : "bg-zinc-900/90 border-zinc-800"
                       }`}
                     >
-                      {/* Vista previa miniatura */}
-                      <div className="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 border border-zinc-700/40 bg-black/40">
+                      {/* Vista previa miniatura vertical */}
+                      <div className="relative w-16 aspect-[3/4] rounded-lg overflow-hidden shrink-0 border border-zinc-700/40 bg-black/40 shadow">
                         <img
-                          src={deviceImage}
-                          alt="Vista previa"
+                          src={deviceCover}
+                          alt="Portada vertical"
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -559,7 +617,7 @@ export default function AddItemModal({
                         <div className="flex items-center gap-1.5">
                           <Check className="size-4 text-emerald-500 shrink-0" />
                           <p className="text-xs font-semibold truncate">
-                            {deviceFileName || "Imagen cargada"}
+                            {deviceCoverFileName || "Portada cargada"}
                           </p>
                         </div>
                         <p
@@ -567,7 +625,7 @@ export default function AddItemModal({
                             isLight ? "text-zinc-500" : "text-zinc-400"
                           }`}
                         >
-                          {deviceFileSize ? `${deviceFileSize} • ` : ""}Optimizada para alto rendimiento
+                          {deviceCoverFileSize ? `${deviceCoverFileSize} • ` : ""}Póster vertical optimizado
                         </p>
                       </div>
 
@@ -575,21 +633,21 @@ export default function AddItemModal({
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => coverFileInputRef.current?.click()}
                           className={`p-2 rounded-lg border text-xs transition-colors cursor-pointer ${
                             isLight
                               ? "border-zinc-300 hover:bg-zinc-200 text-zinc-700"
                               : "border-zinc-700 hover:bg-zinc-800 text-zinc-300"
                           }`}
-                          title="Cambiar imagen"
+                          title="Cambiar portada"
                         >
                           <RefreshCw className="size-3.5" />
                         </button>
                         <button
                           type="button"
-                          onClick={handleRemoveDeviceImage}
+                          onClick={handleRemoveDeviceCover}
                           className="p-2 rounded-lg border border-red-500/20 text-red-500 hover:bg-red-500/10 text-xs transition-colors cursor-pointer"
-                          title="Quitar imagen"
+                          title="Quitar portada"
                         >
                           <Trash2 className="size-3.5" />
                         </button>
@@ -599,39 +657,44 @@ export default function AddItemModal({
                     <div
                       onDragOver={(e) => {
                         e.preventDefault();
-                        setIsDragOver(true);
+                        setIsCoverDragOver(true);
                       }}
-                      onDragLeave={() => setIsDragOver(false)}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`group flex flex-col items-center justify-center p-5 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
-                        isDragOver
+                      onDragLeave={() => setIsCoverDragOver(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsCoverDragOver(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleCoverFile(file);
+                      }}
+                      onClick={() => coverFileInputRef.current?.click()}
+                      className={`group flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                        isCoverDragOver
                           ? isLight
                             ? "border-zinc-900 bg-zinc-100"
                             : "border-white bg-zinc-900"
                           : isLight
-                          ? "border-zinc-300 hover:border-zinc-500 bg-zinc-50/70 hover:bg-zinc-100/70"
-                          : "border-zinc-800 hover:border-zinc-600 bg-zinc-900/40 hover:bg-zinc-900/80"
+                          ? "border-zinc-300 hover:border-zinc-500 bg-white hover:bg-zinc-100/70"
+                          : "border-zinc-800 hover:border-zinc-600 bg-zinc-900/30 hover:bg-zinc-900/70"
                       }`}
                     >
                       <div
-                        className={`p-2.5 rounded-full mb-2 transition-transform group-hover:scale-110 ${
+                        className={`p-2 rounded-full mb-1.5 transition-transform group-hover:scale-110 ${
                           isLight ? "bg-zinc-200 text-zinc-800" : "bg-zinc-800 text-zinc-200"
                         }`}
                       >
                         <Upload className="size-4" />
                       </div>
                       <p className="text-xs font-semibold text-center mb-0.5">
-                        {isProcessingImage
-                          ? "Procesando imagen..."
-                          : "Haz clic para subir desde tu PC o arrastra la imagen aquí"}
+                        {isProcessingCover
+                          ? "Procesando portada..."
+                          : "Subir imagen vertical (Portada / Carátula)"}
                       </p>
                       <p
                         className={`text-[11px] text-center ${
                           isLight ? "text-zinc-500" : "text-zinc-400"
                         }`}
                       >
-                        PNG, JPG, WEBP o GIF (Optimizada automáticamente)
+                        Arrastra o haz clic para seleccionar (Recomendado relación 3:4 o 2:3)
                       </p>
                     </div>
                   )}
@@ -639,24 +702,24 @@ export default function AddItemModal({
               )}
 
               {/* Subir vía URL */}
-              {imageMode === "url" && (
+              {coverMode === "url" && (
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={urlImage}
-                      onChange={(e) => setUrlImage(e.target.value)}
-                      placeholder="/img/indicado.webp o https://ejemplo.com/portada.jpg"
+                      value={urlCover}
+                      onChange={(e) => setUrlCover(e.target.value)}
+                      placeholder="https://.../portada-vertical.jpg o /img/indicado.webp"
                       className={`flex-1 px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
                         isLight
-                          ? "bg-zinc-50 border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                          ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
                           : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
                       }`}
                     />
-                    {urlImage.trim() && (
+                    {urlCover.trim() && (
                       <button
                         type="button"
-                        onClick={() => setUrlImage("")}
+                        onClick={() => setUrlCover("")}
                         className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
                           isLight
                             ? "border-zinc-300 hover:bg-zinc-200 text-zinc-600"
@@ -669,18 +732,18 @@ export default function AddItemModal({
                     )}
                   </div>
 
-                  {urlImage.trim() && (
+                  {urlCover.trim() && (
                     <div
                       className={`flex items-center gap-3 p-2.5 rounded-xl border ${
                         isLight
-                          ? "bg-zinc-50 border-zinc-200"
+                          ? "bg-white border-zinc-200"
                           : "bg-zinc-900/60 border-zinc-800"
                       }`}
                     >
-                      <div className="w-16 h-12 rounded-lg overflow-hidden shrink-0 border border-zinc-700/30 bg-black/40">
+                      <div className="w-14 aspect-[3/4] rounded-lg overflow-hidden shrink-0 border border-zinc-700/30 bg-black/40">
                         <img
-                          src={urlImage}
-                          alt="Previsualización"
+                          src={urlCover}
+                          alt="Previsualización Portada"
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = "/img/indicado.webp";
@@ -688,9 +751,254 @@ export default function AddItemModal({
                         />
                       </div>
                       <div className="text-[11px] truncate flex-1">
-                        <span className="font-semibold block">Vista previa de enlace</span>
+                        <span className="font-semibold block">Vista previa portada</span>
                         <span className={isLight ? "text-zinc-500" : "text-zinc-400"}>
-                          {urlImage}
+                          {urlCover}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Banner Horizontal (Cabecera 16:9 - Opcional) */}
+            <div className={`p-4 rounded-2xl border space-y-3 ${
+              isLight ? "bg-zinc-50/70 border-zinc-200" : "bg-zinc-900/40 border-zinc-800"
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <label className={`block text-xs uppercase tracking-wider font-bold ${
+                      isLight ? "text-zinc-900" : "text-white"
+                    }`}>
+                      2. Banner de Cabecera (Horizontal 16:9 - Opcional)
+                    </label>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                      Cabecera
+                    </span>
+                  </div>
+                  <p className={`text-[11px] mt-0.5 ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
+                    Imagen panorámica de fondo que se mostrará en la parte superior del modal de detalle.
+                  </p>
+                </div>
+
+                {/* Selector de modo: Dispositivo vs URL */}
+                <div
+                  className={`inline-flex p-0.5 rounded-lg border text-xs font-semibold shrink-0 self-start sm:self-auto ${
+                    isLight
+                      ? "bg-zinc-100 border-zinc-200"
+                      : "bg-zinc-900 border-zinc-800"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setBannerMode("device")}
+                    className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
+                      bannerMode === "device"
+                        ? isLight
+                          ? "bg-white text-zinc-950 shadow-sm"
+                          : "bg-zinc-800 text-white shadow-sm"
+                        : isLight
+                        ? "text-zinc-500 hover:text-zinc-900"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <Upload className="size-3.5" />
+                    <span>Dispositivo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBannerMode("url")}
+                    className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
+                      bannerMode === "url"
+                        ? isLight
+                          ? "bg-white text-zinc-950 shadow-sm"
+                          : "bg-zinc-800 text-white shadow-sm"
+                        : isLight
+                        ? "text-zinc-500 hover:text-zinc-900"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <LinkIcon className="size-3.5" />
+                    <span>URL</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Subir banner desde PC / Dispositivo */}
+              {bannerMode === "device" && (
+                <div>
+                  <input
+                    ref={bannerFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleBannerFile(file);
+                    }}
+                    className="hidden"
+                  />
+
+                  {deviceBanner ? (
+                    <div
+                      className={`relative flex items-center gap-4 p-3 rounded-xl border ${
+                        isLight
+                          ? "bg-white border-zinc-200"
+                          : "bg-zinc-900/90 border-zinc-800"
+                      }`}
+                    >
+                      {/* Vista previa miniatura horizontal */}
+                      <div className="relative w-28 aspect-video rounded-lg overflow-hidden shrink-0 border border-zinc-700/40 bg-black/40 shadow">
+                        <img
+                          src={deviceBanner}
+                          alt="Banner horizontal"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Detalles */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Check className="size-4 text-emerald-500 shrink-0" />
+                          <p className="text-xs font-semibold truncate">
+                            {deviceBannerFileName || "Banner cargado"}
+                          </p>
+                        </div>
+                        <p
+                          className={`text-[11px] mt-0.5 ${
+                            isLight ? "text-zinc-500" : "text-zinc-400"
+                          }`}
+                        >
+                          {deviceBannerFileSize ? `${deviceBannerFileSize} • ` : ""}Banner panorámico optimizado
+                        </p>
+                      </div>
+
+                      {/* Botones de acción */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => bannerFileInputRef.current?.click()}
+                          className={`p-2 rounded-lg border text-xs transition-colors cursor-pointer ${
+                            isLight
+                              ? "border-zinc-300 hover:bg-zinc-200 text-zinc-700"
+                              : "border-zinc-700 hover:bg-zinc-800 text-zinc-300"
+                          }`}
+                          title="Cambiar banner"
+                        >
+                          <RefreshCw className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveDeviceBanner}
+                          className="p-2 rounded-lg border border-red-500/20 text-red-500 hover:bg-red-500/10 text-xs transition-colors cursor-pointer"
+                          title="Quitar banner"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsBannerDragOver(true);
+                      }}
+                      onDragLeave={() => setIsBannerDragOver(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsBannerDragOver(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleBannerFile(file);
+                      }}
+                      onClick={() => bannerFileInputRef.current?.click()}
+                      className={`group flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                        isBannerDragOver
+                          ? isLight
+                            ? "border-zinc-900 bg-zinc-100"
+                            : "border-white bg-zinc-900"
+                          : isLight
+                          ? "border-zinc-300 hover:border-zinc-500 bg-white hover:bg-zinc-100/70"
+                          : "border-zinc-800 hover:border-zinc-600 bg-zinc-900/30 hover:bg-zinc-900/70"
+                      }`}
+                    >
+                      <div
+                        className={`p-2 rounded-full mb-1.5 transition-transform group-hover:scale-110 ${
+                          isLight ? "bg-zinc-200 text-zinc-800" : "bg-zinc-800 text-zinc-200"
+                        }`}
+                      >
+                        <Upload className="size-4" />
+                      </div>
+                      <p className="text-xs font-semibold text-center mb-0.5">
+                        {isProcessingBanner
+                          ? "Procesando banner..."
+                          : "Subir imagen horizontal (Banner panorámico)"}
+                      </p>
+                      <p
+                        className={`text-[11px] text-center ${
+                          isLight ? "text-zinc-500" : "text-zinc-400"
+                        }`}
+                      >
+                        Arrastra o haz clic para seleccionar (Recomendado 16:9 o 21:9 panorámico)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Subir banner vía URL */}
+              {bannerMode === "url" && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={urlBanner}
+                      onChange={(e) => setUrlBanner(e.target.value)}
+                      placeholder="https://.../banner-horizontal.jpg (Opcional)"
+                      className={`flex-1 px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition-colors border ${
+                        isLight
+                          ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                          : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                      }`}
+                    />
+                    {urlBanner.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setUrlBanner("")}
+                        className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
+                          isLight
+                            ? "border-zinc-300 hover:bg-zinc-200 text-zinc-600"
+                            : "border-zinc-800 hover:bg-zinc-800 text-zinc-400"
+                        }`}
+                        title="Borrar URL"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {urlBanner.trim() && (
+                    <div
+                      className={`flex items-center gap-3 p-2.5 rounded-xl border ${
+                        isLight
+                          ? "bg-white border-zinc-200"
+                          : "bg-zinc-900/60 border-zinc-800"
+                      }`}
+                    >
+                      <div className="w-24 aspect-video rounded-lg overflow-hidden shrink-0 border border-zinc-700/30 bg-black/40">
+                        <img
+                          src={urlBanner}
+                          alt="Previsualización Banner"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/img/SN-tools.jpg";
+                          }}
+                        />
+                      </div>
+                      <div className="text-[11px] truncate flex-1">
+                        <span className="font-semibold block">Vista previa banner</span>
+                        <span className={isLight ? "text-zinc-500" : "text-zinc-400"}>
+                          {urlBanner}
                         </span>
                       </div>
                     </div>
@@ -919,7 +1227,7 @@ export default function AddItemModal({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || isProcessingImage}
+                disabled={isSubmitting || isProcessingCover || isProcessingBanner}
                 className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md cursor-pointer flex items-center gap-2 disabled:opacity-50 ${
                   isLight
                     ? "bg-zinc-900 text-white hover:bg-black"

@@ -19,6 +19,7 @@ export interface CatalogItemProps {
   version?: string | null;
   badge?: string | null;
   coverUrl?: string | null;
+  bannerUrl?: string | null;
   downloadUrl?: string | null;
   developer?: string | null;
   shortDescription: string;
@@ -40,6 +41,7 @@ export class CatalogItem {
   public version: string;
   public badge: string | null;
   public coverUrl: string | null;
+  public bannerUrl: string | null;
   public downloadUrl: string | null;
   public developer: string | null;
   public shortDescription: string;
@@ -56,6 +58,7 @@ export class CatalogItem {
     this.version = props.version ?? DEFAULT_CATALOG_VERSION;
     this.badge = props.badge ?? null;
     this.coverUrl = props.coverUrl ?? null;
+    this.bannerUrl = props.bannerUrl ?? null;
     this.downloadUrl = props.downloadUrl ?? null;
     this.developer = props.developer ?? null;
     this.shortDescription = props.shortDescription;

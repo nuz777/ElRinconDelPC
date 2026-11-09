@@ -91,7 +91,7 @@ export class CreateCatalogItemDto {
 
   @ApiPropertyOptional({
     example: 'https://cdn.example.com/covers/elden-ring.webp',
-    description: 'URL http(s), ruta relativa (/img/...) o data URL de imagen',
+    description: 'URL http(s), ruta relativa (/img/...) o data URL de imagen (portada vertical)',
   })
   @IsOptional()
   @IsString()
@@ -99,6 +99,17 @@ export class CreateCatalogItemDto {
     message: 'coverUrl debe ser una URL válida, una ruta relativa o una imagen en base64',
   })
   coverUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/banners/elden-ring.webp',
+    description: 'URL http(s), ruta relativa (/img/...) o data URL de imagen (banner horizontal)',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(COVER_URL_PATTERN, {
+    message: 'bannerUrl debe ser una URL válida, una ruta relativa o una imagen en base64',
+  })
+  bannerUrl?: string;
 
   @ApiPropertyOptional({ example: 'https://gofile.io/d/abc123' })
   @IsOptional()

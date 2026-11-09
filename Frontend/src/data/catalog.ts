@@ -18,7 +18,8 @@ export interface CatalogItem {
   size: string;
   releaseDate: string;
   developer: string;
-  img: string;
+  img: string; // Portada vertical
+  bannerImg?: string; // Banner horizontal de cabecera
   shortDesc: string;
   fullDesc: string;
   features: string[];

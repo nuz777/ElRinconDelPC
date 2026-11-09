@@ -27,6 +27,9 @@ export class CatalogItemResponseDto {
   coverUrl!: string | null;
 
   @ApiPropertyOptional({ nullable: true, type: String })
+  bannerUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
   downloadUrl!: string | null;
 
   @ApiPropertyOptional({ nullable: true, type: String })
