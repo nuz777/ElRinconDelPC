@@ -61,8 +61,20 @@ VALUES
         'Ivan',
         'Mejia',
         'admin'
+    ),
+    (
+        'nicholasandresdelarosarivera@hotmail.com',
+        '$2b$10$iXuHDKJ6Q2HV6Ms/ii2jgu3MwwgHUrYf6ccSu3reV6Wbe3sDZGaJu',
+        'system',
+        'nicholas-delarosa',
+        NULL,
+        'admin'
     )
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    role = EXCLUDED.role;
 
 -- Tabla: catalog_items (juegos, mods y herramientas publicados por administradores)
 CREATE TABLE IF NOT EXISTS catalog_items (
