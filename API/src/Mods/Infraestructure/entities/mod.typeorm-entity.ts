@@ -40,8 +40,8 @@ export class ModTypeormEntity {
   @Column({ name: 'thumbnail_url', type: 'text', nullable: true })
   thumbnailUrl!: string | null;
 
-  @Column({ name: 'game_id', type: 'uuid' })
-  gameId!: string;
+  @Column({ name: 'game_id', type: 'uuid', nullable: true })
+  gameId!: string | null;
 
   @Column({ name: 'author_id', type: 'uuid' })
   authorId!: string;
@@ -71,9 +71,9 @@ export class ModTypeormEntity {
   @Column({ name: 'min_gpu', type: 'varchar', length: 100, nullable: true })
   minGpu!: string | null;
 
-  @ManyToOne(() => GameTypeormEntity, { onDelete: 'CASCADE' })
+  @ManyToOne(() => GameTypeormEntity, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'game_id' })
-  game!: GameTypeormEntity;
+  game!: GameTypeormEntity | null;
 
   @ManyToOne(() => UserTypeormEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'author_id' })

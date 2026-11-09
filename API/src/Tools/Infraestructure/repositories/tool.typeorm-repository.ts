@@ -86,6 +86,7 @@ export class TypeormToolRepository implements ToolRepository {
 
   async create(data: CreateToolData): Promise<Tool> {
     const entity = this.repository.create({
+      ...(data.id ? { id: data.id } : {}),
       title: data.title,
       slug: data.slug,
       description: data.description,
@@ -187,6 +188,11 @@ export class TypeormToolRepository implements ToolRepository {
     existing.isActive = false;
     const saved = await this.repository.save(existing);
     return saved.isActive === false;
+  }
+
+  async hardDelete(id: string): Promise<boolean> {
+    const result = await this.repository.delete({ id });
+    return (result.affected ?? 0) > 0;
   }
 
   async incrementDownloads(id: string): Promise<void> {

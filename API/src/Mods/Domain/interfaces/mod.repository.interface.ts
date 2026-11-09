@@ -22,14 +22,14 @@ export interface PaginatedResult<T> {
 export type CreateModData = Omit<
   ModProps,
   'id' | 'createdAt' | 'updatedAt'
->;
+> & { id?: string };
 
 export type UpdateModData = Partial<CreateModData>;
 
 export interface ModRepository {
   create(data: CreateModData): Promise<Mod>;
   findById(id: string): Promise<Mod | null>;
-  findBySlug(slug: string, gameId: string): Promise<Mod | null>;
+  findBySlug(slug: string, gameId: string | null): Promise<Mod | null>;
   gameExists(gameId: string): Promise<boolean>;
   findByGameId(
     gameId: string,
@@ -38,6 +38,8 @@ export interface ModRepository {
   update(id: string, data: UpdateModData): Promise<Mod | null>;
   /** Borrado lógico: marca `isActive = false` en lugar de eliminar la fila. */
   delete(id: string): Promise<boolean>;
+  /** Borrado físico por ID para sincronización con el catálogo. */
+  hardDelete?(id: string): Promise<boolean>;
   /** Incrementa el contador de descargas del mod. */
   incrementDownloads(id: string): Promise<void>;
   /** Aprueba un mod pendiente (marca isApproved = true). */

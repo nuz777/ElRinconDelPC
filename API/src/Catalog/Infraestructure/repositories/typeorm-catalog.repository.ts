@@ -85,6 +85,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
 
   async create(item: CreateCatalogItemData): Promise<CatalogItem> {
     const entity = this.repository.create({
+      ...(item.id ? { id: item.id } : {}),
       section: item.section,
       title: item.title,
       genre: item.genre,

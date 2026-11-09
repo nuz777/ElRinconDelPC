@@ -4,7 +4,13 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { CatalogSection } from '../../../Catalog/Domain/Entities/catalog-section.enum.js';
+import {
+  CATALOG_REPOSITORY,
+  type CatalogRepository,
+} from '../../../Catalog/Domain/interfaces/catalog.repository.interface.js';
 import type { Tool } from '../../Domain/Entities/tool.entity.js';
 import {
   TOOLS_REPOSITORY,
@@ -24,6 +30,9 @@ export class ToolsService {
   constructor(
     @Inject(TOOLS_REPOSITORY)
     private readonly toolsRepository: ToolRepository,
+    @Optional()
+    @Inject(CATALOG_REPOSITORY)
+    private readonly catalogRepository?: CatalogRepository,
   ) {}
 
   async createTool(authorId: string, dto: CreateToolDto): Promise<Tool> {
@@ -52,7 +61,26 @@ export class ToolsService {
       isActive: true,
     };
 
-    return this.toolsRepository.create(data);
+    const created = await this.toolsRepository.create(data);
+
+    if (this.catalogRepository) {
+      await this.catalogRepository.create({
+        id: created.id,
+        section: CatalogSection.HERRAMIENTAS,
+        title: created.title,
+        genre: created.category || 'Utilidades',
+        size: created.size,
+        version: created.version,
+        badge: created.tags[0] ?? 'Herramienta',
+        coverUrl: created.imageUrl,
+        downloadUrl: created.downloadUrl,
+        developer: 'Comunidad El Sótano',
+        shortDescription: created.description,
+        minimumRequirements: null,
+      });
+    }
+
+    return created;
   }
 
   async getTools(filters: FilterToolsDto): Promise<PaginatedResult<Tool>> {
@@ -154,6 +182,7 @@ export class ToolsService {
     if (!deleted) {
       throw new NotFoundException(`Herramienta con id "${id}" no encontrada`);
     }
+    await this.catalogRepository?.delete(id);
     return { message: 'Herramienta eliminada correctamente (borrado lógico)', id };
   }
 

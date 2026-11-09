@@ -17,7 +17,9 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
-export type CreateToolData = Omit<ToolProps, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateToolData = Omit<ToolProps, 'id' | 'createdAt' | 'updatedAt'> & {
+  id?: string;
+};
 
 export type UpdateToolData = Partial<CreateToolData>;
 
@@ -29,6 +31,8 @@ export interface ToolRepository {
   update(id: string, data: UpdateToolData): Promise<Tool | null>;
   /** Borrado lógico: marca `isActive = false` en lugar de eliminar la fila. */
   delete(id: string): Promise<boolean>;
+  /** Borrado físico por ID para sincronización con el catálogo. */
+  hardDelete?(id: string): Promise<boolean>;
   /** Incrementa el contador de descargas de la herramienta. */
   incrementDownloads(id: string): Promise<void>;
   /** Verifica si existe una herramienta con el slug dado. */

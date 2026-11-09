@@ -3,7 +3,13 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { CatalogSection } from '../../../Catalog/Domain/Entities/catalog-section.enum.js';
+import {
+  CATALOG_REPOSITORY,
+  type CatalogRepository,
+} from '../../../Catalog/Domain/interfaces/catalog.repository.interface.js';
 import type { Game } from '../../Domain/Entities/game.entity.js';
 import {
   GAMES_REPOSITORY,
@@ -23,6 +29,9 @@ export class GamesService {
   constructor(
     @Inject(GAMES_REPOSITORY)
     private readonly gamesRepository: GameRepository,
+    @Optional()
+    @Inject(CATALOG_REPOSITORY)
+    private readonly catalogRepository?: CatalogRepository,
   ) {}
 
   async createGame(dto: CreateGameDto): Promise<Game> {
@@ -61,7 +70,26 @@ export class GamesService {
       minimumRequirements: dto.minimumRequirements,
     };
 
-    return this.gamesRepository.create(data);
+    const created = await this.gamesRepository.create(data);
+
+    if (this.catalogRepository) {
+      await this.catalogRepository.create({
+        id: created.id,
+        section: CatalogSection.JUEGOS,
+        title: created.title,
+        genre: created.genres[0] ?? 'Acción / Aventura',
+        size: created.minimumRequirements?.storage || null,
+        version: 'v1.0',
+        badge: 'Nuevo',
+        coverUrl: created.coverImage,
+        downloadUrl: null,
+        developer: created.developer,
+        shortDescription: created.description,
+        minimumRequirements: created.minimumRequirements,
+      });
+    }
+
+    return created;
   }
 
   async getGames(filters: FilterGamesDto): Promise<PaginatedResult<Game>> {
@@ -167,6 +195,7 @@ export class GamesService {
     if (!deleted) {
       throw new NotFoundException(`Juego con id "${id}" no encontrado`);
     }
+    await this.catalogRepository?.delete(existing.id);
     return { message: 'Juego eliminado correctamente (borrado lógico)', id: existing.id };
   }
 }

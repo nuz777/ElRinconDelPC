@@ -99,6 +99,43 @@ export class TypeormGameRepository implements GameRepository {
         }
       : null;
 
+    if (data.id) {
+      const rows = await this.dataSource.query<GameRow[]>(
+        `
+        INSERT INTO games (
+          id, title, slug, description, price, discount_price, stock, genres, cover_image, banner_image,
+          developer, publisher, release_date, is_active,
+          min_os, min_storage, min_ram, min_cpu, min_gpu, minimum_requirements
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        RETURNING *;
+        `,
+        [
+          data.id,
+          data.title,
+          data.slug,
+          data.description,
+          data.price ?? 0,
+          data.discountPrice ?? null,
+          data.stock,
+          data.genres ?? [],
+          data.coverImage,
+          data.bannerImage ?? null,
+          data.developer,
+          data.publisher,
+          data.releaseDate ?? null,
+          data.isActive ?? true,
+          data.minimumRequirements?.os ?? null,
+          data.minimumRequirements?.storage ?? null,
+          data.minimumRequirements?.ram ?? null,
+          data.minimumRequirements?.cpu ?? null,
+          data.minimumRequirements?.gpu ?? null,
+          minimumReqJson ? JSON.stringify(minimumReqJson) : null,
+        ],
+      );
+      return mapRowToGame(rows[0]);
+    }
+
     const rows = await this.dataSource.query<GameRow[]>(
       `
       INSERT INTO games (
@@ -312,5 +349,13 @@ export class TypeormGameRepository implements GameRepository {
       [id],
     );
     return true;
+  }
+
+  async hardDelete(id: string): Promise<boolean> {
+    const rows = await this.dataSource.query<{ id: string }[]>(
+      `DELETE FROM games WHERE id = $1 RETURNING id;`,
+      [id],
+    );
+    return (rows?.length ?? 0) > 0;
   }
 }
