@@ -4,11 +4,15 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   MaxLength,
-  Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+/** Acepta URLs http(s), rutas relativas (/catalogo/..., /img/...) o data URLs de imagen. */
+const IMAGE_URL_PATTERN =
+  /^(https?:\/\/\S+|\/\S*|data:image\/[a-z0-9.+-]+;base64,\S+)$/i;
 
 export class MinimumRequirementsDto {
   @ApiProperty({ example: 'Windows 10 64-bit', description: 'Sistema operativo mínimo' })
@@ -86,11 +90,13 @@ export class CreateModDto {
 
   @ApiPropertyOptional({
     example: 'https://ejemplo.com/thumbnail.png',
-    description: 'URL de la imagen previa del mod',
+    description: 'URL http(s), ruta relativa o imagen en base64 de la miniatura del mod',
   })
   @IsOptional()
   @IsString()
-  @IsUrl({}, { message: 'La miniatura debe ser una URL válida' })
+  @Matches(IMAGE_URL_PATTERN, {
+    message: 'La miniatura debe ser una URL válida, una ruta relativa o una imagen en base64',
+  })
   thumbnailUrl?: string;
 
   @ApiPropertyOptional({ example: '1.2 MB', description: 'Tamaño del archivo' })

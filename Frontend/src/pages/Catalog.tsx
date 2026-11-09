@@ -48,40 +48,25 @@ export default function Catalog() {
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === "light";
 
-  // Items guardados en PostgreSQL / Local
-  const [customItems, setCustomItems] = useState<CatalogItem[]>(() => {
+  // Items persistidos exclusivamente en PostgreSQL
+  const [customItems, setCustomItems] = useState<CatalogItem[]>([]);
+
+  // Limpieza de residuos antiguos de localStorage y carga desde PostgreSQL via API
+  useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("sotano_catalog_items");
-      const stored = localStorage.getItem("sotano_custom_catalog_items");
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          // ignore error
-        }
-      }
+      localStorage.removeItem("sotano_custom_catalog_items");
     }
-    return [];
-  });
 
-  // Carga inicial y reactiva desde la Base de Datos (PostgreSQL via API)
-  useEffect(() => {
     let isMounted = true;
     catalogService
       .getItems()
       .then((dbItems) => {
         if (!isMounted) return;
-        if (dbItems && dbItems.length > 0) {
-          setCustomItems((prev) => {
-            // Combinar items de la DB evitando duplicados por ID
-            const dbIds = new Set(dbItems.map((it) => it.id));
-            const remainingLocal = prev.filter((p) => !dbIds.has(p.id));
-            return [...dbItems, ...remainingLocal];
-          });
-        }
+        setCustomItems(dbItems ?? []);
       })
       .catch((err) => {
-        console.warn("No se pudo sincronizar el catálogo con la DB:", err);
+        console.error("No se pudo sincronizar el catálogo con la DB:", err);
       });
 
     return () => {
@@ -110,53 +95,35 @@ export default function Catalog() {
     }
   }, [isAdmin]);
 
-  // Sync custom added items to localStorage como respaldo offline
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("sotano_custom_catalog_items", JSON.stringify(customItems));
-      } catch (err) {
-        console.error("No se pudo guardar en localStorage:", err);
-      }
-    }
-  }, [customItems]);
-
-  // Handle adding custom items (guarda en PostgreSQL mediante catalogService)
-  const handleAddItem = async (newItem: CatalogItem) => {
+  // Handle adding custom items (guarda exclusivamente en PostgreSQL mediante catalogService)
+  const handleAddItem = async (newItem: CatalogItem): Promise<void> => {
     if (!isAdmin) return;
 
+    const section = mapApartadoToSection(newItem.apartado);
+    const download = newItem.downloadLinks[0]?.url;
+    const validDownloadUrl =
+      download && (download.startsWith("http://") || download.startsWith("https://"))
+        ? download
+        : undefined;
+
+    const createdInDb = await catalogService.createItem({
+      section,
+      title: newItem.title,
+      genre: newItem.genre,
+      size: newItem.size,
+      version: newItem.version,
+      badge: newItem.tag,
+      coverUrl: newItem.img,
+      downloadUrl: validDownloadUrl,
+      developer: newItem.developer,
+      shortDescription: newItem.fullDesc || newItem.shortDesc,
+      minimumRequirements: newItem.requirements,
+    });
+
+    // Añadir al estado únicamente cuando PostgreSQL confirme y devuelva el UUID real
+    setCustomItems((prev) => [createdInDb, ...prev]);
     setSelectedApartado(newItem.apartado);
     setSelectedGenre(newItem.genre);
-
-    try {
-      const section = mapApartadoToSection(newItem.apartado);
-      const download = newItem.downloadLinks[0]?.url;
-      const validDownloadUrl =
-        download && (download.startsWith("http://") || download.startsWith("https://"))
-          ? download
-          : undefined;
-
-      const createdInDb = await catalogService.createItem({
-        section,
-        title: newItem.title,
-        genre: newItem.genre,
-        size: newItem.size,
-        version: newItem.version,
-        badge: newItem.tag,
-        coverUrl: newItem.img,
-        downloadUrl: validDownloadUrl,
-        developer: newItem.developer,
-        shortDescription: newItem.fullDesc || newItem.shortDesc,
-        minimumRequirements: newItem.requirements,
-      });
-
-      // Añadir al estado directamente con el UUID de la base de datos
-      setCustomItems((prev) => [createdInDb, ...prev]);
-    } catch (err) {
-      console.error("Error guardando en la base de datos:", err);
-      // Respaldo optimista local si fallara la conexión
-      setCustomItems((prev) => [newItem, ...prev]);
-    }
   };
 
   // Handle removing items from Database and local view

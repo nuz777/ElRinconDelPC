@@ -116,11 +116,11 @@ export class CreateCatalogItemDto {
 
   @ApiProperty({
     example: 'RPG de acción en mundo abierto ambientado en las Tierras Intermedias.',
-    maxLength: 500,
+    maxLength: 2000,
   })
   @IsString()
   @IsNotEmpty({ message: 'La descripción breve es obligatoria' })
-  @MaxLength(500)
+  @MaxLength(2000)
   shortDescription!: string;
 
   @ApiPropertyOptional({
