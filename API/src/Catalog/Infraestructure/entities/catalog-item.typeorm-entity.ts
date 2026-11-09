@@ -51,6 +51,10 @@ export class CatalogItemTypeormEntity {
   @Column({ name: 'minimum_requirements', type: 'jsonb', nullable: true })
   minimumRequirements!: CatalogMinimumRequirements | null;
 
+  @Index('idx_catalog_items_public_code', { unique: true })
+  @Column({ name: 'public_code', type: 'varchar', length: 6, nullable: true })
+  publicCode!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

@@ -18,6 +18,8 @@ import {
 import type { CatalogItem } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
 import { NativeBannerAd } from "./ads/NativeBannerAd";
+import GameModsSection from "./GameModsSection";
+import { buildItemPath } from "../utils/catalogUrl";
 
 interface FullscreenDetailModalProps {
   item: CatalogItem | null;
@@ -435,6 +437,15 @@ export default function FullscreenDetailModal({
                   ))}
                 </ol>
               </section>
+
+              {/* Mods de la comunidad (solo juegos) */}
+              {item.apartado === "juegos" && (
+                <GameModsSection
+                  gameId={item.id}
+                  gamePath={buildItemPath(item)}
+                  isLight={isLight}
+                />
+              )}
             </div>
 
             {/* Right Column: Download Box & System Requirements */}

@@ -97,11 +97,13 @@ CREATE TABLE IF NOT EXISTS catalog_items (
     developer VARCHAR(150) NULL,
     short_description TEXT NOT NULL,
     minimum_requirements JSONB NULL,
+    public_code VARCHAR(6) NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_catalog_items_section_genre ON catalog_items(section, genre);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_items_public_code ON catalog_items(public_code);
 CREATE INDEX IF NOT EXISTS idx_catalog_items_created_at ON catalog_items(created_at DESC);
 
 DROP TRIGGER IF EXISTS trg_catalog_items_updated_at ON catalog_items;

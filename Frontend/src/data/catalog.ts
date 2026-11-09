@@ -10,6 +10,8 @@ export interface DownloadLink {
 
 export interface CatalogItem {
   id: string;
+  /** Código público fijo (6 caracteres) usado en la URL compartible. */
+  publicCode?: string | null;
   title: string;
   apartado: Apartado;
   genre: string;

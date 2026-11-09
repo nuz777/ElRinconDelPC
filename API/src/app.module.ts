@@ -13,6 +13,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './Auth/Infraestructure/auth.module.js';
 import { CatalogModule } from './Catalog/catalog.module.js';
+import { generatePublicCode } from './Common/utils/public-code.js';
 import { dataSourceOptions } from './database/data-source.js';
 import { seedAdmins } from './database/seeds/admin.seed.js';
 import { GamesModule } from './Games/games.module.js';
@@ -67,6 +68,39 @@ export class AppModule implements NestModule, OnModuleInit {
     } catch (err) {
       this.logger.warn(
         `DDL warning: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /** Asigna un código público a los ítems del catálogo creados antes de existir la columna. */
+  private async backfillCatalogPublicCodes(): Promise<void> {
+    try {
+      const rows = await this.dataSource.query<{ id: string }[]>(
+        `SELECT "id" FROM "catalog_items" WHERE "public_code" IS NULL;`,
+      );
+      for (const { id } of rows) {
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const code = generatePublicCode();
+          const taken = await this.dataSource.query<unknown[]>(
+            `SELECT 1 FROM "catalog_items" WHERE "public_code" = $1 LIMIT 1;`,
+            [code],
+          );
+          if (taken.length > 0) continue;
+          await this.dataSource.query(
+            `UPDATE "catalog_items" SET "public_code" = $1 WHERE "id" = $2 AND "public_code" IS NULL;`,
+            [code, id],
+          );
+          break;
+        }
+      }
+      if (rows.length > 0) {
+        this.logger.log(
+          `Códigos públicos asignados a ${rows.length} ítem(s) del catálogo.`,
+        );
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Backfill public_code warning: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
@@ -152,6 +186,14 @@ export class AppModule implements NestModule, OnModuleInit {
     );
     await this.runSafeQuery(
       `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "developer" VARCHAR(150) NULL;`,
+    );
+    // Código público fijo para las URLs compartibles (/juego/{slug}-{codigo})
+    await this.runSafeQuery(
+      `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "public_code" VARCHAR(6) NULL;`,
+    );
+    await this.backfillCatalogPublicCodes();
+    await this.runSafeQuery(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "idx_catalog_items_public_code" ON "catalog_items" ("public_code");`,
     );
 
     // 3. Tabla games

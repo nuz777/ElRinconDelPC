@@ -6,7 +6,7 @@ import Catalog from "./pages/Catalog";
 import Tools from "./pages/Tools";
 import Programming from "./pages/Programming";
 import WindowsTools from "./pages/WindowsTools";
-import GameDetail from "./pages/GameDetail";
+import LegacyGameRedirect from "./pages/LegacyGameRedirect";
 import Auth from "./pages/Auth";
 import LoadingScreen from "./components/LoadingScreen";
 import ChatWidget from "./components/ChatWidget";
@@ -113,13 +113,21 @@ function AppInner() {
                 </ProtectedRoute>
               </Route>
 
-              {/* Detalle de juego y subida de mods */}
-              <Route path="/juegos/:id" component={GameDetail} />
-              <Route path="/juegos/:id/subir-mod">
+              {/* Detalle compartible: abre el modal del catálogo (/{tipo}/{slug}-{codigo}) */}
+              <Route path="/juego/:slugCode" component={Catalog} />
+              <Route path="/mod-shader/:slugCode" component={Catalog} />
+              <Route path="/herramienta/:slugCode" component={Catalog} />
+
+              {/* Subida de mods para un juego */}
+              <Route path="/juego/:slugCode/subir-mod">
                 <ProtectedRoute>
                   <UploadModPage />
                 </ProtectedRoute>
               </Route>
+
+              {/* URLs antiguas: redirigen a la URL nueva con el modal abierto */}
+              <Route path="/juegos/:id" component={LegacyGameRedirect} />
+              <Route path="/juegos/:id/subir-mod" component={LegacyGameRedirect} />
 
               {/* Rutas públicas de autenticación - solo para no autenticados */}
               <Route path="/login">

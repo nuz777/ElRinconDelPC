@@ -16,6 +16,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useLocation } from "wouter";
+import { buildItemPath, parseDetailPath } from "../utils/catalogUrl";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import FullscreenDetailModal from "../components/FullscreenDetailModal";
@@ -175,7 +177,7 @@ export default function Catalog() {
     } else if (e.key === "Enter") {
       if (selectedIndex >= 0 && suggestions[selectedIndex]) {
         e.preventDefault();
-        setSelectedItem(suggestions[selectedIndex]);
+        openItem(suggestions[selectedIndex]);
         setIsDropdownOpen(false);
       } else {
         // Enter sin selección activa: aplica el filtro normal en la cuadrícula y cierra sugerencias
@@ -189,7 +191,84 @@ export default function Catalog() {
   const [selectedApartado, setSelectedApartado] = useState<"todos" | Apartado>("todos");
   const [selectedGenre, setSelectedGenre] = useState<string>("todos");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
+  // ── Detalle abierto según la URL: /juego/{slug}-{codigo}, /mod-shader/..., /herramienta/...
+  const [location, navigate] = useLocation();
+  const parsedDetail = parseDetailPath(location);
+  const detailRoute = parsedDetail !== null;
+  const routeCode = parsedDetail?.code ?? null;
+  // Ítem traído por código cuando no está en el listado cargado (enlace directo)
+  const [fetchedItem, setFetchedItem] = useState<CatalogItem | null>(null);
+  // Respaldo para ítems sin código público (no deberían existir tras el backfill)
+  const [localItem, setLocalItem] = useState<CatalogItem | null>(null);
+
+  const itemFromList = routeCode
+    ? items.find((it) => it.publicCode === routeCode) ?? null
+    : null;
+  const selectedItem: CatalogItem | null = detailRoute
+    ? itemFromList ?? (fetchedItem?.publicCode === routeCode ? fetchedItem : null)
+    : localItem;
+
+  // Enlace directo a un ítem que no está en el listado: buscarlo por código
+  useEffect(() => {
+    if (!detailRoute) return;
+    if (!routeCode) {
+      navigate("/catalogo", { replace: true });
+      return;
+    }
+    if (itemFromList || fetchedItem?.publicCode === routeCode) return;
+
+    let cancelled = false;
+    catalogService
+      .getItemByCode(routeCode)
+      .then((found) => {
+        if (cancelled) return;
+        if (found) {
+          setFetchedItem(found);
+        } else {
+          navigate("/catalogo", { replace: true });
+        }
+      })
+      .catch((err) => {
+        console.error("No se pudo cargar el ítem del enlace:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailRoute, routeCode, itemFromList, fetchedItem, navigate]);
+
+  // Normalizar la URL (slug desactualizado o prefijo de otro apartado) a la canónica
+  useEffect(() => {
+    if (!detailRoute || !selectedItem) return;
+    const canonical = buildItemPath(selectedItem);
+    if (canonical && canonical !== location) {
+      navigate(canonical, { replace: true, state: window.history.state });
+    }
+  }, [detailRoute, selectedItem, location, navigate]);
+
+  const openItem = (item: CatalogItem) => {
+    const path = buildItemPath(item);
+    if (path) {
+      navigate(path, { state: { fromCatalog: true } });
+    } else {
+      setLocalItem(item);
+    }
+  };
+
+  const closeItem = () => {
+    if (!detailRoute) {
+      setLocalItem(null);
+      return;
+    }
+    const state = window.history.state as { fromCatalog?: boolean } | null;
+    if (state?.fromCatalog) {
+      // Se abrió desde el catálogo: volver atrás deja el historial limpio
+      window.history.back();
+    } else {
+      // Enlace directo: no hay a dónde volver, ir al catálogo
+      navigate("/catalogo", { replace: true });
+    }
+  };
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<CatalogItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -246,7 +325,7 @@ export default function Catalog() {
       }
       setCustomItems((prev) => prev.filter((it) => it.id !== item.id));
       if (selectedItem?.id === item.id) {
-        setSelectedItem(null);
+        closeItem();
       }
       setItemToDelete(null);
     } catch (err) {
@@ -315,7 +394,7 @@ export default function Catalog() {
   const renderCard = (item: CatalogItem) => (
     <div
       key={item.id}
-      onClick={() => setSelectedItem(item)}
+      onClick={() => openItem(item)}
       className={`group flex flex-col rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-colors cursor-pointer ${
         isLight
           ? "bg-white border-zinc-200 hover:border-zinc-400 text-zinc-900"
@@ -324,7 +403,7 @@ export default function Catalog() {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") setSelectedItem(item);
+        if (e.key === "Enter" || e.key === " ") openItem(item);
       }}
     >
       {/* Card Image Thumbnail (Portada Vertical 3:4) */}
@@ -676,7 +755,7 @@ export default function Catalog() {
                                 role="option"
                                 aria-selected={isSelected}
                                 onClick={() => {
-                                  setSelectedItem(item);
+                                  openItem(item);
                                   setIsDropdownOpen(false);
                                 }}
                                 onMouseEnter={() => setSelectedIndex(idx)}
@@ -1208,7 +1287,7 @@ export default function Catalog() {
       {/* Fullscreen Info & Download Modal (Takes whole screen with animation) */}
       <FullscreenDetailModal
         item={selectedItem}
-        onClose={() => setSelectedItem(null)}
+        onClose={closeItem}
         isAdmin={isAdmin}
         onDelete={(item) => setItemToDelete(item)}
       />

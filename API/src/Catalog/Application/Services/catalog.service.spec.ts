@@ -28,11 +28,34 @@ describe('CatalogService (Unit)', () => {
     repository = {
       findAll: vi.fn(),
       findById: vi.fn(),
+      findByPublicCode: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     };
     service = new CatalogService(repository);
+  });
+
+  it('getItemByPublicCode normaliza el código y lo busca en el repositorio', async () => {
+    const item = buildItem();
+    vi.mocked(repository.findByPublicCode).mockResolvedValue(item);
+
+    await expect(service.getItemByPublicCode(' A3F9K2 ')).resolves.toBe(item);
+    expect(repository.findByPublicCode).toHaveBeenCalledWith('a3f9k2');
+  });
+
+  it('getItemByPublicCode lanza NotFoundException si el código no existe', async () => {
+    vi.mocked(repository.findByPublicCode).mockResolvedValue(null);
+    await expect(service.getItemByPublicCode('zzzzzz')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('getItemByPublicCode rechaza códigos con formato inválido sin consultar la BD', async () => {
+    await expect(service.getItemByPublicCode('no-valido')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(repository.findByPublicCode).not.toHaveBeenCalled();
   });
 
   it('getCatalog delega en el repositorio con los filtros y la paginación', async () => {

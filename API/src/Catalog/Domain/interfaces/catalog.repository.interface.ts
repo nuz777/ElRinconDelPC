@@ -26,11 +26,13 @@ export type CreateCatalogItemData = Omit<
   'id' | 'createdAt' | 'updatedAt'
 > & { id?: string };
 
-export type UpdateCatalogItemData = Partial<CreateCatalogItemData>;
+/** El código público es fijo: se genera al crear y nunca se modifica. */
+export type UpdateCatalogItemData = Partial<Omit<CreateCatalogItemData, 'publicCode'>>;
 
 export interface CatalogRepository {
   findAll(filters: CatalogFilters): Promise<PaginatedResult<CatalogItem>>;
   findById(id: string): Promise<CatalogItem | null>;
+  findByPublicCode(code: string): Promise<CatalogItem | null>;
   create(item: CreateCatalogItemData): Promise<CatalogItem>;
   update(id: string, item: UpdateCatalogItemData): Promise<CatalogItem | null>;
   delete(id: string): Promise<boolean>;

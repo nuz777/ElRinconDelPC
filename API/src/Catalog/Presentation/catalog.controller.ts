@@ -51,6 +51,20 @@ export class CatalogController {
     return this.catalogService.getCatalog(filters);
   }
 
+  @Get('code/:code')
+  @ApiOperation({
+    summary: 'Obtener un ítem por su código público (URL compartible)',
+  })
+  @ApiParam({
+    name: 'code',
+    description: 'Código público de 6 caracteres (ej. a3f9k2)',
+  })
+  @ApiResponse({ status: HttpStatus.OK, type: CatalogItemResponseDto })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Ítem no encontrado' })
+  findByCode(@Param('code') code: string): Promise<CatalogItem> {
+    return this.catalogService.getItemByPublicCode(code);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener el detalle de un ítem del catálogo' })
   @ApiParam(ID_PARAM)

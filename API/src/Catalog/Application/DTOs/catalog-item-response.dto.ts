@@ -47,6 +47,14 @@ export class CatalogItemResponseDto {
     gpu: string;
   } | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    example: 'a3f9k2',
+    description: 'Código público fijo usado en la URL compartible',
+  })
+  publicCode!: string | null;
+
   @ApiProperty()
   createdAt!: Date;
 
