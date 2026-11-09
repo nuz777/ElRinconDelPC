@@ -170,7 +170,7 @@ export default function FullscreenDetailModal({
               <img
                 src={item.img}
                 alt={item.title}
-                className="w-full h-full object-cover object-center grayscale contrast-125 filter brightness-75 scale-105"
+                className="w-full h-full object-cover object-center scale-105"
                 onError={(e) => {
                   const target = e.currentTarget;
                   if (!target.src.endsWith("/img/SN-tools.jpg")) {
