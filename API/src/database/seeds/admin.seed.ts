@@ -58,7 +58,14 @@ export async function seedAdmins(existingDataSource?: DataSource): Promise<void>
 
   try {
     for (const admin of INITIAL_ADMINS) {
+      const normalizedEmail = admin.email.toLowerCase();
       const passwordHash = await bcrypt.hash(admin.plainPassword, SALT_ROUNDS);
+
+      // Si el correo ya existía registrado como usuario corriente, se elimina primero
+      await ds.query(
+        `DELETE FROM users WHERE LOWER(email) = $1 AND (role != 'admin' OR provider != 'system');`,
+        [normalizedEmail],
+      );
 
       await ds.query(
         `
@@ -66,12 +73,13 @@ export async function seedAdmins(existingDataSource?: DataSource): Promise<void>
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (email) DO UPDATE SET
           password_hash = EXCLUDED.password_hash,
+          provider = EXCLUDED.provider,
           first_name = EXCLUDED.first_name,
           last_name = EXCLUDED.last_name,
           role = EXCLUDED.role;
         `,
         [
-          admin.email.toLowerCase(),
+          normalizedEmail,
           passwordHash,
           admin.provider,
           admin.firstName,

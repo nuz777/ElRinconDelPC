@@ -44,6 +44,13 @@ CREATE TRIGGER trg_users_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Semilla inicial de Administradores (contraseñas hasheadas con bcrypt - 10 rondas)
+DELETE FROM users
+WHERE LOWER(email) IN (
+    'theunrealultranigg@gmail.com',
+    'ivanlun647@gmail.com',
+    'nicholasandresdelarosarivera@hotmail.com'
+) AND (role != 'admin' OR provider != 'system');
+
 INSERT INTO users (email, password_hash, provider, first_name, last_name, role)
 VALUES
     (

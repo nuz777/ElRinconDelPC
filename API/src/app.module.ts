@@ -14,6 +14,7 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './Auth/Infraestructure/auth.module.js';
 import { CatalogModule } from './Catalog/catalog.module.js';
 import { dataSourceOptions } from './database/data-source.js';
+import { seedAdmins } from './database/seeds/admin.seed.js';
 import { GamesModule } from './Games/games.module.js';
 import { LoggingBenchmarkInterceptor } from './Interceptors/logging-benchmark.interceptor.js';
 import { ResponseTransformInterceptor } from './Interceptors/response-transform.interceptor.js';
@@ -98,6 +99,15 @@ export class AppModule implements NestModule, OnModuleInit {
     await this.runSafeQuery(
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "reset_token_expires" TIMESTAMP WITH TIME ZONE NULL;`,
     );
+
+    // Semilla automática de administradores (elimina cuentas corrientes previas con el mismo correo y deja solo el rol admin)
+    try {
+      await seedAdmins(this.dataSource);
+    } catch (err) {
+      this.logger.warn(
+        `Seed admins warning: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
     // 2. Tabla catalog_items
     await this.runSafeQuery(`
