@@ -76,20 +76,24 @@ export class ModsService {
     const created = await this.modsRepository.create(data);
 
     if (this.catalogRepository) {
-      await this.catalogRepository.create({
-        id: created.id,
-        section: CatalogSection.MODS,
-        title: created.title,
-        genre: 'Mods & Shaders',
-        size: created.fileSize,
-        version: created.version,
-        badge: 'Mod',
-        coverUrl: created.thumbnailUrl,
-        downloadUrl: created.downloadUrl,
-        developer: 'Comunidad El Sótano',
-        shortDescription: created.description,
-        minimumRequirements: created.minimumRequirements,
-      });
+      try {
+        await this.catalogRepository.create({
+          id: created.id,
+          section: CatalogSection.MODS,
+          title: created.title,
+          genre: 'Mods & Shaders',
+          size: created.fileSize,
+          version: created.version,
+          badge: 'Mod',
+          coverUrl: created.thumbnailUrl,
+          downloadUrl: created.downloadUrl,
+          developer: 'Comunidad El Sótano',
+          shortDescription: created.description,
+          minimumRequirements: created.minimumRequirements,
+        });
+      } catch {
+        // Ignorar si ya existe en catalog_items
+      }
     }
 
     return created;

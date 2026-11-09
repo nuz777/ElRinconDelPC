@@ -64,20 +64,24 @@ export class ToolsService {
     const created = await this.toolsRepository.create(data);
 
     if (this.catalogRepository) {
-      await this.catalogRepository.create({
-        id: created.id,
-        section: CatalogSection.HERRAMIENTAS,
-        title: created.title,
-        genre: created.category || 'Utilidades',
-        size: created.size,
-        version: created.version,
-        badge: created.tags[0] ?? 'Herramienta',
-        coverUrl: created.imageUrl,
-        downloadUrl: created.downloadUrl,
-        developer: 'Comunidad El Sótano',
-        shortDescription: created.description,
-        minimumRequirements: null,
-      });
+      try {
+        await this.catalogRepository.create({
+          id: created.id,
+          section: CatalogSection.HERRAMIENTAS,
+          title: created.title,
+          genre: created.category || 'Utilidades',
+          size: created.size,
+          version: created.version,
+          badge: created.tags[0] ?? 'Herramienta',
+          coverUrl: created.imageUrl,
+          downloadUrl: created.downloadUrl,
+          developer: 'Comunidad El Sótano',
+          shortDescription: created.description,
+          minimumRequirements: null,
+        });
+      } catch {
+        // Ignorar si ya existe en catalog_items
+      }
     }
 
     return created;

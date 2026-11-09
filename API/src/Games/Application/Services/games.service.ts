@@ -73,20 +73,24 @@ export class GamesService {
     const created = await this.gamesRepository.create(data);
 
     if (this.catalogRepository) {
-      await this.catalogRepository.create({
-        id: created.id,
-        section: CatalogSection.JUEGOS,
-        title: created.title,
-        genre: created.genres[0] ?? 'Acción / Aventura',
-        size: created.minimumRequirements?.storage || null,
-        version: 'v1.0',
-        badge: 'Nuevo',
-        coverUrl: created.coverImage,
-        downloadUrl: null,
-        developer: created.developer,
-        shortDescription: created.description,
-        minimumRequirements: created.minimumRequirements,
-      });
+      try {
+        await this.catalogRepository.create({
+          id: created.id,
+          section: CatalogSection.JUEGOS,
+          title: created.title,
+          genre: created.genres[0] ?? 'Acción / Aventura',
+          size: created.minimumRequirements?.storage || null,
+          version: 'v1.0',
+          badge: 'Nuevo',
+          coverUrl: created.coverImage,
+          downloadUrl: null,
+          developer: created.developer,
+          shortDescription: created.description,
+          minimumRequirements: created.minimumRequirements,
+        });
+      } catch {
+        // Ignorar si ya existe en catalog_items
+      }
     }
 
     return created;

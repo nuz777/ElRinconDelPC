@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
@@ -30,6 +31,8 @@ import {
 
 @Injectable()
 export class CatalogService {
+  private readonly logger = new Logger(CatalogService.name);
+
   constructor(
     @Inject(CATALOG_REPOSITORY)
     private readonly catalogRepository: CatalogRepository,
@@ -65,7 +68,13 @@ export class CatalogService {
     authorId?: string,
   ): Promise<CatalogItem> {
     const saved = await this.catalogRepository.create(this.normalize(data));
-    await this.syncCreateToSpecificTable(saved, authorId);
+    try {
+      await this.syncCreateToSpecificTable(saved, authorId);
+    } catch (err) {
+      this.logger.warn(
+        `Error sincronizando ítem "${saved.id}" con su tabla específica: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     return saved;
   }
 
@@ -82,7 +91,13 @@ export class CatalogService {
 
   async deleteItem(id: string): Promise<{ message: string; id: string }> {
     const deleted = await this.catalogRepository.delete(id);
-    await this.syncDeleteFromSpecificTables(id);
+    try {
+      await this.syncDeleteFromSpecificTables(id);
+    } catch (err) {
+      this.logger.warn(
+        `Error sincronizando borrado del ítem "${id}": ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     if (!deleted) {
       throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
     }
