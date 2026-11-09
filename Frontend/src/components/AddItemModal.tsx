@@ -16,7 +16,7 @@ import { authService } from "../services/auth.service";
 interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddItem: (item: CatalogItem) => void;
+  onAddItem: (item: CatalogItem) => Promise<void>;
 }
 
 const GENRE_SUGGESTIONS: Record<Apartado, string[]> = {
@@ -123,6 +123,8 @@ export default function AddItemModal({
   const [deviceFileSize, setDeviceFileSize] = useState("");
   const [urlImage, setUrlImage] = useState("");
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,6 +149,7 @@ export default function AddItemModal({
     setMinRam("");
     setMinStorage("");
     setMinGpu("");
+    setSubmitError(null);
   };
 
   const handleApartadoChange = (newAp: Apartado) => {
@@ -209,9 +212,9 @@ export default function AddItemModal({
     onClose();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authService.isAdmin()) return;
+    if (!authService.isAdmin() || isSubmitting) return;
     if (!title.trim() || !shortDesc.trim()) return;
 
     let finalImg = "/img/indicado.webp";
@@ -226,7 +229,7 @@ export default function AddItemModal({
     }
 
     const newItem: CatalogItem = {
-      id: `custom-${Date.now()}`,
+      id: "",
       title: title.trim(),
       apartado,
       genre: genre.trim(),
@@ -266,9 +269,21 @@ export default function AddItemModal({
       ],
     };
 
-    onAddItem(newItem);
-    resetForm();
-    onClose();
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      await onAddItem(newItem);
+      resetForm();
+      onClose();
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "No se pudo guardar el ítem en la base de datos PostgreSQL.";
+      setSubmitError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -878,6 +893,12 @@ export default function AddItemModal({
               </div>
             </div>
 
+            {submitError && (
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:text-sm font-medium">
+                Error al guardar en la Base de Datos: {submitError}
+              </div>
+            )}
+
             {/* Submit & Cancel */}
             <div
               className={`pt-4 border-t flex items-center justify-end gap-3 ${
@@ -886,8 +907,9 @@ export default function AddItemModal({
             >
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={handleClose}
-                className={`px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer ${
+                className={`px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer disabled:opacity-50 ${
                   isLight
                     ? "text-zinc-600 hover:text-black hover:bg-zinc-100"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800"
@@ -897,14 +919,24 @@ export default function AddItemModal({
               </button>
               <button
                 type="submit"
-                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md cursor-pointer flex items-center gap-2 ${
+                disabled={isSubmitting || isProcessingImage}
+                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md cursor-pointer flex items-center gap-2 disabled:opacity-50 ${
                   isLight
                     ? "bg-zinc-900 text-white hover:bg-black"
                     : "bg-white text-zinc-950 hover:bg-zinc-200"
                 }`}
               >
-                <Plus className="size-4" />
-                Guardar en el Catálogo
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="size-4 animate-spin" />
+                    Guardando en Base de Datos...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="size-4" />
+                    Guardar en el Catálogo
+                  </>
+                )}
               </button>
             </div>
           </form>

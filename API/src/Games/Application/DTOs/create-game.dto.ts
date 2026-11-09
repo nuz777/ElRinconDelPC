@@ -7,12 +7,16 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
+  Matches,
   MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+/** Acepta URLs http(s), rutas relativas (/catalogo/..., /img/...) o data URLs de imagen. */
+const IMAGE_URL_PATTERN =
+  /^(https?:\/\/\S+|\/\S*|data:image\/[a-z0-9.+-]+;base64,\S+)$/i;
 
 export class MinimumRequirementsDto {
   @ApiProperty({ example: 'Windows 10 64-bit', description: 'Sistema operativo mínimo' })
@@ -65,10 +69,11 @@ export class CreateGameDto {
   @IsNotEmpty({ message: 'La descripción es obligatoria' })
   description!: string;
 
-  @ApiProperty({ example: 0, description: 'Precio del juego en moneda local' })
+  @ApiPropertyOptional({ example: 0, default: 0, description: 'Precio del juego en moneda local' })
+  @IsOptional()
   @IsNumber()
   @Min(0, { message: 'El precio no puede ser negativo' })
-  price!: number;
+  price?: number;
 
   @ApiPropertyOptional({ example: 0, description: 'Precio con descuento (opcional)' })
   @IsOptional()
@@ -92,20 +97,24 @@ export class CreateGameDto {
 
   @ApiProperty({
     example: 'https://ejemplo.com/portada.jpg',
-    description: 'URL de la imagen de portada',
+    description: 'URL http(s), ruta relativa o imagen en base64 de la portada',
   })
   @IsString()
   @IsNotEmpty({ message: 'La imagen de portada es obligatoria' })
-  @IsUrl({}, { message: 'La portada debe ser una URL válida' })
+  @Matches(IMAGE_URL_PATTERN, {
+    message: 'La portada debe ser una URL válida, una ruta relativa o una imagen en base64',
+  })
   coverImage!: string;
 
   @ApiPropertyOptional({
     example: 'https://ejemplo.com/banner.jpg',
-    description: 'URL del banner promocional',
+    description: 'URL http(s), ruta relativa o imagen en base64 del banner promocional',
   })
   @IsOptional()
   @IsString()
-  @IsUrl({}, { message: 'El banner debe ser una URL válida' })
+  @Matches(IMAGE_URL_PATTERN, {
+    message: 'El banner debe ser una URL válida, una ruta relativa o una imagen en base64',
+  })
   bannerImage?: string;
 
   @ApiProperty({ example: 'Team Cherry', description: 'Desarrollador del juego' })
