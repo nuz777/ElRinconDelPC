@@ -29,7 +29,8 @@ import type { Mod } from '../../Mods/Domain/Entities/mod.entity.js';
 import { CreateGameDto } from '../Application/DTOs/create-game.dto.js';
 import { FilterGamesDto } from '../Application/DTOs/filter-games.dto.js';
 import { UpdateGameDto } from '../Application/DTOs/update-game.dto.js';
-import type { FilterModsDto } from '../../Mods/Application/DTOs/filter-mods.dto.js';
+// Import de valor (no `import type`): ValidationPipe necesita la clase en runtime para validar el query
+import { FilterModsDto } from '../../Mods/Application/DTOs/filter-mods.dto.js';
 
 @ApiTags('Games')
 @Controller('games')

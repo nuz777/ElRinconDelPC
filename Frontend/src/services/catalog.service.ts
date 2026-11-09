@@ -40,6 +40,7 @@ export interface CatalogItemApiResponse {
   developer: string | null;
   shortDescription: string;
   minimumRequirements: CatalogMinimumRequirementsPayload | null;
+  publicCode?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +104,7 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
 
   return {
     id: api.id,
+    publicCode: api.publicCode ?? null,
     title: api.title,
     apartado,
     genre: api.genre,
@@ -144,6 +146,17 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
   };
 }
 
+async function fetchSingleItem(url: string): Promise<CatalogItem | null> {
+  const res = await fetch(url);
+  if (res.status === 404 || res.status === 400) return null;
+  if (!res.ok) {
+    throw new Error("No se pudo obtener el ítem del catálogo.");
+  }
+  const rawJson: unknown = await res.json().catch(() => null);
+  const data = unwrapApiData<CatalogItemApiResponse>(rawJson);
+  return data ? mapApiItemToCatalogItem(data) : null;
+}
+
 export const catalogService = {
   async getItems(filters: CatalogFilterParams = {}): Promise<CatalogItem[]> {
     const params = new URLSearchParams();
@@ -162,6 +175,16 @@ export const catalogService = {
     const data = unwrapApiData<PaginatedCatalogResponse>(rawJson);
     const items = data?.items ?? [];
     return items.map(mapApiItemToCatalogItem);
+  },
+
+  /** Detalle por código público (el de la URL compartible). Devuelve null si no existe. */
+  async getItemByCode(code: string): Promise<CatalogItem | null> {
+    return fetchSingleItem(`${API_BASE_URL}/catalog/code/${encodeURIComponent(code)}`);
+  },
+
+  /** Detalle por UUID (usado para redirigir las URLs antiguas /juegos/:id). */
+  async getItemById(id: string): Promise<CatalogItem | null> {
+    return fetchSingleItem(`${API_BASE_URL}/catalog/${encodeURIComponent(id)}`);
   },
 
   async createItem(payload: CreateCatalogItemPayload): Promise<CatalogItem> {

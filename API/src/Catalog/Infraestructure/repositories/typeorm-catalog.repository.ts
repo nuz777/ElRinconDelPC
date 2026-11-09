@@ -10,6 +10,9 @@ import type {
   UpdateCatalogItemData,
 } from '../../Domain/interfaces/catalog.repository.interface.js';
 import { CatalogItemTypeormEntity } from '../entities/catalog-item.typeorm-entity.js';
+import { generatePublicCode } from '../../../Common/utils/public-code.js';
+
+const MAX_PUBLIC_CODE_ATTEMPTS = 10;
 
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
 function escapeLike(value: string): string {
@@ -38,6 +41,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       developer: row.developer,
       shortDescription: row.shortDescription,
       minimumRequirements: row.minimumRequirements ?? null,
+      publicCode: row.publicCode,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -84,8 +88,25 @@ export class TypeormCatalogRepository implements CatalogRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByPublicCode(code: string): Promise<CatalogItem | null> {
+    const row = await this.repository.findOne({ where: { publicCode: code } });
+    return row ? this.toDomain(row) : null;
+  }
+
+  /** Genera un código público que no esté en uso (36^6 ≈ 2.176 millones de combinaciones). */
+  private async generateUniquePublicCode(): Promise<string> {
+    for (let attempt = 0; attempt < MAX_PUBLIC_CODE_ATTEMPTS; attempt++) {
+      const code = generatePublicCode();
+      const taken = await this.repository.exists({ where: { publicCode: code } });
+      if (!taken) return code;
+    }
+    throw new Error('No se pudo generar un código público único para el ítem.');
+  }
+
   async create(item: CreateCatalogItemData): Promise<CatalogItem> {
+    const publicCode = item.publicCode ?? (await this.generateUniquePublicCode());
     const entity = this.repository.create({
+      publicCode,
       ...(item.id ? { id: item.id } : {}),
       section: item.section,
       title: item.title,
@@ -111,7 +132,11 @@ export class TypeormCatalogRepository implements CatalogRepository {
     const existing = await this.repository.findOne({ where: { id } });
     if (!existing) return null;
 
-    const merged = this.repository.merge(existing, item);
+    // El código público es fijo: nunca se sobrescribe en una actualización.
+    const { publicCode: _ignored, ...changes } = item as UpdateCatalogItemData & {
+      publicCode?: unknown;
+    };
+    const merged = this.repository.merge(existing, changes);
     const saved = await this.repository.save(merged);
     return this.toDomain(saved);
   }

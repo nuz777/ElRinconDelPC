@@ -1,15 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { useTheme } from "../../ThemeContext";
 import { modsService } from "../../services/mods.service";
+import { catalogService } from "../../services/catalog.service";
+import { buildItemPath, extractPublicCode } from "../../utils/catalogUrl";
 
 export default function UploadModPage() {
   const { theme } = useTheme();
   const isLight = theme === "light";
   const [, setNavLocation] = useLocation();
-  const [, params] = useRoute("/juegos/:id/subir-mod");
-  const gameId = params?.id ?? "";
+  const [, params] = useRoute("/juego/:slugCode/subir-mod");
+  const slugCode = params?.slugCode ?? "";
+  const gamePath = `/juego/${slugCode}`;
+
+  const [error, setError] = useState<string | null>(null);
+
+  // El UUID del juego se resuelve a partir del código público de la URL
+  const [game, setGame] = useState<{ code: string; id: string; title: string } | null>(null);
+  const routeCode = extractPublicCode(slugCode);
+  const gameId = game && game.code === routeCode ? game.id : "";
+  const gameTitle = game && game.code === routeCode ? game.title : "";
+  const gameLoading = !gameId;
+
+  useEffect(() => {
+    if (!routeCode) {
+      setNavLocation("/catalogo", { replace: true });
+      return;
+    }
+    let cancelled = false;
+    catalogService
+      .getItemByCode(routeCode)
+      .then((item) => {
+        if (cancelled) return;
+        if (!item || item.apartado !== "juegos") {
+          setNavLocation("/catalogo", { replace: true });
+          return;
+        }
+        setGame({ code: routeCode, id: item.id, title: item.title });
+        // Normalizar la URL si el slug está desactualizado
+        const canonical = buildItemPath(item);
+        if (canonical && canonical !== gamePath) {
+          setNavLocation(`${canonical}/subir-mod`, { replace: true });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError("No se pudo cargar el juego. Intenta de nuevo más tarde.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [routeCode, gamePath, setNavLocation]);
 
   const [form, setForm] = useState({
     title: "",
@@ -28,7 +69,6 @@ export default function UploadModPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleChange =
@@ -47,6 +87,10 @@ export default function UploadModPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!gameId) {
+      setError("No se pudo identificar el juego al que pertenece el mod.");
+      return;
+    }
     setError(null);
     setSuccess(null);
     setLoading(true);
@@ -57,7 +101,7 @@ export default function UploadModPage() {
         description: form.description.trim(),
         version: form.version.trim(),
         downloadUrl: form.downloadUrl.trim(),
-        gameId: gameId || "",
+        gameId,
         thumbnailUrl: form.thumbnailUrl.trim() || undefined,
         fileSize: form.fileSize.trim() || undefined,
         minimumRequirements: {
@@ -93,7 +137,7 @@ export default function UploadModPage() {
     }
   };
 
-  const handleBack = () => setNavLocation(`/juegos/${gameId}`);
+  const handleBack = () => setNavLocation(gamePath);
 
   return (
     <div
@@ -113,8 +157,13 @@ export default function UploadModPage() {
           >
             <ArrowLeft size={18} /> <span>Volver al Juego</span>
           </button>
-          <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider">
+          <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-center">
             Subir Nuevo Mod
+            {gameTitle && (
+              <span className="block text-xs font-semibold tracking-widest text-zinc-500">
+                {gameTitle}
+              </span>
+            )}
           </h1>
           <div className="w-8" />
         </div>
@@ -428,7 +477,7 @@ export default function UploadModPage() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || gameLoading || !gameId}
               className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md cursor-pointer flex items-center gap-2 disabled:opacity-50 ${
                 isLight
                   ? "bg-zinc-900 text-white hover:bg-black disabled:bg-zinc-400"

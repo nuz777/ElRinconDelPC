@@ -24,6 +24,8 @@ export interface CatalogItemProps {
   developer?: string | null;
   shortDescription: string;
   minimumRequirements?: CatalogMinimumRequirements | null;
+  /** Código público fijo de 6 caracteres usado en la URL compartible. */
+  publicCode?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -46,6 +48,7 @@ export class CatalogItem {
   public developer: string | null;
   public shortDescription: string;
   public minimumRequirements: CatalogMinimumRequirements | null;
+  public readonly publicCode: string | null;
   public readonly createdAt: Date;
   public updatedAt: Date;
 
@@ -63,6 +66,7 @@ export class CatalogItem {
     this.developer = props.developer ?? null;
     this.shortDescription = props.shortDescription;
     this.minimumRequirements = props.minimumRequirements ?? null;
+    this.publicCode = props.publicCode ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }

@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { isValidPublicCode } from '../../../Common/utils/public-code.js';
 import { slugify } from '../../../Common/utils/slugify.js';
 import {
   GAMES_REPOSITORY,
@@ -59,6 +60,18 @@ export class CatalogService {
     const item = await this.catalogRepository.findById(id);
     if (!item) {
       throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
+    }
+    return item;
+  }
+
+  /** Busca un ítem por su código público fijo (el que va al final de la URL compartible). */
+  async getItemByPublicCode(code: string): Promise<CatalogItem> {
+    const normalized = code.trim().toLowerCase();
+    const item = isValidPublicCode(normalized)
+      ? await this.catalogRepository.findByPublicCode(normalized)
+      : null;
+    if (!item) {
+      throw new NotFoundException(`Ítem del catálogo con código "${code}" no encontrado`);
     }
     return item;
   }
