@@ -37,6 +37,14 @@ const INITIAL_ADMINS: AdminSeedData[] = [
     provider: 'system',
     role: 'admin',
   },
+  {
+    firstName: 'nicholas-delarosa',
+    lastName: null,
+    email: 'nicholasandresdelarosarivera@hotmail.com',
+    plainPassword: 'MY_DELTARUNE',
+    provider: 'system',
+    role: 'admin',
+  },
 ];
 
 export async function seedAdmins(existingDataSource?: DataSource): Promise<void> {
@@ -56,7 +64,11 @@ export async function seedAdmins(existingDataSource?: DataSource): Promise<void>
         `
         INSERT INTO users (email, password_hash, provider, first_name, last_name, role)
         VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (email) DO NOTHING;
+        ON CONFLICT (email) DO UPDATE SET
+          password_hash = EXCLUDED.password_hash,
+          first_name = EXCLUDED.first_name,
+          last_name = EXCLUDED.last_name,
+          role = EXCLUDED.role;
         `,
         [
           admin.email.toLowerCase(),
