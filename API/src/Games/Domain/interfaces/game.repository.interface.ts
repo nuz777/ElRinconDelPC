@@ -20,7 +20,9 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
-export type CreateGameData = Omit<GameProps, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateGameData = Omit<GameProps, 'id' | 'createdAt' | 'updatedAt'> & {
+  id?: string;
+};
 
 export type UpdateGameData = Partial<CreateGameData>;
 
@@ -32,6 +34,8 @@ export interface GameRepository {
   update(id: string, data: UpdateGameData): Promise<Game | null>;
   /** Borrado lógico: marca `isActive = false` en lugar de eliminar la fila. */
   delete(id: string): Promise<boolean>;
+  /** Borrado físico por ID para sincronización con el catálogo. */
+  hardDelete?(id: string): Promise<boolean>;
 }
 
 /** Token de inyección para vincular la interfaz con su implementación concreta. */

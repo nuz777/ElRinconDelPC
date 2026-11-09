@@ -1,6 +1,9 @@
 /* oxlint-disable typescript/unbound-method */
 import { NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GameRepository } from '../../../Games/Domain/interfaces/game.repository.interface.js';
+import type { ModRepository } from '../../../Mods/Domain/interfaces/mod.repository.interface.js';
+import type { ToolRepository } from '../../../Tools/Domain/interfaces/tool.repository.interface.js';
 import { CatalogItem } from '../../Domain/Entities/catalog-item.entity.js';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 import type { CatalogRepository } from '../../Domain/interfaces/catalog.repository.interface.js';
@@ -126,5 +129,68 @@ describe('CatalogService (Unit)', () => {
   it('deleteItem lanza NotFoundException si no existe', async () => {
     vi.mocked(repository.delete).mockResolvedValue(false);
     await expect(service.deleteItem(ID)).rejects.toThrow(NotFoundException);
+  });
+
+  it('sincroniza con games, mods y tools usando el mismo UUID al crear y eliminar', async () => {
+    const gamesRepo: GameRepository = {
+      create: vi.fn(),
+      findById: vi.fn(),
+      findBySlug: vi.fn().mockResolvedValue(null),
+      findAll: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      hardDelete: vi.fn().mockResolvedValue(true),
+    };
+    const modsRepo: ModRepository = {
+      create: vi.fn(),
+      findById: vi.fn(),
+      findBySlug: vi.fn().mockResolvedValue(null),
+      gameExists: vi.fn(),
+      findByGameId: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      hardDelete: vi.fn().mockResolvedValue(true),
+      incrementDownloads: vi.fn(),
+      approve: vi.fn(),
+      getModDetails: vi.fn(),
+    };
+    const toolsRepo: ToolRepository = {
+      create: vi.fn(),
+      findById: vi.fn(),
+      findBySlug: vi.fn(),
+      findAll: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      hardDelete: vi.fn().mockResolvedValue(true),
+      incrementDownloads: vi.fn(),
+      slugExists: vi.fn().mockResolvedValue(false),
+    };
+
+    const syncedService = new CatalogService(
+      repository,
+      gamesRepo,
+      modsRepo,
+      toolsRepo,
+    );
+
+    vi.mocked(repository.create).mockResolvedValue(buildItem());
+    await syncedService.createItem(
+      {
+        section: CatalogSection.JUEGOS,
+        title: 'Elden Ring',
+        genre: 'Aventura / RPG',
+        shortDescription: 'RPG de acción en mundo abierto.',
+      },
+      'author-1',
+    );
+    expect(gamesRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ id: ID, title: 'Elden Ring', slug: 'elden-ring' }),
+    );
+
+    vi.mocked(repository.delete).mockResolvedValue(true);
+    await syncedService.deleteItem(ID);
+    expect(gamesRepo.hardDelete).toHaveBeenCalledWith(ID);
+    expect(modsRepo.hardDelete).toHaveBeenCalledWith(ID);
+    expect(toolsRepo.hardDelete).toHaveBeenCalledWith(ID);
   });
 });

@@ -1,5 +1,24 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
+import { slugify } from '../../../Common/utils/slugify.js';
+import {
+  GAMES_REPOSITORY,
+  type GameRepository,
+} from '../../../Games/Domain/interfaces/game.repository.interface.js';
+import {
+  MODS_REPOSITORY,
+  type ModRepository,
+} from '../../../Mods/Domain/interfaces/mod.repository.interface.js';
+import {
+  TOOLS_REPOSITORY,
+  type ToolRepository,
+} from '../../../Tools/Domain/interfaces/tool.repository.interface.js';
 import type { CatalogItem } from '../../Domain/Entities/catalog-item.entity.js';
+import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 import {
   CATALOG_REPOSITORY,
   type CatalogFilters,
@@ -14,6 +33,15 @@ export class CatalogService {
   constructor(
     @Inject(CATALOG_REPOSITORY)
     private readonly catalogRepository: CatalogRepository,
+    @Optional()
+    @Inject(GAMES_REPOSITORY)
+    private readonly gamesRepository?: GameRepository,
+    @Optional()
+    @Inject(MODS_REPOSITORY)
+    private readonly modsRepository?: ModRepository,
+    @Optional()
+    @Inject(TOOLS_REPOSITORY)
+    private readonly toolsRepository?: ToolRepository,
   ) {}
 
   getCatalog(filters: CatalogFilters): Promise<PaginatedResult<CatalogItem>> {
@@ -32,8 +60,13 @@ export class CatalogService {
     return item;
   }
 
-  createItem(data: CreateCatalogItemData): Promise<CatalogItem> {
-    return this.catalogRepository.create(this.normalize(data));
+  async createItem(
+    data: CreateCatalogItemData,
+    authorId?: string,
+  ): Promise<CatalogItem> {
+    const saved = await this.catalogRepository.create(this.normalize(data));
+    await this.syncCreateToSpecificTable(saved, authorId);
+    return saved;
   }
 
   async updateItem(
@@ -49,10 +82,131 @@ export class CatalogService {
 
   async deleteItem(id: string): Promise<{ message: string; id: string }> {
     const deleted = await this.catalogRepository.delete(id);
+    await this.syncDeleteFromSpecificTables(id);
     if (!deleted) {
       throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
     }
     return { message: 'Ítem eliminado correctamente', id };
+  }
+
+  /** Sincroniza el ítem recién creado en catalog_items hacia su tabla específica (games, mods o tools) con el mismo UUID. */
+  private async syncCreateToSpecificTable(
+    saved: CatalogItem,
+    authorId?: string,
+  ): Promise<void> {
+    const baseSlug = slugify(saved.title) || `item-${saved.id.slice(0, 8)}`;
+
+    if (saved.section === CatalogSection.JUEGOS && this.gamesRepository) {
+      let slug = baseSlug;
+      const existingSlug = await this.gamesRepository.findBySlug(slug);
+      if (existingSlug && existingSlug.id !== saved.id) {
+        slug = `${baseSlug}-${saved.id.slice(0, 6)}`;
+      }
+
+      await this.gamesRepository.create({
+        id: saved.id,
+        title: saved.title,
+        slug,
+        description: saved.shortDescription,
+        price: 0,
+        discountPrice: null,
+        stock: 100,
+        genres: [saved.genre],
+        coverImage: saved.coverUrl ?? '/img/indicado.webp',
+        bannerImage: null,
+        developer: saved.developer ?? 'Comunidad El Sótano',
+        publisher: saved.developer ?? 'Comunidad El Sótano',
+        releaseDate: saved.createdAt,
+        isActive: true,
+        minimumRequirements: saved.minimumRequirements ?? {
+          os: 'Windows 10 / 11 64-bit',
+          cpu: 'Procesador de 2 o 4 núcleos',
+          ram: '4 GB RAM',
+          storage: saved.size ?? '2 GB libres',
+          gpu: 'GPU compatible con DirectX 11',
+        },
+      });
+      return;
+    }
+
+    if (
+      saved.section === CatalogSection.MODS &&
+      this.modsRepository &&
+      authorId
+    ) {
+      let slug = baseSlug;
+      const existingSlug = await this.modsRepository.findBySlug(slug, null);
+      if (existingSlug && existingSlug.id !== saved.id) {
+        slug = `${baseSlug}-${saved.id.slice(0, 6)}`;
+      }
+
+      await this.modsRepository.create({
+        id: saved.id,
+        title: saved.title,
+        slug,
+        description: saved.shortDescription,
+        version: saved.version || 'v1.0',
+        downloadUrl: saved.downloadUrl ?? '#',
+        fileSize: saved.size,
+        thumbnailUrl: saved.coverUrl,
+        gameId: null,
+        authorId,
+        downloadsCount: 0,
+        isApproved: true,
+        isActive: true,
+        minimumRequirements: saved.minimumRequirements ?? {
+          os: 'Windows 10 / 11 64-bit',
+          cpu: 'Procesador de 2 o 4 núcleos',
+          ram: '4 GB RAM',
+          storage: saved.size ?? '1 GB libre',
+          gpu: 'GPU compatible con DirectX 11',
+        },
+      });
+      return;
+    }
+
+    if (
+      saved.section === CatalogSection.HERRAMIENTAS &&
+      this.toolsRepository &&
+      authorId
+    ) {
+      let slug = baseSlug;
+      const exists = await this.toolsRepository.slugExists(slug);
+      if (exists) {
+        slug = `${baseSlug}-${saved.id.slice(0, 6)}`;
+      }
+
+      await this.toolsRepository.create({
+        id: saved.id,
+        title: saved.title,
+        slug,
+        description: saved.shortDescription,
+        category: saved.genre || 'Utilidades',
+        version: saved.version || 'v1.0',
+        size: saved.size,
+        downloadUrl: saved.downloadUrl ?? '#',
+        imageUrl: saved.coverUrl,
+        tags: saved.badge ? [saved.badge] : [],
+        authorId,
+        downloadsCount: 0,
+        isActive: true,
+      });
+    }
+  }
+
+  /** Elimina el registro espejo en games, mods y tools cuando se borra del catálogo. */
+  private async syncDeleteFromSpecificTables(id: string): Promise<void> {
+    await Promise.all([
+      this.gamesRepository?.hardDelete
+        ? this.gamesRepository.hardDelete(id)
+        : this.gamesRepository?.delete(id),
+      this.modsRepository?.hardDelete
+        ? this.modsRepository.hardDelete(id)
+        : this.modsRepository?.delete(id),
+      this.toolsRepository?.hardDelete
+        ? this.toolsRepository.hardDelete(id)
+        : this.toolsRepository?.delete(id),
+    ]);
   }
 
   /** Recorta espacios de los campos de texto presentes sin tocar los ausentes. */

@@ -15,7 +15,7 @@ export interface ModProps {
   downloadUrl: string;
   fileSize?: string | null;
   thumbnailUrl?: string | null;
-  gameId: string;
+  gameId?: string | null;
   authorId: string;
   downloadsCount?: number;
   isApproved?: boolean;
@@ -38,7 +38,7 @@ export class Mod {
   public downloadUrl: string;
   public fileSize: string | null;
   public thumbnailUrl: string | null;
-  public gameId: string;
+  public gameId: string | null;
   public authorId: string;
   public downloadsCount: number;
   public isApproved: boolean;
@@ -56,7 +56,7 @@ export class Mod {
     this.downloadUrl = props.downloadUrl.trim();
     this.fileSize = props.fileSize ?? null;
     this.thumbnailUrl = props.thumbnailUrl ?? null;
-    this.gameId = props.gameId.trim();
+    this.gameId = props.gameId ? props.gameId.trim() : null;
     this.authorId = props.authorId.trim();
     this.downloadsCount = props.downloadsCount ?? 0;
     this.isApproved = props.isApproved ?? false;

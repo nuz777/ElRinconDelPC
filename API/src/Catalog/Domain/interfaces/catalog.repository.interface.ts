@@ -24,7 +24,7 @@ export interface PaginatedResult<T> {
 export type CreateCatalogItemData = Omit<
   CatalogItemProps,
   'id' | 'createdAt' | 'updatedAt'
->;
+> & { id?: string };
 
 export type UpdateCatalogItemData = Partial<CreateCatalogItemData>;
 

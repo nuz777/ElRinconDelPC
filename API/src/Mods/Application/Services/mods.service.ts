@@ -4,7 +4,13 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { CatalogSection } from '../../../Catalog/Domain/Entities/catalog-section.enum.js';
+import {
+  CATALOG_REPOSITORY,
+  type CatalogRepository,
+} from '../../../Catalog/Domain/interfaces/catalog.repository.interface.js';
 import type { Mod } from '../../Domain/Entities/mod.entity.js';
 import {
   MODS_REPOSITORY,
@@ -24,6 +30,9 @@ export class ModsService {
   constructor(
     @Inject(MODS_REPOSITORY)
     private readonly modsRepository: ModRepository,
+    @Optional()
+    @Inject(CATALOG_REPOSITORY)
+    private readonly catalogRepository?: CatalogRepository,
   ) {}
 
   async createMod(userId: string, dto: CreateModDto): Promise<Mod> {
@@ -64,7 +73,26 @@ export class ModsService {
       minimumRequirements: dto.minimumRequirements,
     };
 
-    return this.modsRepository.create(data);
+    const created = await this.modsRepository.create(data);
+
+    if (this.catalogRepository) {
+      await this.catalogRepository.create({
+        id: created.id,
+        section: CatalogSection.MODS,
+        title: created.title,
+        genre: 'Mods & Shaders',
+        size: created.fileSize,
+        version: created.version,
+        badge: 'Mod',
+        coverUrl: created.thumbnailUrl,
+        downloadUrl: created.downloadUrl,
+        developer: 'Comunidad El Sótano',
+        shortDescription: created.description,
+        minimumRequirements: created.minimumRequirements,
+      });
+    }
+
+    return created;
   }
 
   async getModsByGame(
@@ -190,6 +218,7 @@ export class ModsService {
     if (!deleted) {
       throw new NotFoundException(`Mod con id "${id}" no encontrado`);
     }
+    await this.catalogRepository?.delete(id);
     return { message: 'Mod eliminado correctamente (borrado lógico)', id };
   }
 

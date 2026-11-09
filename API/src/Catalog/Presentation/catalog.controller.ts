@@ -10,6 +10,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -70,8 +71,11 @@ export class CatalogController {
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Datos inválidos' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Token ausente o inválido' })
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Permisos insuficientes' })
-  create(@Body() dto: CreateCatalogItemDto): Promise<CatalogItem> {
-    return this.catalogService.createItem(dto);
+  create(
+    @Body() dto: CreateCatalogItemDto,
+    @Req() req?: { user?: { id?: string; sub?: string } },
+  ): Promise<CatalogItem> {
+    return this.catalogService.createItem(dto, req?.user?.id ?? req?.user?.sub);
   }
 
   @Put(':id')

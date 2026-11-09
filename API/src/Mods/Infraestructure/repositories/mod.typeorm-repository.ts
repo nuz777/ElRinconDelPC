@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { Mod } from '../../Domain/Entities/mod.entity.js';
 import type {
   CreateModData,
@@ -114,6 +114,7 @@ export class TypeormModRepository implements ModRepository {
 
   async create(data: CreateModData): Promise<Mod> {
     const entity = this.repository.create({
+      ...(data.id ? { id: data.id } : {}),
       title: data.title,
       slug: data.slug,
       description: data.description,
@@ -121,7 +122,7 @@ export class TypeormModRepository implements ModRepository {
       downloadUrl: data.downloadUrl,
       fileSize: data.fileSize ?? null,
       thumbnailUrl: data.thumbnailUrl ?? null,
-      gameId: data.gameId,
+      gameId: data.gameId ?? null,
       authorId: data.authorId,
       downloadsCount: data.downloadsCount ?? 0,
       isApproved: data.isApproved ?? false,
@@ -141,8 +142,10 @@ export class TypeormModRepository implements ModRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async findBySlug(slug: string, gameId: string): Promise<Mod | null> {
-    const row = await this.repository.findOne({ where: { slug, gameId } });
+  async findBySlug(slug: string, gameId: string | null): Promise<Mod | null> {
+    const row = await this.repository.findOne({
+      where: { slug, gameId: gameId ?? IsNull() },
+    });
     return row ? this.toDomain(row) : null;
   }
 
@@ -222,6 +225,11 @@ export class TypeormModRepository implements ModRepository {
     existing.isActive = false;
     const saved = await this.repository.save(existing);
     return saved.isActive === false;
+  }
+
+  async hardDelete(id: string): Promise<boolean> {
+    const result = await this.repository.delete({ id });
+    return (result.affected ?? 0) > 0;
   }
 
   async incrementDownloads(id: string): Promise<void> {
