@@ -341,6 +341,56 @@ export default function Catalog() {
     }
   };
 
+  /** Navegación desde las migas de pan (breadcrumb) del modal de detalle */
+  const handleNavigateRoot = () => {
+    setLocalItem(null);
+    goToView({ apartado: "todos" });
+    setGenreFilter({ viewPath: "/catalogo", genre: "todos" });
+    setSearch("");
+  };
+
+  const handleNavigateApartado = (
+    ap: Apartado,
+    brand?: string | null,
+    consoleName?: string | null
+  ) => {
+    setLocalItem(null);
+    setSearch("");
+    if (ap === "roms" && brand && consoleName) {
+      const targetView: CatalogView = { apartado: "roms", brand, console: consoleName };
+      goToView(targetView);
+      setGenreFilter({ viewPath: buildViewPath(targetView), genre: "todos" });
+    } else if (ap !== "roms") {
+      const targetView: CatalogView = { apartado: ap };
+      goToView(targetView);
+      setGenreFilter({ viewPath: buildViewPath(targetView), genre: "todos" });
+    } else {
+      goToView({ apartado: "todos" });
+      setGenreFilter({ viewPath: "/catalogo", genre: "todos" });
+    }
+  };
+
+  const handleNavigateGenre = (
+    genre: string,
+    ap: Apartado,
+    brand?: string | null,
+    consoleName?: string | null
+  ) => {
+    setLocalItem(null);
+    setSearch("");
+    let targetView: CatalogView;
+    if (ap === "roms" && brand && consoleName) {
+      targetView = { apartado: "roms", brand, console: consoleName };
+    } else if (ap !== "roms") {
+      targetView = { apartado: ap };
+    } else {
+      targetView = { apartado: "todos" };
+    }
+    const path = buildViewPath(targetView);
+    goToView(targetView);
+    setGenreFilter({ viewPath: path, genre });
+  };
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBulkJsonModalOpen, setIsBulkJsonModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<CatalogItem | null>(null);
@@ -1746,6 +1796,9 @@ export default function Catalog() {
           setItemToEdit(item);
           setIsAddModalOpen(true);
         }}
+        onNavigateRoot={handleNavigateRoot}
+        onNavigateApartado={handleNavigateApartado}
+        onNavigateGenre={handleNavigateGenre}
       />
 
       {/* Add / Edit Item Modal (Rendered strictly for Admins) */}

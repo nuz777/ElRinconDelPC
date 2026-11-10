@@ -16,7 +16,7 @@ import {
   Trash2,
   Pencil,
 } from "lucide-react";
-import type { CatalogItem } from "../data/catalog";
+import type { Apartado, CatalogItem } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
 import { NativeBannerAd } from "./ads/NativeBannerAd";
 import GameModsSection from "./GameModsSection";
@@ -29,6 +29,18 @@ interface FullscreenDetailModalProps {
   onDelete?: (item: CatalogItem) => void;
   onEdit?: (item: CatalogItem) => void;
   disableEscape?: boolean;
+  onNavigateRoot?: () => void;
+  onNavigateApartado?: (
+    apartado: Apartado,
+    brand?: string | null,
+    consoleName?: string | null
+  ) => void;
+  onNavigateGenre?: (
+    genre: string,
+    apartado: Apartado,
+    brand?: string | null,
+    consoleName?: string | null
+  ) => void;
 }
 
 export default function FullscreenDetailModal({
@@ -38,6 +50,9 @@ export default function FullscreenDetailModal({
   onDelete,
   onEdit,
   disableEscape,
+  onNavigateRoot,
+  onNavigateApartado,
+  onNavigateGenre,
 }: FullscreenDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const { theme } = useTheme();
@@ -105,27 +120,71 @@ export default function FullscreenDetailModal({
             <span>Volver al Catálogo</span>
           </button>
 
-          <div
+          <nav
+            aria-label="Ruta de navegación"
             className={`hidden md:flex items-center gap-2 text-xs uppercase tracking-widest ${
               isLight ? "text-zinc-500" : "text-zinc-500"
             }`}
           >
-            <span>El sótano</span>
+            <button
+              type="button"
+              onClick={onNavigateRoot}
+              className={`transition-colors cursor-pointer hover:underline ${
+                isLight ? "hover:text-black" : "hover:text-white"
+              }`}
+              title="Ir a la portada del catálogo"
+            >
+              El sótano
+            </button>
+
             <span>/</span>
-            <span className={isLight ? "text-zinc-700" : "text-zinc-400"}>
+
+            <button
+              type="button"
+              onClick={() => onNavigateApartado?.(item.apartado, item.brand, item.console)}
+              className={`transition-colors cursor-pointer hover:underline font-medium ${
+                isLight ? "text-zinc-700 hover:text-black" : "text-zinc-400 hover:text-white"
+              }`}
+              title={`Ver todos los ${getApartadoLabel(item.apartado)}`}
+            >
               {getApartadoLabel(item.apartado)}
-            </span>
+            </button>
+
             <span>/</span>
-            <span className={isLight ? "text-zinc-700" : "text-zinc-400"}>
-              {item.apartado === "roms" && item.console
-                ? `${item.brand} / ${item.console}`
-                : item.genre}
-            </span>
+
+            {item.apartado === "roms" && item.console ? (
+              <button
+                type="button"
+                onClick={() => onNavigateApartado?.("roms", item.brand, item.console)}
+                className={`transition-colors cursor-pointer hover:underline font-medium ${
+                  isLight ? "text-zinc-700 hover:text-black" : "text-zinc-400 hover:text-white"
+                }`}
+                title={`Ver catálogo de ${item.console}`}
+              >
+                {item.brand} / {item.console}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onNavigateGenre?.(item.genre, item.apartado, item.brand, item.console)}
+                className={`transition-colors cursor-pointer hover:underline font-medium ${
+                  isLight ? "text-zinc-700 hover:text-black" : "text-zinc-400 hover:text-white"
+                }`}
+                title={`Filtrar por género: ${item.genre}`}
+              >
+                {item.genre}
+              </button>
+            )}
+
             <span>/</span>
-            <span className={`font-medium truncate max-w-xs ${isLight ? "text-black" : "text-white"}`}>
+
+            <span
+              className={`font-bold truncate max-w-xs ${isLight ? "text-black" : "text-white"}`}
+              title={item.title}
+            >
               {item.title}
             </span>
-          </div>
+          </nav>
 
           <div className="flex items-center gap-3">
             {isAdmin && onEdit && (
