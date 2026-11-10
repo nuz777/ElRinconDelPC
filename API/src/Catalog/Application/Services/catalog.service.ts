@@ -119,6 +119,13 @@ export class CatalogService {
     if (!updated) {
       throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
     }
+    try {
+      await this.syncUpdateToSpecificTables(updated);
+    } catch (err) {
+      this.logger.warn(
+        `Error sincronizando actualización del ítem "${id}": ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     return updated;
   }
 
@@ -238,6 +245,22 @@ export class CatalogService {
         authorId,
         downloadsCount: 0,
         isActive: true,
+      });
+    }
+  }
+
+  /** Sincroniza la actualización con games, mods o tools si existe el registro espejo. */
+  private async syncUpdateToSpecificTables(updated: CatalogItem): Promise<void> {
+    if (updated.section === CatalogSection.JUEGOS && this.gamesRepository) {
+      await this.gamesRepository.update(updated.id, {
+        title: updated.title,
+        description: updated.shortDescription,
+        genres: [updated.genre],
+        coverImage: updated.coverUrl ?? '/img/indicado.webp',
+        bannerImage: updated.bannerUrl ?? null,
+        developer: updated.developer ?? 'Comunidad El Sótano',
+        publisher: updated.developer ?? 'Comunidad El Sótano',
+        minimumRequirements: updated.minimumRequirements ?? undefined,
       });
     }
   }

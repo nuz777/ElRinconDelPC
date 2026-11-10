@@ -257,6 +257,48 @@ export const catalogService = {
     return mapApiItemToCatalogItem(data);
   },
 
+  async updateItem(
+    id: string,
+    payload: Partial<CreateCatalogItemPayload>,
+  ): Promise<CatalogItem> {
+    if (!authService.isAdmin()) {
+      throw new Error("Se requiere iniciar sesión como administrador.");
+    }
+
+    const token = authService.getStoredToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE_URL}/catalog/${id}`, {
+      method: "PATCH",
+      headers,
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    const rawJson: unknown = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      let message = "Error al actualizar el ítem en la base de datos.";
+      if (rawJson && typeof rawJson === "object" && "message" in rawJson) {
+        const msg = (rawJson as { message: unknown }).message;
+        message = Array.isArray(msg) ? msg.join(", ") : String(msg);
+      }
+      throw new Error(message);
+    }
+
+    const data = unwrapApiData<CatalogItemApiResponse>(rawJson);
+    if (!data) {
+      throw new Error("Respuesta inválida del servidor al actualizar el ítem.");
+    }
+
+    return mapApiItemToCatalogItem(data);
+  },
+
   async deleteItem(id: string): Promise<void> {
     if (!authService.isAdmin()) {
       throw new Error("Se requiere autenticación como administrador.");

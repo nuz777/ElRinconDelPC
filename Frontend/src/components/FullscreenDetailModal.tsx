@@ -14,6 +14,7 @@ import {
   Copy,
   Check,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import type { CatalogItem } from "../data/catalog";
 import { useTheme } from "../ThemeContext";
@@ -26,6 +27,8 @@ interface FullscreenDetailModalProps {
   onClose: () => void;
   isAdmin?: boolean;
   onDelete?: (item: CatalogItem) => void;
+  onEdit?: (item: CatalogItem) => void;
+  disableEscape?: boolean;
 }
 
 export default function FullscreenDetailModal({
@@ -33,6 +36,8 @@ export default function FullscreenDetailModal({
   onClose,
   isAdmin,
   onDelete,
+  onEdit,
+  disableEscape,
 }: FullscreenDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const { theme } = useTheme();
@@ -40,7 +45,7 @@ export default function FullscreenDetailModal({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !disableEscape) onClose();
     };
     if (item) {
       document.body.style.overflow = "hidden";
@@ -50,7 +55,7 @@ export default function FullscreenDetailModal({
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [item, onClose]);
+  }, [item, onClose, disableEscape]);
 
   if (!item) return null;
 
@@ -123,6 +128,17 @@ export default function FullscreenDetailModal({
           </div>
 
           <div className="flex items-center gap-3">
+            {isAdmin && onEdit && (
+              <button
+                onClick={() => onEdit(item)}
+                title="Editar este ítem"
+                className="px-3 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+              >
+                <Pencil className="size-4" />
+                <span className="hidden sm:inline font-semibold">Editar</span>
+              </button>
+            )}
+
             {isAdmin && onDelete && (
               <button
                 onClick={() => onDelete(item)}

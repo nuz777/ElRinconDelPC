@@ -1,8 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
   Plus,
+  Pencil,
   Upload,
   Link as LinkIcon,
   Check,
@@ -22,7 +24,9 @@ import { authService } from "../services/auth.service";
 interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddItem: (item: CatalogItem) => Promise<void>;
+  onAddItem?: (item: CatalogItem) => Promise<void>;
+  onEditItem?: (item: CatalogItem) => Promise<void>;
+  itemToEdit?: CatalogItem | null;
 }
 
 const GENRE_SUGGESTIONS: Record<Apartado, string[]> = {
@@ -107,9 +111,12 @@ export default function AddItemModal({
   isOpen,
   onClose,
   onAddItem,
+  onEditItem,
+  itemToEdit,
 }: AddItemModalProps) {
   const { theme } = useTheme();
   const isLight = theme === "light";
+  const isEditMode = Boolean(itemToEdit);
 
   const [apartado, setApartado] = useState<Apartado>("juegos");
   const [title, setTitle] = useState("");
@@ -156,8 +163,6 @@ export default function AddItemModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  if (!isOpen || !authService.isAdmin()) return null;
-
   const resetForm = () => {
     setTitle("");
     setGenre(GENRE_SUGGESTIONS.juegos[0]);
@@ -187,6 +192,66 @@ export default function AddItemModal({
     setEmulator("");
     setSubmitError(null);
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (itemToEdit) {
+      const ap = itemToEdit.apartado || "juegos";
+      setApartado(ap);
+      setTitle(itemToEdit.title || "");
+      setGenre(itemToEdit.genre || GENRE_SUGGESTIONS[ap]?.[0] || "");
+      setTag(itemToEdit.tag || "Nuevo");
+      setSize(itemToEdit.size || "");
+      setVersion(itemToEdit.version || "v1.0");
+      setDeveloper(itemToEdit.developer || "");
+      setShortDesc(itemToEdit.shortDesc || "");
+      const link = itemToEdit.downloadLinks?.[0]?.url;
+      setDownloadUrl(link && link !== "#" ? link : "");
+      setMinOs(itemToEdit.requirements?.os || "");
+      setMinCpu(itemToEdit.requirements?.cpu || "");
+      setMinRam(itemToEdit.requirements?.ram || "");
+      setMinStorage(itemToEdit.requirements?.storage || "");
+      setMinGpu(itemToEdit.requirements?.gpu || "");
+
+      if (ap === "roms") {
+        setRomBrand(itemToEdit.brand || ROM_BRANDS[0].name);
+        setRomConsole(itemToEdit.console || ROM_BRANDS[0].consoles[0].name);
+        setEmulator(itemToEdit.emulator || "");
+      } else {
+        setRomBrand(ROM_BRANDS[0].name);
+        setRomConsole(ROM_BRANDS[0].consoles[0].name);
+        setEmulator("");
+      }
+
+      // Portada
+      if (itemToEdit.img) {
+        setUrlCover(itemToEdit.img);
+        setCoverMode("url");
+      } else {
+        setUrlCover("");
+        setCoverMode("device");
+      }
+      setDeviceCover(null);
+      setDeviceCoverFileName("");
+      setDeviceCoverFileSize("");
+
+      // Banner
+      if (itemToEdit.bannerImg) {
+        setUrlBanner(itemToEdit.bannerImg);
+        setBannerMode("url");
+      } else {
+        setUrlBanner("");
+        setBannerMode("device");
+      }
+      setDeviceBanner(null);
+      setDeviceBannerFileName("");
+      setDeviceBannerFileSize("");
+
+      setSubmitError(null);
+    } else {
+      resetForm();
+    }
+  }, [itemToEdit, isOpen]);
 
   /** Precarga el emulador y los requisitos sugeridos para la consola elegida. */
   const applyConsoleDefaults = (brand: string, consoleName: string) => {
@@ -305,6 +370,18 @@ export default function AddItemModal({
     onClose();
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authService.isAdmin() || isSubmitting) return;
@@ -381,13 +458,23 @@ export default function AddItemModal({
     try {
       setIsSubmitting(true);
       setSubmitError(null);
-      await onAddItem(newItem);
+      if (isEditMode && onEditItem && itemToEdit) {
+        await onEditItem({
+          ...itemToEdit,
+          ...newItem,
+          id: itemToEdit.id,
+        });
+      } else if (onAddItem) {
+        await onAddItem(newItem);
+      }
       resetForm();
       onClose();
     } catch (err) {
       const msg =
         err instanceof Error
           ? err.message
+          : isEditMode
+          ? "No se pudo actualizar el ítem en la base de datos PostgreSQL."
           : "No se pudo guardar el ítem en la base de datos PostgreSQL.";
       setSubmitError(msg);
     } finally {
@@ -395,35 +482,63 @@ export default function AddItemModal({
     }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md font-share">
+      {isOpen && (
         <motion.div
-          className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl p-6 sm:p-8 border transition-colors ${
-            isLight
-              ? "bg-white border-zinc-200 text-zinc-900"
-              : "bg-zinc-950 border-zinc-800 text-zinc-100"
-          }`}
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          key={itemToEdit ? `edit-${itemToEdit.id}` : "create-item"}
+          className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm font-share select-text"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleClose();
+          }}
         >
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl p-6 sm:p-8 border transition-colors ${
+              isLight
+                ? "bg-white border-zinc-200 text-zinc-900 shadow-xl"
+                : "bg-zinc-900 border-zinc-700 text-zinc-100 shadow-2xl"
+            }`}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
           {/* Header */}
           <div
             className={`flex items-center justify-between pb-4 border-b mb-6 ${
               isLight ? "border-zinc-200" : "border-zinc-800"
             }`}
           >
-            <div className="flex items-center gap-2">
-              <Plus className={`size-5 ${isLight ? "text-zinc-950" : "text-white"}`} />
-              <h2
-                className={`text-xl font-bold uppercase tracking-wider ${
-                  isLight ? "text-zinc-950" : "text-white"
-                }`}
-              >
-                Agregar al Catálogo
-              </h2>
-            </div>
+            {isEditMode ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <Pencil className="size-5 text-amber-500 shrink-0" />
+                <h2
+                  className={`text-xl font-bold uppercase tracking-wider truncate ${
+                    isLight ? "text-zinc-950" : "text-white"
+                  }`}
+                >
+                  Editar: <span className="text-amber-500">{itemToEdit?.title}</span>
+                </h2>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Plus className={`size-5 ${isLight ? "text-zinc-950" : "text-white"}`} />
+                <h2
+                  className={`text-xl font-bold uppercase tracking-wider ${
+                    isLight ? "text-zinc-950" : "text-white"
+                  }`}
+                >
+                  Agregar al Catálogo
+                </h2>
+              </div>
+            )}
             <button
               onClick={handleClose}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
@@ -509,7 +624,12 @@ export default function AddItemModal({
                       : "bg-zinc-900 border-zinc-800 text-zinc-100 focus:border-zinc-500"
                   }`}
                 >
-                  {GENRE_SUGGESTIONS[apartado].map((g) => (
+                  {(Array.from(
+                    new Set([
+                      ...((apartado && GENRE_SUGGESTIONS[apartado]) || GENRE_SUGGESTIONS.juegos),
+                      ...(genre ? [genre] : []),
+                    ])
+                  )).map((g) => (
                     <option key={g} value={g} className={isLight ? "bg-white text-zinc-900" : "bg-zinc-900 text-zinc-100"}>
                       {g}
                     </option>
@@ -1396,7 +1516,12 @@ export default function AddItemModal({
                 {isSubmitting ? (
                   <>
                     <RefreshCw className="size-4 animate-spin" />
-                    Guardando en Base de Datos...
+                    {isEditMode ? "Guardando Cambios..." : "Guardando en Base de Datos..."}
+                  </>
+                ) : isEditMode ? (
+                  <>
+                    <Check className="size-4" />
+                    Guardar Cambios
                   </>
                 ) : (
                   <>
@@ -1408,7 +1533,9 @@ export default function AddItemModal({
             </div>
           </form>
         </motion.div>
-      </div>
-    </AnimatePresence>
-  );
+      </motion.div>
+    )}
+  </AnimatePresence>,
+  document.body
+);
 }

@@ -14,6 +14,7 @@ import {
   Sun,
   Moon,
   Trash2,
+  Pencil,
   Joystick,
   ChevronDown,
 } from "lucide-react";
@@ -339,6 +340,7 @@ export default function Catalog() {
   };
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<CatalogItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<CatalogItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useAuth();
@@ -347,6 +349,7 @@ export default function Catalog() {
   useEffect(() => {
     if (!isAdmin) {
       setIsAddModalOpen(false);
+      setItemToEdit(null);
     }
   }, [isAdmin]);
 
@@ -388,6 +391,53 @@ export default function Catalog() {
     const targetView = viewForItem(createdInDb);
     goToView(targetView);
     setGenreFilter({ viewPath: buildViewPath(targetView), genre: createdInDb.genre });
+  };
+
+  // Handle editing custom items (actualiza exclusivamente en PostgreSQL mediante catalogService)
+  const handleEditItem = async (updatedItem: CatalogItem): Promise<void> => {
+    if (!isAdmin) return;
+
+    const section = mapApartadoToSection(updatedItem.apartado);
+    const download = updatedItem.downloadLinks[0]?.url;
+    const validDownloadUrl =
+      download && (download.startsWith("http://") || download.startsWith("https://"))
+        ? download
+        : undefined;
+
+    const savedInDb = await catalogService.updateItem(updatedItem.id, {
+      section,
+      title: updatedItem.title,
+      genre: updatedItem.genre,
+      size: updatedItem.size,
+      version: updatedItem.version,
+      badge: updatedItem.tag,
+      coverUrl: updatedItem.img,
+      bannerUrl: updatedItem.bannerImg,
+      downloadUrl: validDownloadUrl,
+      developer: updatedItem.developer,
+      shortDescription: updatedItem.fullDesc || updatedItem.shortDesc,
+      ...(updatedItem.apartado === "roms"
+        ? {
+            brand: updatedItem.brand ?? undefined,
+            console: updatedItem.console ?? undefined,
+            emulator: updatedItem.emulator ?? undefined,
+          }
+        : {}),
+      minimumRequirements: updatedItem.requirements,
+    });
+
+    // Actualizar en el estado de items locales
+    setCustomItems((prev) =>
+      prev.map((item) => (item.id === savedInDb.id ? savedInDb : item))
+    );
+
+    // Si el modal de detalle del ítem está abierto, actualizarlo con los nuevos datos
+    if (fetchedItem?.id === savedInDb.id) {
+      setFetchedItem(savedInDb);
+    }
+    if (localItem?.id === savedInDb.id) {
+      setLocalItem(savedInDb);
+    }
   };
 
   // Handle removing items from Database and local view
@@ -618,24 +668,34 @@ export default function Catalog() {
             <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
               {APARTADO_BADGE[item.apartado]}
             </span>
-
-            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white text-zinc-950 shadow-sm">
-              {item.tag}
-            </span>
           </div>
 
           {isAdmin && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setItemToDelete(item);
-              }}
-              title="Eliminar elemento del catálogo"
-              className="p-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <div className="flex items-center gap-1.5 z-10">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setItemToEdit(item);
+                  setIsAddModalOpen(true);
+                }}
+                title="Editar este elemento"
+                className="p-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-500 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setItemToDelete(item);
+                }}
+                title="Eliminar elemento del catálogo"
+                className="p-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </div>
           )}
         </div>
 
@@ -1665,22 +1725,32 @@ export default function Catalog() {
         item={selectedItem}
         onClose={closeItem}
         isAdmin={isAdmin}
+        disableEscape={isAddModalOpen || Boolean(itemToDelete)}
         onDelete={(item) => setItemToDelete(item)}
+        onEdit={(item) => {
+          setItemToEdit(item);
+          setIsAddModalOpen(true);
+        }}
       />
 
-      {/* Add Item Modal (Rendered strictly for Admins) */}
+      {/* Add / Edit Item Modal (Rendered strictly for Admins) */}
       {isAdmin && (
         <AddItemModal
           isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setItemToEdit(null);
+          }}
           onAddItem={handleAddItem}
+          onEditItem={handleEditItem}
+          itemToEdit={itemToEdit}
         />
       )}
 
       {/* Delete Confirmation Modal for Admins */}
-      <AnimatePresence>
-        {isAdmin && itemToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      {isAdmin && itemToDelete && createPortal(
+        <AnimatePresence>
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1728,8 +1798,9 @@ export default function Catalog() {
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       <Footer />
     </div>
