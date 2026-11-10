@@ -14,7 +14,8 @@
     "api:migration:run": "npm --prefix API run migration:run",
     "api:migration:revert": "npm --prefix API run migration:revert",
     "api:migration:create": "npm --prefix API run migration:create --",
-    "api:seed:admin": "npm --prefix API run seed:admin"
+    "api:seed:admin": "npm --prefix API run seed:admin",
+    "catalog:import": "node scripts/import-catalog-json.mjs"
   },
   "dependencies": {
     "@neon/config": "^1.11.3",

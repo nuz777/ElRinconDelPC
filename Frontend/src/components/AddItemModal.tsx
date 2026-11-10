@@ -10,6 +10,7 @@ import {
   Check,
   RefreshCw,
   Trash2,
+  FileJson,
 } from "lucide-react";
 import type { Apartado, CatalogItem } from "../data/catalog";
 import {
@@ -20,12 +21,14 @@ import {
 } from "../data/romPlatforms";
 import { useTheme } from "../ThemeContext";
 import { authService } from "../services/auth.service";
+import BulkJsonImportModal from "./BulkJsonImportModal";
 
 interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddItem?: (item: CatalogItem) => Promise<void>;
   onEditItem?: (item: CatalogItem) => Promise<void>;
+  onBulkImported?: (items: CatalogItem[]) => void;
   itemToEdit?: CatalogItem | null;
 }
 
@@ -112,11 +115,13 @@ export default function AddItemModal({
   onClose,
   onAddItem,
   onEditItem,
+  onBulkImported,
   itemToEdit,
 }: AddItemModalProps) {
   const { theme } = useTheme();
   const isLight = theme === "light";
   const isEditMode = Boolean(itemToEdit);
+  const [isBulkJsonOpen, setIsBulkJsonOpen] = useState(false);
 
   const [apartado, setApartado] = useState<Apartado>("juegos");
   const [title, setTitle] = useState("");
@@ -191,6 +196,29 @@ export default function AddItemModal({
     setRomConsole(ROM_BRANDS[0].consoles[0].name);
     setEmulator("");
     setSubmitError(null);
+  };
+
+  const handleLoadSingleItemIntoForm = (loadedItem: CatalogItem) => {
+    setTitle(loadedItem.title || "");
+    const ap = loadedItem.apartado || "juegos";
+    setApartado(ap);
+    setGenre(loadedItem.genre || GENRE_SUGGESTIONS[ap]?.[0] || "");
+    setTag(loadedItem.tag || "Nuevo");
+    setSize(loadedItem.size || "");
+    setVersion(loadedItem.version || "v1.0");
+    setDeveloper(loadedItem.developer || "");
+    setShortDesc(loadedItem.shortDesc || "");
+    setMinOs(loadedItem.requirements?.os || "");
+    setMinCpu(loadedItem.requirements?.cpu || "");
+    setMinRam(loadedItem.requirements?.ram || "");
+    setMinStorage(loadedItem.requirements?.storage || "");
+    setMinGpu(loadedItem.requirements?.gpu || "");
+
+    if (ap === "roms") {
+      setRomBrand(loadedItem.brand || ROM_BRANDS[0].name);
+      setRomConsole(loadedItem.console || ROM_BRANDS[0].consoles[0].name);
+      setEmulator(loadedItem.emulator || "");
+    }
   };
 
   useEffect(() => {
@@ -485,7 +513,8 @@ export default function AddItemModal({
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <AnimatePresence>
+    <>
+      <AnimatePresence>
       {isOpen && (
         <motion.div
           key={itemToEdit ? `edit-${itemToEdit.id}` : "create-item"}
@@ -539,16 +568,29 @@ export default function AddItemModal({
                 </h2>
               </div>
             )}
-            <button
-              onClick={handleClose}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                isLight
-                  ? "text-zinc-500 hover:text-black hover:bg-zinc-100"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-              }`}
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              {!isEditMode && (
+                <button
+                  type="button"
+                  onClick={() => setIsBulkJsonOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 transition-colors cursor-pointer"
+                  title="Cargar o autocompletar datos desde un archivo JSON"
+                >
+                  <FileJson className="size-3.5" />
+                  <span className="hidden sm:inline">Importar JSON</span>
+                </button>
+              )}
+              <button
+                onClick={handleClose}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  isLight
+                    ? "text-zinc-500 hover:text-black hover:bg-zinc-100"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                }`}
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -1535,7 +1577,22 @@ export default function AddItemModal({
         </motion.div>
       </motion.div>
     )}
-  </AnimatePresence>,
+  </AnimatePresence>
+
+  {/* Modal de Carga Masiva JSON */}
+  <BulkJsonImportModal
+    isOpen={isBulkJsonOpen}
+    onClose={() => setIsBulkJsonOpen(false)}
+    onLoadSingleItemIntoForm={handleLoadSingleItemIntoForm}
+    onItemsImported={(items) => {
+      setIsBulkJsonOpen(false);
+      if (onBulkImported) {
+        onBulkImported(items);
+      }
+      handleClose();
+    }}
+  />
+  </>,
   document.body
 );
 }

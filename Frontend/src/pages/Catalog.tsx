@@ -17,6 +17,7 @@ import {
   Pencil,
   Joystick,
   ChevronDown,
+  FileJson,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
@@ -35,6 +36,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import FullscreenDetailModal from "../components/FullscreenDetailModal";
 import AddItemModal from "../components/AddItemModal";
+import BulkJsonImportModal from "../components/BulkJsonImportModal";
 import { NativeBannerAd } from "../components/ads/NativeBannerAd";
 import {
   initialCatalogItems,
@@ -340,6 +342,7 @@ export default function Catalog() {
   };
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBulkJsonModalOpen, setIsBulkJsonModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<CatalogItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<CatalogItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -349,6 +352,7 @@ export default function Catalog() {
   useEffect(() => {
     if (!isAdmin) {
       setIsAddModalOpen(false);
+      setIsBulkJsonModalOpen(false);
       setItemToEdit(null);
     }
   }, [isAdmin]);
@@ -803,17 +807,28 @@ export default function Catalog() {
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
                 {isAdmin && (
-                  <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-transform shadow-md cursor-pointer hover:scale-105 active:scale-95 ${
-                      isLight
-                        ? "bg-zinc-900 text-white hover:bg-black"
-                        : "bg-white text-zinc-950 hover:bg-zinc-200"
-                    }`}
-                  >
-                    <Plus className="size-4" />
-                    <span>Agregar Item</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-transform shadow-md cursor-pointer hover:scale-105 active:scale-95 ${
+                        isLight
+                          ? "bg-zinc-900 text-white hover:bg-black"
+                          : "bg-white text-zinc-950 hover:bg-zinc-200"
+                      }`}
+                    >
+                      <Plus className="size-4" />
+                      <span>Agregar Item</span>
+                    </button>
+
+                    <button
+                      onClick={() => setIsBulkJsonModalOpen(true)}
+                      className="inline-flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-transform shadow-md cursor-pointer hover:scale-105 active:scale-95 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                      title="Cargar masivamente juegos o elementos desde un archivo JSON"
+                    >
+                      <FileJson className="size-4" />
+                      <span>Carga Masiva (JSON)</span>
+                    </button>
+                  </>
                 )}
 
                 <button
@@ -1743,7 +1758,21 @@ export default function Catalog() {
           }}
           onAddItem={handleAddItem}
           onEditItem={handleEditItem}
+          onBulkImported={(newItems) => {
+            setCustomItems((prev) => [...newItems, ...prev]);
+          }}
           itemToEdit={itemToEdit}
+        />
+      )}
+
+      {/* Bulk JSON Import Modal (Rendered strictly for Admins) */}
+      {isAdmin && (
+        <BulkJsonImportModal
+          isOpen={isBulkJsonModalOpen}
+          onClose={() => setIsBulkJsonModalOpen(false)}
+          onItemsImported={(newItems) => {
+            setCustomItems((prev) => [...newItems, ...prev]);
+          }}
         />
       )}
 
