@@ -1,6 +1,7 @@
 import { authService } from "./auth.service";
 import type { Apartado, CatalogItem } from "../data/catalog";
 import { NO_STABLE_EMULATOR } from "../data/romPlatforms";
+import { cleanDescription } from "../utils/cleanDescription";
 
 export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS" | "ROMS";
 
@@ -132,8 +133,8 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
     developer: api.developer || "Comunidad El Sótano",
     img: api.coverUrl || "/img/indicado.webp",
     bannerImg: api.bannerUrl || undefined,
-    shortDesc: api.shortDescription,
-    fullDesc: `${api.shortDescription} Publicado oficialmente en la biblioteca de El Sótano del PC.`,
+    shortDesc: cleanDescription(api.shortDescription),
+    fullDesc: cleanDescription(api.shortDescription),
     features: isRom
       ? [
           `ROM de ${api.console ?? "consola"} (${api.brand ?? "—"})`,

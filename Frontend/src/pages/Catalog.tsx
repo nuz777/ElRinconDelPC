@@ -38,6 +38,7 @@ import FullscreenDetailModal from "../components/FullscreenDetailModal";
 import AddItemModal from "../components/AddItemModal";
 import BulkJsonImportModal from "../components/BulkJsonImportModal";
 import { NativeBannerAd } from "../components/ads/NativeBannerAd";
+import { cleanDescription } from "../utils/cleanDescription";
 import {
   initialCatalogItems,
   type CatalogItem,
@@ -429,7 +430,7 @@ export default function Catalog() {
       bannerUrl: newItem.bannerImg,
       downloadUrl: validDownloadUrl,
       developer: newItem.developer,
-      shortDescription: newItem.fullDesc || newItem.shortDesc,
+      shortDescription: cleanDescription(newItem.shortDesc || newItem.fullDesc),
       minimumRequirements: newItem.requirements,
       ...(newItem.apartado === "roms"
         ? {
@@ -469,7 +470,7 @@ export default function Catalog() {
       bannerUrl: updatedItem.bannerImg,
       downloadUrl: validDownloadUrl,
       developer: updatedItem.developer,
-      shortDescription: updatedItem.fullDesc || updatedItem.shortDesc,
+      shortDescription: cleanDescription(updatedItem.shortDesc || updatedItem.fullDesc),
       ...(updatedItem.apartado === "roms"
         ? {
             brand: updatedItem.brand ?? undefined,

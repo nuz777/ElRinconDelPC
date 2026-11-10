@@ -1,6 +1,7 @@
 import type { Apartado, CatalogItem } from "../data/catalog";
 import type { CreateCatalogItemPayload, CatalogSectionApi } from "../services/catalog.service";
 import { ROM_BRANDS } from "../data/romPlatforms";
+import { cleanDescription } from "./cleanDescription";
 
 export interface ParsedItemResult {
   isValid: boolean;
@@ -234,8 +235,8 @@ export function parseSingleCatalogJson(raw: any, index = 0): ParsedItemResult {
     developer,
     img: coverUrl,
     bannerImg: bannerUrl,
-    shortDesc,
-    fullDesc: `${shortDesc} Publicado oficialmente en la biblioteca de El Sótano del PC.`,
+    shortDesc: cleanDescription(shortDesc),
+    fullDesc: cleanDescription(shortDesc),
     features:
       apartado === "roms"
         ? [

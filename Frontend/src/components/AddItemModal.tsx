@@ -22,6 +22,7 @@ import {
 import { useTheme } from "../ThemeContext";
 import { authService } from "../services/auth.service";
 import BulkJsonImportModal from "./BulkJsonImportModal";
+import { cleanDescription } from "../utils/cleanDescription";
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -207,7 +208,7 @@ export default function AddItemModal({
     setSize(loadedItem.size || "");
     setVersion(loadedItem.version || "v1.0");
     setDeveloper(loadedItem.developer || "");
-    setShortDesc(loadedItem.shortDesc || "");
+    setShortDesc(cleanDescription(loadedItem.shortDesc || ""));
     setMinOs(loadedItem.requirements?.os || "");
     setMinCpu(loadedItem.requirements?.cpu || "");
     setMinRam(loadedItem.requirements?.ram || "");
@@ -232,7 +233,7 @@ export default function AddItemModal({
       setSize(itemToEdit.size || "");
       setVersion(itemToEdit.version || "v1.0");
       setDeveloper(itemToEdit.developer || "");
-      setShortDesc(itemToEdit.shortDesc || "");
+      setShortDesc(cleanDescription(itemToEdit.shortDesc || ""));
       const link = itemToEdit.downloadLinks?.[0]?.url;
       setDownloadUrl(link && link !== "#" ? link : "");
       setMinOs(itemToEdit.requirements?.os || "");
@@ -413,7 +414,8 @@ export default function AddItemModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authService.isAdmin() || isSubmitting) return;
-    if (!title.trim() || !shortDesc.trim()) return;
+    const cleanedDesc = cleanDescription(shortDesc);
+    if (!title.trim() || !cleanedDesc) return;
 
     let finalCover = "/img/indicado.webp";
     if (coverMode === "device" && deviceCover) {
@@ -451,8 +453,8 @@ export default function AddItemModal({
       developer: developer.trim() || "Comunidad El Sótano",
       img: finalCover,
       bannerImg: finalBanner,
-      shortDesc: shortDesc.trim(),
-      fullDesc: `${shortDesc.trim()} Añadido recientemente a la biblioteca de El sótano del pc por la comunidad.`,
+      shortDesc: cleanedDesc,
+      fullDesc: cleanedDesc,
       features: isRom
         ? [`ROM de ${romConsole} (${romBrand})`, `Probada con ${finalEmulator}`, "Descarga directa"]
         : [
