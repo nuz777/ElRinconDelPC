@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, ChevronDown, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../ThemeContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,10 +23,34 @@ interface HeaderProps {
 export default function Header({ onNavSectionClick }: HeaderProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownContainerRef = useRef<HTMLDivElement>(null);
   const [location, setLocation] = useLocation();
   const { theme } = useTheme();
   const isLight = theme === "light";
   const { user, isAuthenticated, logout: authLogout } = useAuth();
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownContainerRef.current &&
+        !dropdownContainerRef.current.contains(e.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [dropdownOpen]);
 
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? "hidden" : "";
@@ -92,13 +117,13 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
       >
         <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           {/* En catálogo con sesión activa: sin logo ni menú desplegable */}
-          <div className="flex items-center gap-2 relative group">
+          <div ref={dropdownContainerRef} className="flex items-center gap-2 relative group">
             {inCatalogWithSession ? (
               <div />
             ) : (
               <button
                 onClick={toggleDropdown}
-                className={`flex items-center gap-2 transition-colors ${
+                className={`flex items-center gap-2 transition-colors cursor-pointer ${
                   isLight
                     ? "text-zinc-950 hover:text-black"
                     : "text-zinc-100 hover:text-white"
@@ -121,28 +146,34 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
               </button>
             )}
 
-            {/* Menú desplegable (solo cuando NO está en catálogo con sesión activa) */}
-            {!inCatalogWithSession && dropdownOpen && (
-              <div
-                className={`absolute top-full left-0 mt-1 w-56 rounded-xl border shadow-lg z-50 ${
-                  isLight
-                    ? "bg-white border-zinc-200 text-zinc-900"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-100"
-                }`}
-              >
-                {navLinks
-                  .filter((link) => link.href !== "/catalogo")
-                  .map((link) => (
-                    <button
-                      key={link.href}
-                      onClick={() => handleNavClick(link.href)}
-                      className={`w-full text-left ${linkClass(location === link.href)}`}
-                    >
-                      {link.label}
-                    </button>
-                  ))}
-              </div>
-            )}
+            {/* Menú desplegable con animación de bajada (solo cuando NO está en catálogo con sesión activa) */}
+            <AnimatePresence>
+              {!inCatalogWithSession && dropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -12, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className={`absolute top-full left-0 mt-1 w-56 rounded-xl border shadow-lg z-50 overflow-hidden origin-top-left ${
+                    isLight
+                      ? "bg-white border-zinc-200 text-zinc-900"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-100"
+                  }`}
+                >
+                  {navLinks
+                    .filter((link) => link.href !== "/catalogo")
+                    .map((link) => (
+                      <button
+                        key={link.href}
+                        onClick={() => handleNavClick(link.href)}
+                        className={`w-full text-left cursor-pointer ${linkClass(location === link.href)}`}
+                      >
+                        {link.label}
+                      </button>
+                    ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Área derecha:
