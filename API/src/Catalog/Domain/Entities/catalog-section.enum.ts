@@ -3,4 +3,6 @@ export enum CatalogSection {
   JUEGOS = 'JUEGOS',
   MODS = 'MODS',
   HERRAMIENTAS = 'HERRAMIENTAS',
+  /** ROMs de consolas: cada ítem es un juego asociado a una marca y una consola. */
+  ROMS = 'ROMS',
 }

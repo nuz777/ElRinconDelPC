@@ -55,6 +55,15 @@ export class CatalogItemTypeormEntity {
   @Column({ name: 'public_code', type: 'varchar', length: 6, nullable: true })
   publicCode!: string | null;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  brand!: string | null;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  console!: string | null;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  emulator!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

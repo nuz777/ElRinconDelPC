@@ -1,4 +1,4 @@
-export type Apartado = "juegos" | "mods" | "herramientas";
+export type Apartado = "juegos" | "mods" | "herramientas" | "roms";
 
 export interface DownloadLink {
   name: string;
@@ -12,6 +12,12 @@ export interface CatalogItem {
   id: string;
   /** Código público fijo (6 caracteres) usado en la URL compartible. */
   publicCode?: string | null;
+  /** Solo ROMs: marca de la consola (Nintendo, Sega...). */
+  brand?: string | null;
+  /** Solo ROMs: consola a la que pertenece la ROM. */
+  console?: string | null;
+  /** Solo ROMs: emulador recomendado. */
+  emulator?: string | null;
   title: string;
   apartado: Apartado;
   genre: string;

@@ -1,7 +1,8 @@
 import { authService } from "./auth.service";
 import type { Apartado, CatalogItem } from "../data/catalog";
+import { NO_STABLE_EMULATOR } from "../data/romPlatforms";
 
-export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS";
+export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS" | "ROMS";
 
 export interface CatalogMinimumRequirementsPayload {
   os: string;
@@ -24,6 +25,10 @@ export interface CreateCatalogItemPayload {
   developer?: string;
   shortDescription: string;
   minimumRequirements?: CatalogMinimumRequirementsPayload;
+  /** Solo ROMs */
+  brand?: string;
+  console?: string;
+  emulator?: string;
 }
 
 export interface CatalogItemApiResponse {
@@ -41,6 +46,9 @@ export interface CatalogItemApiResponse {
   shortDescription: string;
   minimumRequirements: CatalogMinimumRequirementsPayload | null;
   publicCode?: string | null;
+  brand?: string | null;
+  console?: string | null;
+  emulator?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -80,6 +88,8 @@ function mapSectionToApartado(section: CatalogSectionApi): Apartado {
       return "mods";
     case "HERRAMIENTAS":
       return "herramientas";
+    case "ROMS":
+      return "roms";
     default:
       return "juegos";
   }
@@ -93,6 +103,8 @@ export function mapApartadoToSection(apartado: Apartado): CatalogSectionApi {
       return "MODS";
     case "herramientas":
       return "HERRAMIENTAS";
+    case "roms":
+      return "ROMS";
     default:
       return "JUEGOS";
   }
@@ -101,10 +113,15 @@ export function mapApartadoToSection(apartado: Apartado): CatalogSectionApi {
 export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogItem {
   const apartado = mapSectionToApartado(api.section);
   const downloadUrl = api.downloadUrl || "#";
+  const isRom = apartado === "roms";
+  const emulator = api.emulator || null;
 
   return {
     id: api.id,
     publicCode: api.publicCode ?? null,
+    brand: api.brand ?? null,
+    console: api.console ?? null,
+    emulator,
     title: api.title,
     apartado,
     genre: api.genre,
@@ -117,11 +134,17 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
     bannerImg: api.bannerUrl || undefined,
     shortDesc: api.shortDescription,
     fullDesc: `${api.shortDescription} Publicado oficialmente en la biblioteca de El Sótano del PC.`,
-    features: [
-      "Verificado y probado en Windows 10 y 11",
-      "Descarga directa de alta velocidad",
-      "Sin software malicioso ni añadidos innecesarios",
-    ],
+    features: isRom
+      ? [
+          `ROM de ${api.console ?? "consola"} (${api.brand ?? "—"})`,
+          emulator ? `Probada con ${emulator}` : "Compatible con los emuladores más usados",
+          "Descarga directa de alta velocidad",
+        ]
+      : [
+          "Verificado y probado en Windows 10 y 11",
+          "Descarga directa de alta velocidad",
+          "Sin software malicioso ni añadidos innecesarios",
+        ],
     requirements: {
       os: api.minimumRequirements?.os || "Windows 10 / 11 64-bit",
       cpu: api.minimumRequirements?.cpu || "Procesador de 2 o 4 núcleos",
@@ -138,11 +161,19 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
         badge: "Directo",
       },
     ],
-    installationSteps: [
-      "Haz clic en el botón de Descarga Directa.",
-      "Descomprime el archivo usando 7-Zip o WinRAR.",
-      "Ejecuta el archivo principal como Administrador.",
-    ],
+    installationSteps: isRom
+      ? [
+          "Descarga la ROM con el botón de Descarga Directa.",
+          emulator && emulator !== NO_STABLE_EMULATOR
+            ? `Instala el emulador recomendado: ${emulator}.`
+            : `Instala un emulador compatible con ${api.console ?? "la consola"}.`,
+          "Descomprime la ROM si viene comprimida y ábrela desde el emulador.",
+        ]
+      : [
+          "Haz clic en el botón de Descarga Directa.",
+          "Descomprime el archivo usando 7-Zip o WinRAR.",
+          "Ejecuta el archivo principal como Administrador.",
+        ],
   };
 }
 

@@ -78,9 +78,22 @@ function AppInner() {
               {/* Ruta raíz pública */}
               <Route path="/" component={Home} />
 
-              {/* Catálogo accesible para todos (público) */}
+              {/* Catálogo accesible para todos (público): cada apartado tiene su URL */}
               <Route path="/catalogo" component={Catalog} />
               <Route path="/sotano" component={Catalog} />
+              <Route path="/juegos" component={Catalog} />
+              <Route path="/mods-shaders" component={Catalog} />
+              <Route path="/herramientas" component={Catalog} />
+
+              {/* ROMs: siempre con marca y consola (/rom/{marca}/{consola}[/{slug}-{codigo}]) */}
+              <Route path="/rom/:brand/:console" component={Catalog} />
+              <Route path="/rom/:brand/:console/:slugCode" component={Catalog} />
+              <Route path="/rom">
+                <Redirect to="/catalogo" replace />
+              </Route>
+              <Route path="/rom/:brand">
+                <Redirect to="/catalogo" replace />
+              </Route>
 
               {/* Herramientas públicas */}
               <Route path="/tools" component={Tools} />

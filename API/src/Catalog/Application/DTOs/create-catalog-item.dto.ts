@@ -54,10 +54,40 @@ export class CreateCatalogItemDto {
     description: 'Apartado del catálogo',
   })
   @IsEnum(CatalogSection, {
-    message: 'La sección debe ser JUEGOS, MODS o HERRAMIENTAS',
+    message: 'La sección debe ser JUEGOS, MODS, HERRAMIENTAS o ROMS',
   })
   @IsNotEmpty()
   section!: CatalogSection;
+
+  @ApiPropertyOptional({
+    example: 'Nintendo',
+    description: 'Solo ROMs (obligatorio): marca de la consola',
+    maxLength: 50,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  brand?: string;
+
+  @ApiPropertyOptional({
+    example: 'Nintendo 64',
+    description: 'Solo ROMs (obligatorio): consola a la que pertenece la ROM',
+    maxLength: 80,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  console?: string;
+
+  @ApiPropertyOptional({
+    example: 'Project64 / simple64',
+    description: 'Solo ROMs: emulador recomendado',
+    maxLength: 150,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  emulator?: string;
 
   @ApiProperty({ example: 'Elden Ring', maxLength: 150 })
   @IsString()

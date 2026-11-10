@@ -65,6 +65,7 @@ export default function FullscreenDetailModal({
   const getApartadoLabel = (ap: string) => {
     if (ap === "juegos") return "Juegos de PC";
     if (ap === "mods") return "Mods & Mejoras";
+    if (ap === "roms") return "ROMs";
     return "Herramientas de PC";
   };
 
@@ -110,7 +111,11 @@ export default function FullscreenDetailModal({
               {getApartadoLabel(item.apartado)}
             </span>
             <span>/</span>
-            <span className={isLight ? "text-zinc-700" : "text-zinc-400"}>{item.genre}</span>
+            <span className={isLight ? "text-zinc-700" : "text-zinc-400"}>
+              {item.apartado === "roms" && item.console
+                ? `${item.brand} / ${item.console}`
+                : item.genre}
+            </span>
             <span>/</span>
             <span className={`font-medium truncate max-w-xs ${isLight ? "text-black" : "text-white"}`}>
               {item.title}
@@ -240,6 +245,17 @@ export default function FullscreenDetailModal({
                 >
                   {item.genre}
                 </span>
+                {item.apartado === "roms" && item.console && (
+                  <span
+                    className={`px-3 py-1 rounded-md text-[11px] uppercase tracking-widest font-semibold border ${
+                      isLight
+                        ? "bg-violet-50 border-violet-200 text-violet-700"
+                        : "bg-violet-950/60 border-violet-800 text-violet-300"
+                    }`}
+                  >
+                    {item.brand} · {item.console}
+                  </span>
+                )}
                 <span
                   className={`px-3 py-1 rounded-md text-[11px] uppercase tracking-widest font-semibold flex items-center gap-1 ${
                     isLight
@@ -564,11 +580,25 @@ export default function FullscreenDetailModal({
                     }`}
                   >
                     <Cpu className="size-4 text-zinc-400" />
-                    Requisitos del Sistema
+                    {item.apartado === "roms" ? "Requisitos para Emular" : "Requisitos del Sistema"}
                   </h2>
                   <div className={`w-12 h-0.5 ${isLight ? "bg-zinc-300" : "bg-zinc-700"}`} />
 
                   <div className="space-y-3 pt-2 text-xs">
+                    {item.apartado === "roms" && (
+                      <div
+                        className={`p-3 rounded-lg border ${
+                          isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
+                        }`}
+                      >
+                        <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">
+                          Emulador recomendado
+                        </span>
+                        <span className={`font-semibold ${isLight ? "text-zinc-900" : "text-white"}`}>
+                          {item.emulator || "No especificado"}
+                        </span>
+                      </div>
+                    )}
                     <div
                       className={`p-3 rounded-lg border ${
                         isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   Logger,
@@ -21,6 +22,7 @@ import {
 } from '../../../Tools/Domain/interfaces/tool.repository.interface.js';
 import type { CatalogItem } from '../../Domain/Entities/catalog-item.entity.js';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
+import { isValidRomPlatform } from '../../Domain/Entities/rom-platforms.js';
 import {
   CATALOG_REPOSITORY,
   type CatalogFilters,
@@ -80,7 +82,9 @@ export class CatalogService {
     data: CreateCatalogItemData,
     authorId?: string,
   ): Promise<CatalogItem> {
-    const saved = await this.catalogRepository.create(this.normalize(data));
+    const saved = await this.catalogRepository.create(
+      this.applyRomRules(this.normalize(data), data.section),
+    );
     try {
       await this.syncCreateToSpecificTable(saved, authorId);
     } catch (err) {
@@ -95,7 +99,23 @@ export class CatalogService {
     id: string,
     data: UpdateCatalogItemData,
   ): Promise<CatalogItem> {
-    const updated = await this.catalogRepository.update(id, this.normalize(data));
+    const existing = await this.catalogRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
+    }
+    // Validar marca/consola sobre el resultado final (lo existente + los cambios)
+    const normalized = this.normalize(data);
+    const section = normalized.section ?? existing.section;
+    const merged = this.applyRomRules(
+      {
+        ...normalized,
+        brand: normalized.brand ?? existing.brand ?? undefined,
+        console: normalized.console ?? existing.console ?? undefined,
+        emulator: normalized.emulator ?? existing.emulator ?? undefined,
+      },
+      section,
+    );
+    const updated = await this.catalogRepository.update(id, merged);
     if (!updated) {
       throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
     }
@@ -235,6 +255,37 @@ export class CatalogService {
         ? this.toolsRepository.hardDelete(id)
         : this.toolsRepository?.delete(id),
     ]);
+  }
+
+  /**
+   * ROMs: marca y consola obligatorias y deben existir en ROM_PLATFORMS.
+   * Otros apartados: marca, consola y emulador se descartan (null).
+   */
+  private applyRomRules<T extends UpdateCatalogItemData>(
+    data: T,
+    section: CatalogSection | undefined,
+  ): T {
+    if (section !== CatalogSection.ROMS) {
+      return { ...data, brand: null, console: null, emulator: null };
+    }
+    const brand = data.brand?.trim();
+    const consoleName = data.console?.trim();
+    if (!brand || !consoleName) {
+      throw new BadRequestException(
+        'Las ROMs requieren una marca y una consola',
+      );
+    }
+    if (!isValidRomPlatform(brand, consoleName)) {
+      throw new BadRequestException(
+        `La consola "${consoleName}" no pertenece a la marca "${brand}"`,
+      );
+    }
+    return {
+      ...data,
+      brand,
+      console: consoleName,
+      emulator: data.emulator?.trim() || null,
+    };
   }
 
   /** Recorta espacios de los campos de texto presentes sin tocar los ausentes. */

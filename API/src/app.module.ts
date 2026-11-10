@@ -147,7 +147,7 @@ export class AppModule implements NestModule, OnModuleInit {
     await this.runSafeQuery(`
       CREATE TABLE IF NOT EXISTS "catalog_items" (
         "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        "section" VARCHAR(20) NOT NULL CHECK ("section" IN ('JUEGOS', 'MODS', 'HERRAMIENTAS')),
+        "section" VARCHAR(20) NOT NULL CHECK ("section" IN ('JUEGOS', 'MODS', 'HERRAMIENTAS', 'ROMS')),
         "title" VARCHAR(150) NOT NULL,
         "genre" VARCHAR(100) NOT NULL,
         "size" VARCHAR(50) NULL,
@@ -192,6 +192,22 @@ export class AppModule implements NestModule, OnModuleInit {
       `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "public_code" VARCHAR(6) NULL;`,
     );
     await this.backfillCatalogPublicCodes();
+    // Apartado ROMs: nueva sección + marca, consola y emulador recomendado
+    await this.runSafeQuery(
+      `ALTER TABLE "catalog_items" DROP CONSTRAINT IF EXISTS "catalog_items_section_check";`,
+    );
+    await this.runSafeQuery(
+      `ALTER TABLE "catalog_items" ADD CONSTRAINT "catalog_items_section_check" CHECK ("section" IN ('JUEGOS', 'MODS', 'HERRAMIENTAS', 'ROMS'));`,
+    );
+    await this.runSafeQuery(
+      `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "brand" VARCHAR(50) NULL;`,
+    );
+    await this.runSafeQuery(
+      `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "console" VARCHAR(80) NULL;`,
+    );
+    await this.runSafeQuery(
+      `ALTER TABLE "catalog_items" ADD COLUMN IF NOT EXISTS "emulator" VARCHAR(150) NULL;`,
+    );
     await this.runSafeQuery(
       `CREATE UNIQUE INDEX IF NOT EXISTS "idx_catalog_items_public_code" ON "catalog_items" ("public_code");`,
     );
