@@ -18,6 +18,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import {
   buildItemPath,
@@ -59,7 +60,7 @@ const APARTADOS_CONFIG: {
 
 /** Panel de ROMs (pestaña): ancho máximo y alto con el que cabe sin scroll. */
 const ROM_MENU_WIDTH = 600;
-const ROM_MENU_IDEAL_HEIGHT = 300;
+const ROM_MENU_IDEAL_HEIGHT = 310;
 
 type RomMenuPosition = {
   left: number;
@@ -506,7 +507,8 @@ export default function Catalog() {
   const romCloseTimer = useRef<number | null>(null);
 
   /**
-   * Coloca el panel pegado a la pestaña: debajo si cabe, si no arriba, siempre dentro
+   * Coloca el panel pegado a la pestaña: debajo si cabe completo, si no arriba si cabe,
+   * y si no cabe en ningún lado, en el más amplio (con scroll interno). Siempre dentro
    * de la ventana. Es `fixed` para que no lo recorte la barra de pestañas (overflow-x-auto).
    */
   const positionRomMenu = () => {
@@ -521,7 +523,10 @@ export default function Catalog() {
     const edge = 8; // separación mínima con el borde superior/inferior de la ventana
     const spaceBelow = window.innerHeight - rect.bottom - edge;
     const spaceAbove = rect.top - edge;
-    const openBelow = spaceBelow >= ROM_MENU_IDEAL_HEIGHT || spaceBelow >= spaceAbove;
+    // Nada se mueve bajo el cursor: solo se elige el lado donde cabe el panel completo
+    const openBelow =
+      spaceBelow >= ROM_MENU_IDEAL_HEIGHT ||
+      (spaceAbove < ROM_MENU_IDEAL_HEIGHT && spaceBelow >= spaceAbove);
     setRomMenuPos(
       openBelow
         ? { left, width, top: rect.bottom, maxHeight: spaceBelow }
@@ -1297,7 +1302,10 @@ export default function Catalog() {
         {!selectedItem && <NativeBannerAd />}
       </main>
 
-      {/* Panel de marcas y consolas de la pestaña ROMs */}
+      {/* Panel de marcas y consolas de la pestaña ROMs.
+          Va en un portal a <body>: dentro del contenedor animado de la app su z-index
+          no compite con elementos fijos como la burbuja de ayuda y quedaba tapado. */}
+      {createPortal(
       <AnimatePresence>
         {romMenuOpen && !isAddModalOpen && !filterDrawerOpen && !selectedItem && (
           <motion.div
@@ -1317,7 +1325,7 @@ export default function Catalog() {
               maxHeight: romMenuPos.maxHeight,
             }}
             // El padding hace de "puente" invisible con la pestaña: el mouse no sale al cruzar
-            className={`fixed z-[60] flex flex-col ${romMenuPos.top !== undefined ? "pt-2" : "pb-2"}`}
+            className={`fixed z-[70] flex flex-col font-share ${romMenuPos.top !== undefined ? "pt-2" : "pb-2"}`}
           >
             <div
               className={`flex flex-col min-h-0 rounded-2xl border shadow-2xl transition-colors ${
@@ -1353,7 +1361,9 @@ export default function Catalog() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+        document.body,
+      )}
 
       {/* Hamburger Menu Drawer for Changing Apartado & Genres */}
       <AnimatePresence>
