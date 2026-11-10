@@ -14,10 +14,21 @@ import {
   Sun,
   Moon,
   Trash2,
+  Joystick,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLocation } from "wouter";
-import { buildItemPath, parseDetailPath } from "../utils/catalogUrl";
+import {
+  buildItemPath,
+  buildViewPath,
+  parseCatalogRoute,
+  viewForItem,
+  type CatalogRoute,
+  type CatalogView,
+} from "../utils/catalogUrl";
+import RomBrandMenu from "../components/RomBrandMenu";
+import { romCountKey } from "../data/romPlatforms";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import FullscreenDetailModal from "../components/FullscreenDetailModal";
@@ -36,7 +47,7 @@ import {
 } from "../services/catalog.service";
 
 const APARTADOS_CONFIG: {
-  id: "todos" | Apartado;
+  id: "todos" | Exclude<Apartado, "roms">;
   label: string;
   icon: typeof Gamepad2;
 }[] = [
@@ -45,6 +56,23 @@ const APARTADOS_CONFIG: {
   { id: "mods", label: "Mods & Shaders", icon: Cpu },
   { id: "herramientas", label: "Herramientas de PC", icon: Wrench },
 ];
+
+/** Panel de ROMs (pestaña): ancho máximo y alto con el que cabe sin scroll. */
+const ROM_MENU_WIDTH = 600;
+const ROM_MENU_IDEAL_HEIGHT = 300;
+
+type RomMenuPosition = {
+  left: number;
+  width: number;
+  maxHeight: number;
+} & ({ top: number; bottom?: undefined } | { bottom: number; top?: undefined });
+
+const APARTADO_BADGE: Record<Apartado, string> = {
+  juegos: "Juego",
+  mods: "Mod",
+  herramientas: "Tool",
+  roms: "ROM",
+};
 
 function highlightMatch(text: string, query: string) {
   const q = query.trim();
@@ -188,14 +216,54 @@ export default function Catalog() {
       setIsDropdownOpen(false);
     }
   };
-  const [selectedApartado, setSelectedApartado] = useState<"todos" | Apartado>("todos");
-  const [selectedGenre, setSelectedGenre] = useState<string>("todos");
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
-  // ── Detalle abierto según la URL: /juego/{slug}-{codigo}, /mod-shader/..., /herramienta/...
+
+  // ── Ruta actual → vista del catálogo y detalle abierto ───────────────────────
+  // Listados: /catalogo, /juegos, /mods-shaders, /herramientas, /rom/{marca}/{consola}
+  // Detalle:  /juego/{slug}-{codigo}, ..., /rom/{marca}/{consola}/{slug}-{codigo}
   const [location, navigate] = useLocation();
-  const parsedDetail = parseDetailPath(location);
-  const detailRoute = parsedDetail !== null;
-  const routeCode = parsedDetail?.code ?? null;
+  const parsedRoute = parseCatalogRoute(location);
+  const isAdminCatalogPath = location === "/publish" || location === "/dashboard/crear";
+  const route: CatalogRoute | null =
+    parsedRoute ??
+    (isAdminCatalogPath ? { view: { apartado: "todos" }, detailCode: null, isDetail: false } : null);
+  const detailRoute = route?.isDetail ?? false;
+  const routeCode = route?.detailCode ?? null;
+
+  // Detrás del modal se mantiene el listado desde el que se abrió (guardado en history.state)
+  const historyState = (typeof window !== "undefined" ? window.history.state : null) as
+    | { fromCatalog?: boolean; bg?: string }
+    | null;
+  const backgroundRoute =
+    detailRoute && historyState?.bg ? parseCatalogRoute(historyState.bg) : null;
+  const view: CatalogView =
+    backgroundRoute && !backgroundRoute.isDetail
+      ? backgroundRoute.view
+      : route?.view ?? { apartado: "todos" };
+  const viewPath = buildViewPath(view);
+  const selectedApartado = view.apartado;
+  const romFilter = view.apartado === "roms" ? view : null;
+
+  // Ruta inválida (/rom, /rom/{marca}, consola inexistente...) → catálogo completo
+  const isInvalidRoute = route === null;
+  useEffect(() => {
+    if (isInvalidRoute) navigate("/catalogo", { replace: true });
+  }, [isInvalidRoute, navigate]);
+
+  // El filtro de género pertenece a la vista en la que se eligió
+  const [genreFilter, setGenreFilter] = useState<{ viewPath: string; genre: string }>({
+    viewPath: "",
+    genre: "todos",
+  });
+  const selectedGenre = genreFilter.viewPath === viewPath ? genreFilter.genre : "todos";
+  const setSelectedGenre = (genre: string) => setGenreFilter({ viewPath, genre });
+
+  /** Cambia de listado (apartado o consola de ROMs) actualizando la URL. */
+  const goToView = (target: CatalogView) => {
+    const path = buildViewPath(target);
+    if (path !== location) navigate(path);
+  };
+
   // Ítem traído por código cuando no está en el listado cargado (enlace directo)
   const [fetchedItem, setFetchedItem] = useState<CatalogItem | null>(null);
   // Respaldo para ítems sin código público (no deberían existir tras el backfill)
@@ -236,7 +304,7 @@ export default function Catalog() {
     };
   }, [detailRoute, routeCode, itemFromList, fetchedItem, navigate]);
 
-  // Normalizar la URL (slug desactualizado o prefijo de otro apartado) a la canónica
+  // Normalizar la URL (slug desactualizado, prefijo o consola equivocados) a la canónica
   useEffect(() => {
     if (!detailRoute || !selectedItem) return;
     const canonical = buildItemPath(selectedItem);
@@ -248,7 +316,7 @@ export default function Catalog() {
   const openItem = (item: CatalogItem) => {
     const path = buildItemPath(item);
     if (path) {
-      navigate(path, { state: { fromCatalog: true } });
+      navigate(path, { state: { fromCatalog: true, bg: viewPath } });
     } else {
       setLocalItem(item);
     }
@@ -259,13 +327,13 @@ export default function Catalog() {
       setLocalItem(null);
       return;
     }
-    const state = window.history.state as { fromCatalog?: boolean } | null;
-    if (state?.fromCatalog) {
+    if (historyState?.fromCatalog) {
       // Se abrió desde el catálogo: volver atrás deja el historial limpio
       window.history.back();
     } else {
-      // Enlace directo: no hay a dónde volver, ir al catálogo
-      navigate("/catalogo", { replace: true });
+      // Enlace directo: ir al listado al que pertenece el ítem
+      const target = selectedItem ? viewForItem(selectedItem) : view;
+      navigate(buildViewPath(target), { replace: true });
     }
   };
 
@@ -305,12 +373,20 @@ export default function Catalog() {
       developer: newItem.developer,
       shortDescription: newItem.fullDesc || newItem.shortDesc,
       minimumRequirements: newItem.requirements,
+      ...(newItem.apartado === "roms"
+        ? {
+            brand: newItem.brand ?? undefined,
+            console: newItem.console ?? undefined,
+            emulator: newItem.emulator ?? undefined,
+          }
+        : {}),
     });
 
     // Añadir al estado únicamente cuando PostgreSQL confirme y devuelva el UUID real
     setCustomItems((prev) => [createdInDb, ...prev]);
-    setSelectedApartado(newItem.apartado);
-    setSelectedGenre(newItem.genre);
+    const targetView = viewForItem(createdInDb);
+    goToView(targetView);
+    setGenreFilter({ viewPath: buildViewPath(targetView), genre: createdInDb.genre });
   };
 
   // Handle removing items from Database and local view
@@ -338,22 +414,28 @@ export default function Catalog() {
   };
 
   // Get list of genres based on active apartado
+  /** El ítem pertenece a la vista actual (apartado y, en ROMs, marca + consola). */
+  const matchesView = (it: CatalogItem) => {
+    if (selectedApartado === "todos") return true;
+    if (it.apartado !== selectedApartado) return false;
+    if (romFilter) return it.brand === romFilter.brand && it.console === romFilter.console;
+    return true;
+  };
+
   const availableGenres = useMemo(() => {
-    const relevantItems =
-      selectedApartado === "todos"
-        ? items
-        : items.filter((it) => it.apartado === selectedApartado);
+    const relevantItems = items.filter(matchesView);
 
     const genresSet = new Set<string>();
     relevantItems.forEach((it) => genresSet.add(it.genre));
     return Array.from(genresSet);
-  }, [items, selectedApartado]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, viewPath]);
 
   // Filter items based on Search, Apartado, and Genre
   const filteredItems = useMemo(() => {
     const q = search.toLowerCase().trim();
     return items.filter((item) => {
-      if (selectedApartado !== "todos" && item.apartado !== selectedApartado) {
+      if (!matchesView(item)) {
         return false;
       }
       if (selectedGenre !== "todos" && item.genre !== selectedGenre) {
@@ -369,7 +451,8 @@ export default function Catalog() {
         item.developer.toLowerCase().includes(q)
       );
     });
-  }, [items, selectedApartado, selectedGenre, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, viewPath, selectedGenre, search]);
 
   // Group items by genre for clean ordering
   const itemsByGenre = useMemo(() => {
@@ -386,10 +469,105 @@ export default function Catalog() {
 
   const isSearchActive = Boolean(search.trim());
 
-  const handleApartadoSwitch = (ap: "todos" | Apartado) => {
-    setSelectedApartado(ap);
-    setSelectedGenre("todos");
+  const handleApartadoSwitch = (ap: "todos" | Exclude<Apartado, "roms">) => {
+    goToView({ apartado: ap });
   };
+
+  const handleRomConsoleSelect = (brand: string, consoleName: string) => {
+    goToView({ apartado: "roms", brand, console: consoleName });
+    setRomMenuOpen(false);
+    setFilterDrawerOpen(false);
+  };
+
+  // ROMs por consola (para los contadores del menú)
+  const romCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const it of items) {
+      if (it.apartado === "roms" && it.brand && it.console) {
+        const key = romCountKey(it.brand, it.console);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [items]);
+  const totalRoms = items.filter((it) => it.apartado === "roms").length;
+
+  // ── Panel de marcas/consolas de la pestaña "ROMs" (hover en escritorio, click en móvil)
+  const [romMenuOpen, setRomMenuOpen] = useState(false);
+  const [romMenuPos, setRomMenuPos] = useState<RomMenuPosition>({
+    left: 16,
+    width: ROM_MENU_WIDTH,
+    top: 0,
+    maxHeight: 400,
+  });
+  const [drawerRomsOpen, setDrawerRomsOpen] = useState(false);
+  const romTabRef = useRef<HTMLButtonElement>(null);
+  const romMenuRef = useRef<HTMLDivElement>(null);
+  const romCloseTimer = useRef<number | null>(null);
+
+  /**
+   * Coloca el panel pegado a la pestaña: debajo si cabe, si no arriba, siempre dentro
+   * de la ventana. Es `fixed` para que no lo recorte la barra de pestañas (overflow-x-auto).
+   */
+  const positionRomMenu = () => {
+    const rect = romTabRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const margin = 16;
+    const width = Math.min(ROM_MENU_WIDTH, window.innerWidth - margin * 2);
+    const left = Math.max(
+      margin,
+      Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - margin),
+    );
+    const edge = 8; // separación mínima con el borde superior/inferior de la ventana
+    const spaceBelow = window.innerHeight - rect.bottom - edge;
+    const spaceAbove = rect.top - edge;
+    const openBelow = spaceBelow >= ROM_MENU_IDEAL_HEIGHT || spaceBelow >= spaceAbove;
+    setRomMenuPos(
+      openBelow
+        ? { left, width, top: rect.bottom, maxHeight: spaceBelow }
+        : { left, width, bottom: window.innerHeight - rect.top, maxHeight: spaceAbove },
+    );
+  };
+
+  const cancelCloseRomMenu = () => {
+    if (romCloseTimer.current) window.clearTimeout(romCloseTimer.current);
+    romCloseTimer.current = null;
+  };
+  const openRomMenu = () => {
+    cancelCloseRomMenu();
+    positionRomMenu();
+    setRomMenuOpen(true);
+  };
+  /** Se cierra solo cuando el mouse sale de la pestaña y del panel (con un margen de gracia). */
+  const scheduleCloseRomMenu = () => {
+    cancelCloseRomMenu();
+    romCloseTimer.current = window.setTimeout(() => setRomMenuOpen(false), 300);
+  };
+
+  // Mientras está abierto: seguir a la pestaña al hacer scroll/redimensionar;
+  // cerrar con click fuera o Escape
+  useEffect(() => {
+    if (!romMenuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (romMenuRef.current?.contains(target) || romTabRef.current?.contains(target)) return;
+      setRomMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRomMenuOpen(false);
+    };
+    const onViewportChange = () => positionRomMenu();
+    document.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onViewportChange, { passive: true });
+    window.addEventListener("resize", onViewportChange);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onViewportChange);
+      window.removeEventListener("resize", onViewportChange);
+    };
+  }, [romMenuOpen]);
 
   const renderCard = (item: CatalogItem) => (
     <div
@@ -433,11 +611,7 @@ export default function Catalog() {
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
           <div className="flex items-center gap-1.5 pointer-events-none">
             <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
-              {item.apartado === "juegos"
-                ? "Juego"
-                : item.apartado === "mods"
-                ? "Mod"
-                : "Tool"}
+              {APARTADO_BADGE[item.apartado]}
             </span>
 
             <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-white text-zinc-950 shadow-sm">
@@ -476,7 +650,9 @@ export default function Catalog() {
               isLight ? "text-zinc-500" : "text-zinc-400"
             }`}
           >
-            {item.genre}
+            {item.apartado === "roms" && item.console
+              ? `${item.console} · ${item.genre}`
+              : item.genre}
           </span>
           <h3
             className={`text-base font-bold line-clamp-1 transition-colors ${
@@ -649,6 +825,43 @@ export default function Catalog() {
                     </button>
                   );
                 })}
+
+                {/* Pestaña ROMs: no tiene listado general, abre el panel de marcas/consolas */}
+                <button
+                  ref={romTabRef}
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={romMenuOpen}
+                  onMouseEnter={openRomMenu}
+                  onMouseLeave={scheduleCloseRomMenu}
+                  onPointerUp={(e) => {
+                    // Mouse: la pestaña solo abre (se cierra al salir). Táctil: alterna.
+                    if (e.pointerType === "mouse") openRomMenu();
+                    else if (romMenuOpen) setRomMenuOpen(false);
+                    else openRomMenu();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+                      e.preventDefault();
+                      openRomMenu();
+                    }
+                  }}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs uppercase tracking-wider font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                    selectedApartado === "roms" || romMenuOpen
+                      ? isLight
+                        ? "bg-zinc-900 text-white shadow font-bold"
+                        : "bg-white text-zinc-950 shadow-md font-bold"
+                      : isLight
+                      ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600 hover:text-zinc-950 border border-transparent"
+                      : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-transparent hover:border-zinc-700"
+                  }`}
+                >
+                  <Joystick className="size-3.5" />
+                  <span>ROMs</span>
+                  <ChevronDown
+                    className={`size-3.5 transition-transform ${romMenuOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
               </div>
 
               {/* Search Input & Hamburger Filter Trigger */}
@@ -792,16 +1005,16 @@ export default function Catalog() {
                                         ? isLight
                                           ? "bg-blue-50 text-blue-700 border-blue-200"
                                           : "bg-blue-950/60 text-blue-300 border-blue-800"
+                                        : item.apartado === "roms"
+                                        ? isLight
+                                          ? "bg-violet-50 text-violet-700 border-violet-200"
+                                          : "bg-violet-950/60 text-violet-300 border-violet-800"
                                         : isLight
                                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                         : "bg-emerald-950/60 text-emerald-300 border-emerald-800"
                                     }`}
                                   >
-                                    {item.apartado === "juegos"
-                                      ? "Juego"
-                                      : item.apartado === "mods"
-                                      ? "Mod"
-                                      : "Tool"}
+                                    {APARTADO_BADGE[item.apartado]}
                                   </span>
                                 </div>
                               </div>
@@ -830,6 +1043,42 @@ export default function Catalog() {
             </div>
           </div>
         </section>
+
+        {/* Encabezado del listado de ROMs: marca y consola actuales */}
+        {romFilter && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border ${
+                isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Joystick className={`size-5 shrink-0 ${isLight ? "text-zinc-700" : "text-zinc-300"}`} />
+                <div className="min-w-0">
+                  <span className="block text-[11px] uppercase tracking-widest text-zinc-500">
+                    ROMs · {romFilter.brand}
+                  </span>
+                  <h2
+                    className={`text-lg sm:text-xl font-bold uppercase tracking-wider truncate ${
+                      isLight ? "text-zinc-950" : "text-white"
+                    }`}
+                  >
+                    {romFilter.console}
+                  </h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={openRomMenu}
+                className={`text-xs underline underline-offset-2 cursor-pointer ${
+                  isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Cambiar consola
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Active Filter Tags (en el flujo normal, entre la barra y la cuadrícula, con margen inferior de ~16px) */}
         {(selectedGenre !== "todos" || isSearchActive) && (
@@ -931,7 +1180,7 @@ export default function Catalog() {
                   onClick={() => {
                     setSearch("");
                     setSelectedGenre("todos");
-                    setSelectedApartado("todos");
+                    goToView({ apartado: "todos" });
                   }}
                   className={`px-5 py-2.5 rounded-xl border text-xs uppercase tracking-wider transition-colors cursor-pointer ${
                     isLight
@@ -1048,6 +1297,64 @@ export default function Catalog() {
         {!selectedItem && <NativeBannerAd />}
       </main>
 
+      {/* Panel de marcas y consolas de la pestaña ROMs */}
+      <AnimatePresence>
+        {romMenuOpen && !isAddModalOpen && !filterDrawerOpen && !selectedItem && (
+          <motion.div
+            ref={romMenuRef}
+            role="menu"
+            initial={{ opacity: 0, y: romMenuPos.top !== undefined ? -6 : 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: romMenuPos.top !== undefined ? -6 : 6 }}
+            transition={{ duration: 0.15 }}
+            onMouseEnter={cancelCloseRomMenu}
+            onMouseLeave={scheduleCloseRomMenu}
+            style={{
+              left: romMenuPos.left,
+              width: romMenuPos.width,
+              top: romMenuPos.top,
+              bottom: romMenuPos.bottom,
+              maxHeight: romMenuPos.maxHeight,
+            }}
+            // El padding hace de "puente" invisible con la pestaña: el mouse no sale al cruzar
+            className={`fixed z-[60] flex flex-col ${romMenuPos.top !== undefined ? "pt-2" : "pb-2"}`}
+          >
+            <div
+              className={`flex flex-col min-h-0 rounded-2xl border shadow-2xl transition-colors ${
+                isLight
+                  ? "bg-white border-zinc-200 shadow-zinc-400/40"
+                  : "bg-zinc-900 border-zinc-800 shadow-black/90"
+              }`}
+            >
+              <div
+                className={`flex items-center justify-between px-4 py-2 border-b shrink-0 ${
+                  isLight ? "border-zinc-200" : "border-zinc-800"
+                }`}
+              >
+                <span
+                  className={`text-xs uppercase tracking-widest font-bold ${
+                    isLight ? "text-zinc-800" : "text-zinc-200"
+                  }`}
+                >
+                  Elige una consola
+                </span>
+                <span className="text-[11px] text-zinc-500 font-mono">{totalRoms} ROMs</span>
+              </div>
+              <div className="min-h-0 overflow-y-auto overscroll-contain p-2">
+                <RomBrandMenu
+                  variant="popover"
+                  isLight={isLight}
+                  counts={romCounts}
+                  activeBrand={romFilter?.brand}
+                  activeConsole={romFilter?.console}
+                  onSelect={handleRomConsoleSelect}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Hamburger Menu Drawer for Changing Apartado & Genres */}
       <AnimatePresence>
         {filterDrawerOpen && (
@@ -1155,6 +1462,65 @@ export default function Catalog() {
                       </button>
                     );
                   })}
+
+                  {/* ROMs: se despliegan las marcas y sus consolas */}
+                  <button
+                    type="button"
+                    aria-expanded={drawerRomsOpen || selectedApartado === "roms"}
+                    onClick={() => setDrawerRomsOpen((open) => !open)}
+                    className={`flex items-center justify-between p-3.5 rounded-xl border transition-colors cursor-pointer text-left ${
+                      selectedApartado === "roms"
+                        ? isLight
+                          ? "bg-zinc-900 text-white border-zinc-900 font-bold shadow-md"
+                          : "bg-white text-zinc-950 border-white font-bold shadow-md"
+                        : isLight
+                        ? "bg-zinc-50 hover:bg-zinc-100 text-zinc-800 border-zinc-200"
+                        : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 border-zinc-800 hover:border-zinc-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Joystick className="size-4" />
+                      <span className="text-sm uppercase tracking-wide">
+                        {romFilter ? `ROMs · ${romFilter.console}` : "ROMs"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded font-mono ${
+                          selectedApartado === "roms"
+                            ? isLight
+                              ? "bg-white text-zinc-950"
+                              : "bg-zinc-950 text-white"
+                            : isLight
+                            ? "bg-zinc-200 text-zinc-700"
+                            : "bg-zinc-800 text-zinc-400"
+                        }`}
+                      >
+                        {totalRoms}
+                      </span>
+                      <ChevronDown
+                        className={`size-4 transition-transform ${
+                          drawerRomsOpen || selectedApartado === "roms" ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </button>
+                  {(drawerRomsOpen || selectedApartado === "roms") && (
+                    <div
+                      className={`p-3 rounded-xl border ${
+                        isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/40 border-zinc-800"
+                      }`}
+                    >
+                      <RomBrandMenu
+                        variant="drawer"
+                        isLight={isLight}
+                        counts={romCounts}
+                        activeBrand={romFilter?.brand}
+                        activeConsole={romFilter?.console}
+                        onSelect={handleRomConsoleSelect}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1255,9 +1621,9 @@ export default function Catalog() {
               >
                 <button
                   onClick={() => {
-                    setSelectedApartado("todos");
                     setSelectedGenre("todos");
                     setSearch("");
+                    goToView({ apartado: "todos" });
                     setFilterDrawerOpen(false);
                   }}
                   className={`w-1/2 py-3 rounded-xl text-xs uppercase tracking-wider border transition-colors text-center cursor-pointer ${

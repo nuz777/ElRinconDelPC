@@ -26,6 +26,12 @@ export interface CatalogItemProps {
   minimumRequirements?: CatalogMinimumRequirements | null;
   /** Código público fijo de 6 caracteres usado en la URL compartible. */
   publicCode?: string | null;
+  /** Solo ROMs: marca de la consola (Nintendo, Sega, PlayStation...). */
+  brand?: string | null;
+  /** Solo ROMs: consola a la que pertenece la ROM. */
+  console?: string | null;
+  /** Solo ROMs: emulador recomendado para jugarla. */
+  emulator?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -49,6 +55,9 @@ export class CatalogItem {
   public shortDescription: string;
   public minimumRequirements: CatalogMinimumRequirements | null;
   public readonly publicCode: string | null;
+  public brand: string | null;
+  public console: string | null;
+  public emulator: string | null;
   public readonly createdAt: Date;
   public updatedAt: Date;
 
@@ -67,6 +76,9 @@ export class CatalogItem {
     this.shortDescription = props.shortDescription;
     this.minimumRequirements = props.minimumRequirements ?? null;
     this.publicCode = props.publicCode ?? null;
+    this.brand = props.brand ?? null;
+    this.console = props.console ?? null;
+    this.emulator = props.emulator ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
   }

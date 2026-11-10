@@ -86,7 +86,7 @@ ON CONFLICT (email) DO UPDATE SET
 -- Tabla: catalog_items (juegos, mods y herramientas publicados por administradores)
 CREATE TABLE IF NOT EXISTS catalog_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    section VARCHAR(20) NOT NULL CHECK (section IN ('JUEGOS', 'MODS', 'HERRAMIENTAS')),
+    section VARCHAR(20) NOT NULL CHECK (section IN ('JUEGOS', 'MODS', 'HERRAMIENTAS', 'ROMS')),
     title VARCHAR(150) NOT NULL,
     genre VARCHAR(100) NOT NULL,
     size VARCHAR(50) NULL,
@@ -98,6 +98,10 @@ CREATE TABLE IF NOT EXISTS catalog_items (
     short_description TEXT NOT NULL,
     minimum_requirements JSONB NULL,
     public_code VARCHAR(6) NULL,
+    banner_url TEXT NULL,
+    brand VARCHAR(50) NULL,
+    console VARCHAR(80) NULL,
+    emulator VARCHAR(150) NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

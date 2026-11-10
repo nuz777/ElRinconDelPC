@@ -1,5 +1,5 @@
 /* oxlint-disable typescript/unbound-method */
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GameRepository } from '../../../Games/Domain/interfaces/game.repository.interface.js';
 import type { ModRepository } from '../../../Mods/Domain/interfaces/mod.repository.interface.js';
@@ -98,6 +98,9 @@ describe('CatalogService (Unit)', () => {
       title: 'Elden Ring',
       genre: 'Aventura / RPG',
       shortDescription: 'RPG de acción en mundo abierto.',
+      brand: null,
+      console: null,
+      emulator: null,
     });
     expect(result.version).toBe('v1.0');
   });
@@ -131,11 +134,64 @@ describe('CatalogService (Unit)', () => {
         storage: '60 GB libres',
         gpu: 'NVIDIA GTX 1060 3GB',
       },
+      brand: null,
+      console: null,
+      emulator: null,
     });
   });
 
-  it('updateItem lanza NotFoundException si el repositorio retorna null', async () => {
-    vi.mocked(repository.update).mockResolvedValue(null);
+  it('createItem de una ROM exige marca y consola válidas', async () => {
+    const base = {
+      section: CatalogSection.ROMS,
+      title: 'Homebrew Quest',
+      genre: 'Plataformas',
+      shortDescription: 'ROM homebrew de prueba.',
+    };
+    await expect(service.createItem(base)).rejects.toThrow(BadRequestException);
+    await expect(
+      service.createItem({ ...base, brand: 'Nintendo', console: 'PlayStation 2' }),
+    ).rejects.toThrow(BadRequestException);
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('createItem de una ROM guarda marca, consola y emulador', async () => {
+    vi.mocked(repository.create).mockResolvedValue(buildItem());
+    await service.createItem({
+      section: CatalogSection.ROMS,
+      title: 'Homebrew Quest',
+      genre: 'Plataformas',
+      shortDescription: 'ROM homebrew de prueba.',
+      brand: ' Nintendo ',
+      console: 'Nintendo 64',
+      emulator: ' simple64 ',
+    });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        section: CatalogSection.ROMS,
+        brand: 'Nintendo',
+        console: 'Nintendo 64',
+        emulator: 'simple64',
+      }),
+    );
+  });
+
+  it('createItem descarta marca/consola/emulador fuera de ROMs', async () => {
+    vi.mocked(repository.create).mockResolvedValue(buildItem());
+    await service.createItem({
+      section: CatalogSection.JUEGOS,
+      title: 'Elden Ring',
+      genre: 'Aventura / RPG',
+      shortDescription: 'RPG.',
+      brand: 'Nintendo',
+      console: 'Nintendo 64',
+    });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ brand: null, console: null, emulator: null }),
+    );
+  });
+
+  it('updateItem lanza NotFoundException si el ítem no existe', async () => {
+    vi.mocked(repository.findById).mockResolvedValue(null);
     await expect(service.updateItem(ID, { title: 'Nuevo' })).rejects.toThrow(
       NotFoundException,
     );

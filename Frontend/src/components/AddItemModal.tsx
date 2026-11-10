@@ -10,6 +10,12 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Apartado, CatalogItem } from "../data/catalog";
+import {
+  NO_STABLE_EMULATOR,
+  ROM_BRANDS,
+  ROM_GENRE_SUGGESTIONS,
+  findRomConsole,
+} from "../data/romPlatforms";
 import { useTheme } from "../ThemeContext";
 import { authService } from "../services/auth.service";
 
@@ -40,6 +46,14 @@ const GENRE_SUGGESTIONS: Record<Apartado, string[]> = {
     "Drivers & Mantenimiento",
     "Seguridad & Limpieza",
   ],
+  roms: ROM_GENRE_SUGGESTIONS,
+};
+
+const APARTADO_LABEL: Record<Apartado, string> = {
+  juegos: "Juegos",
+  mods: "Mods",
+  herramientas: "Herramientas",
+  roms: "ROMs",
 };
 
 // Optimiza la imagen de forma cliente para no saturar memoria y mantener 120 FPS
@@ -107,6 +121,11 @@ export default function AddItemModal({
   const [shortDesc, setShortDesc] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
 
+  // Solo ROMs: marca, consola y emulador recomendado
+  const [romBrand, setRomBrand] = useState(ROM_BRANDS[0].name);
+  const [romConsole, setRomConsole] = useState(ROM_BRANDS[0].consoles[0].name);
+  const [emulator, setEmulator] = useState("");
+
   // Requisitos mínimos del sistema
   const [minOs, setMinOs] = useState("");
   const [minCpu, setMinCpu] = useState("");
@@ -163,13 +182,55 @@ export default function AddItemModal({
     setMinRam("");
     setMinStorage("");
     setMinGpu("");
+    setRomBrand(ROM_BRANDS[0].name);
+    setRomConsole(ROM_BRANDS[0].consoles[0].name);
+    setEmulator("");
     setSubmitError(null);
   };
 
+  /** Precarga el emulador y los requisitos sugeridos para la consola elegida. */
+  const applyConsoleDefaults = (brand: string, consoleName: string) => {
+    const entry = findRomConsole(brand, consoleName);
+    if (!entry) return;
+    setEmulator(entry.emulator);
+    setMinOs(entry.requirements.os);
+    setMinCpu(entry.requirements.cpu);
+    setMinRam(entry.requirements.ram);
+    setMinGpu(entry.requirements.gpu);
+    setMinStorage(entry.requirements.storage);
+  };
+
   const handleApartadoChange = (newAp: Apartado) => {
+    const wasRoms = apartado === "roms";
     setApartado(newAp);
     setGenre(GENRE_SUGGESTIONS[newAp][0]);
+    if (newAp === "roms") {
+      applyConsoleDefaults(romBrand, romConsole);
+    } else if (wasRoms) {
+      // Los requisitos precargados de emulación no aplican a otros apartados
+      setEmulator("");
+      setMinOs("");
+      setMinCpu("");
+      setMinRam("");
+      setMinGpu("");
+      setMinStorage("");
+    }
   };
+
+  const handleRomBrandChange = (brand: string) => {
+    const firstConsole = ROM_BRANDS.find((b) => b.name === brand)?.consoles[0]?.name ?? "";
+    setRomBrand(brand);
+    setRomConsole(firstConsole);
+    applyConsoleDefaults(brand, firstConsole);
+  };
+
+  const handleRomConsoleChange = (consoleName: string) => {
+    setRomConsole(consoleName);
+    applyConsoleDefaults(romBrand, consoleName);
+  };
+
+  const isRom = apartado === "roms";
+  const romBrandConsoles = ROM_BRANDS.find((b) => b.name === romBrand)?.consoles ?? [];
 
   const handleCoverFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -271,10 +332,12 @@ export default function AddItemModal({
       finalBanner = urlBanner.trim();
     }
 
+    const finalEmulator = emulator.trim() || NO_STABLE_EMULATOR;
     const newItem: CatalogItem = {
       id: "",
       title: title.trim(),
       apartado,
+      ...(isRom ? { brand: romBrand, console: romConsole, emulator: finalEmulator } : {}),
       genre: genre.trim(),
       tag: tag.trim() || "Añadido",
       version: version.trim() || "v1.0",
@@ -285,11 +348,13 @@ export default function AddItemModal({
       bannerImg: finalBanner,
       shortDesc: shortDesc.trim(),
       fullDesc: `${shortDesc.trim()} Añadido recientemente a la biblioteca de El sótano del pc por la comunidad.`,
-      features: [
-        "Probado y verificado en Windows 10 y Windows 11",
-        "Optimizado para bajo consumo de recursos",
-        "Instalación limpia y rápida",
-      ],
+      features: isRom
+        ? [`ROM de ${romConsole} (${romBrand})`, `Probada con ${finalEmulator}`, "Descarga directa"]
+        : [
+            "Probado y verificado en Windows 10 y Windows 11",
+            "Optimizado para bajo consumo de recursos",
+            "Instalación limpia y rápida",
+          ],
       requirements: {
         os: minOs.trim() || "Windows 10 / 11 64-bit",
         cpu: minCpu.trim() || "Procesador de 2 o 4 núcleos",
@@ -381,8 +446,8 @@ export default function AddItemModal({
               >
                 Apartado Principal
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["juegos", "mods", "herramientas"] as Apartado[]).map((ap) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(["juegos", "mods", "herramientas", "roms"] as Apartado[]).map((ap) => (
                   <button
                     key={ap}
                     type="button"
@@ -397,7 +462,7 @@ export default function AddItemModal({
                         : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white hover:bg-zinc-800"
                     }`}
                   >
-                    {ap === "juegos" ? "Juegos" : ap === "mods" ? "Mods" : "Herramientas"}
+                    {APARTADO_LABEL[ap]}
                   </button>
                 ))}
               </div>
@@ -452,6 +517,98 @@ export default function AddItemModal({
                 </select>
               </div>
             </div>
+
+            {/* Solo ROMs: Marca → Consola (filtrada por marca) + emulador recomendado */}
+            {isRom && (
+              <div
+                className={`p-4 rounded-xl border space-y-3 ${
+                  isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/50 border-zinc-800"
+                }`}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                        isLight ? "text-zinc-600" : "text-zinc-400"
+                      }`}
+                    >
+                      Marca *
+                    </label>
+                    <select
+                      value={romBrand}
+                      onChange={(e) => handleRomBrandChange(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                        isLight
+                          ? "bg-white border-zinc-300 text-zinc-900 focus:border-zinc-700"
+                          : "bg-zinc-900 border-zinc-800 text-zinc-100 focus:border-zinc-500"
+                      }`}
+                    >
+                      {ROM_BRANDS.map((b) => (
+                        <option
+                          key={b.name}
+                          value={b.name}
+                          className={isLight ? "bg-white text-zinc-900" : "bg-zinc-900 text-zinc-100"}
+                        >
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                        isLight ? "text-zinc-600" : "text-zinc-400"
+                      }`}
+                    >
+                      Consola *
+                    </label>
+                    <select
+                      value={romConsole}
+                      onChange={(e) => handleRomConsoleChange(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                        isLight
+                          ? "bg-white border-zinc-300 text-zinc-900 focus:border-zinc-700"
+                          : "bg-zinc-900 border-zinc-800 text-zinc-100 focus:border-zinc-500"
+                      }`}
+                    >
+                      {romBrandConsoles.map((co) => (
+                        <option
+                          key={co.name}
+                          value={co.name}
+                          className={isLight ? "bg-white text-zinc-900" : "bg-zinc-900 text-zinc-100"}
+                        >
+                          {co.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    className={`block text-[11px] uppercase tracking-wider mb-1 font-semibold ${
+                      isLight ? "text-zinc-600" : "text-zinc-400"
+                    }`}
+                  >
+                    Emulador recomendado
+                  </label>
+                  <input
+                    type="text"
+                    value={emulator}
+                    onChange={(e) => setEmulator(e.target.value)}
+                    placeholder="Ej: PCSX2"
+                    maxLength={150}
+                    className={`w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition-colors border ${
+                      isLight
+                        ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-100 placeholder-zinc-600 focus:border-zinc-500"
+                    }`}
+                  />
+                  <p className="text-[11px] mt-1 text-zinc-500">
+                    Se precarga según la consola, igual que los requisitos de abajo. Puedes editarlos.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Size, Version, Tag */}
             <div className="grid grid-cols-3 gap-3">
@@ -1086,7 +1243,9 @@ export default function AddItemModal({
                   isLight ? "text-zinc-800" : "text-zinc-200"
                 }`}
               >
-                Requisitos Mínimos del Sistema
+                {isRom
+                  ? "Requisitos para emular (emulador + juego)"
+                  : "Requisitos Mínimos del Sistema"}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

@@ -55,6 +55,15 @@ export class CatalogItemResponseDto {
   })
   publicCode!: string | null;
 
+  @ApiPropertyOptional({ nullable: true, type: String, example: 'Nintendo' })
+  brand!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String, example: 'Nintendo 64' })
+  console!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String, example: 'Project64 / simple64' })
+  emulator!: string | null;
+
   @ApiProperty()
   createdAt!: Date;
 
