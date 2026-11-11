@@ -3,14 +3,14 @@ import { ROM_BRANDS } from "../data/romPlatforms";
 
 /**
  * Rutas del catálogo:
- *   Listados:  /catalogo · /juegos · /mods-shaders · /herramientas · /rom/{marca}/{consola}
- *   Detalle:   /juego/{slug}-{codigo} · /mod-shader/... · /herramienta/...
+ *   Listados:  /catalogo · /juegos · /mods-shaders · /herramientas · /adultos · /rom/{marca}/{consola}
+ *   Detalle:   /juego/{slug}-{codigo} · /mod-shader/... · /herramienta/... · /adulto/...
  *              /rom/{marca}/{consola}/{slug}-{codigo}
  */
 
 /** Vista de listado del catálogo (lo que se ve detrás del modal). */
 export type CatalogView =
-  | { apartado: "todos" | "juegos" | "mods" | "herramientas" }
+  | { apartado: "todos" | "juegos" | "mods" | "herramientas" | "adultos" }
   | { apartado: "roms"; brand: string; console: string };
 
 export interface CatalogRoute {
@@ -27,6 +27,7 @@ const DETAIL_PREFIX: Record<Exclude<Apartado, "roms">, string> = {
   juegos: "juego",
   mods: "mod-shader",
   herramientas: "herramienta",
+  adultos: "adulto",
 };
 
 /** URL de listado de cada apartado (ROMs no tiene listado general). */
@@ -35,6 +36,7 @@ export const SECTION_PATHS: Record<"todos" | Exclude<Apartado, "roms">, string> 
   juegos: "/juegos",
   mods: "/mods-shaders",
   herramientas: "/herramientas",
+  adultos: "/adultos",
 };
 
 const PUBLIC_CODE_SUFFIX_REGEX = /(?:^|-)([a-z0-9]{6})$/;
@@ -137,6 +139,7 @@ export function parseCatalogRoute(pathname: string): CatalogRoute | null {
     if (head === "juegos") return list({ apartado: "juegos" });
     if (head === "mods-shaders") return list({ apartado: "mods" });
     if (head === "herramientas") return list({ apartado: "herramientas" });
+    if (head === "adultos" || head === "+18") return list({ apartado: "adultos" });
     return null;
   }
 
@@ -144,6 +147,7 @@ export function parseCatalogRoute(pathname: string): CatalogRoute | null {
     if (head === "juego") return detail({ apartado: "juegos" }, rest[0]);
     if (head === "mod-shader") return detail({ apartado: "mods" }, rest[0]);
     if (head === "herramienta") return detail({ apartado: "herramientas" }, rest[0]);
+    if (head === "adulto") return detail({ apartado: "adultos" }, rest[0]);
   }
 
   if (head === "rom" && (rest.length === 2 || rest.length === 3)) {

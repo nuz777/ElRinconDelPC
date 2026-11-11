@@ -3,7 +3,7 @@ import type { Apartado, CatalogItem } from "../data/catalog";
 import { NO_STABLE_EMULATOR } from "../data/romPlatforms";
 import { cleanDescription } from "../utils/cleanDescription";
 
-export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS" | "ROMS";
+export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS" | "ROMS" | "ADULTOS";
 
 export interface CatalogMinimumRequirementsPayload {
   os: string;
@@ -91,6 +91,8 @@ function mapSectionToApartado(section: CatalogSectionApi): Apartado {
       return "herramientas";
     case "ROMS":
       return "roms";
+    case "ADULTOS":
+      return "adultos";
     default:
       return "juegos";
   }
@@ -106,6 +108,8 @@ export function mapApartadoToSection(apartado: Apartado): CatalogSectionApi {
       return "HERRAMIENTAS";
     case "roms":
       return "ROMS";
+    case "adultos":
+      return "ADULTOS";
     default:
       return "JUEGOS";
   }

@@ -16,7 +16,7 @@ export class FilterCatalogDto implements CatalogFilters {
   @ApiPropertyOptional({ enum: CatalogSection })
   @IsOptional()
   @IsEnum(CatalogSection, {
-    message: 'La sección debe ser JUEGOS, MODS, HERRAMIENTAS o ROMS',
+    message: 'La sección debe ser JUEGOS, MODS, HERRAMIENTAS, ROMS o ADULTOS',
   })
   section?: CatalogSection;
 

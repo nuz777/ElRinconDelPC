@@ -5,4 +5,6 @@ export enum CatalogSection {
   HERRAMIENTAS = 'HERRAMIENTAS',
   /** ROMs de consolas: cada ítem es un juego asociado a una marca y una consola. */
   ROMS = 'ROMS',
+  /** Contenido para adultos (+18 / Juegos H). */
+  ADULTOS = 'ADULTOS',
 }

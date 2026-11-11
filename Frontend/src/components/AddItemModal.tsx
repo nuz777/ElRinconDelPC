@@ -55,6 +55,14 @@ const GENRE_SUGGESTIONS: Record<Apartado, string[]> = {
     "Seguridad & Limpieza",
   ],
   roms: ROM_GENRE_SUGGESTIONS,
+  adultos: [
+    "Novela Visual / Eroge",
+    "RPG / Aventura H",
+    "Simulador / Dating Sim",
+    "Acción / Plataformas H",
+    "3D / Animación",
+    "Puzzle / Casual H",
+  ],
 };
 
 const APARTADO_LABEL: Record<Apartado, string> = {
@@ -62,6 +70,7 @@ const APARTADO_LABEL: Record<Apartado, string> = {
   mods: "Mods",
   herramientas: "Herramientas",
   roms: "ROMs",
+  adultos: "+18 Adultos",
 };
 
 // Optimiza la imagen de forma cliente para no saturar memoria y mantener 120 FPS
@@ -605,8 +614,8 @@ export default function AddItemModal({
               >
                 Apartado Principal
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(["juegos", "mods", "herramientas", "roms"] as Apartado[]).map((ap) => (
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {(["juegos", "mods", "herramientas", "roms", "adultos"] as Apartado[]).map((ap) => (
                   <button
                     key={ap}
                     type="button"

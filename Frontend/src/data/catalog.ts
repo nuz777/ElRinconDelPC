@@ -1,4 +1,4 @@
-export type Apartado = "juegos" | "mods" | "herramientas" | "roms";
+export type Apartado = "juegos" | "mods" | "herramientas" | "roms" | "adultos";
 
 export interface DownloadLink {
   name: string;

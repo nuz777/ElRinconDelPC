@@ -18,6 +18,7 @@ import {
   Joystick,
   ChevronDown,
   FileJson,
+  Flame,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
@@ -60,6 +61,7 @@ const APARTADOS_CONFIG: {
   { id: "juegos", label: "Juegos de PC", icon: Gamepad2 },
   { id: "mods", label: "Mods & Shaders", icon: Cpu },
   { id: "herramientas", label: "Herramientas de PC", icon: Wrench },
+  { id: "adultos", label: "+18 Para Adultos", icon: Flame },
 ];
 
 /** Panel de ROMs (pestaña): ancho máximo y alto con el que cabe sin scroll. */
@@ -77,6 +79,7 @@ const APARTADO_BADGE: Record<Apartado, string> = {
   mods: "Mod",
   herramientas: "Tool",
   roms: "ROM",
+  adultos: "+18",
 };
 
 function highlightMatch(text: string, query: string) {
@@ -177,12 +180,49 @@ export default function Catalog() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+
+  // ── Ruta actual → vista del catálogo y detalle abierto ───────────────────────
+  // Listados: /catalogo, /juegos, /mods-shaders, /herramientas, /adultos, /rom/{marca}/{consola}
+  // Detalle:  /juego/{slug}-{codigo}, ..., /rom/{marca}/{consola}/{slug}-{codigo}
+  const [location, navigate] = useLocation();
+  const parsedRoute = parseCatalogRoute(location);
+  const isAdminCatalogPath = location === "/publish" || location === "/dashboard/crear";
+  const route: CatalogRoute | null =
+    parsedRoute ??
+    (isAdminCatalogPath ? { view: { apartado: "todos" }, detailCode: null, isDetail: false } : null);
+  const detailRoute = route?.isDetail ?? false;
+  const routeCode = route?.detailCode ?? null;
+
+  // Detrás del modal se mantiene el listado desde el que se abrió (guardado en history.state)
+  const historyState = (typeof window !== "undefined" ? window.history.state : null) as
+    | { fromCatalog?: boolean; bg?: string }
+    | null;
+  const backgroundRoute =
+    detailRoute && historyState?.bg ? parseCatalogRoute(historyState.bg) : null;
+  const view: CatalogView =
+    backgroundRoute && !backgroundRoute.isDetail
+      ? backgroundRoute.view
+      : route?.view ?? { apartado: "todos" };
+  const viewPath = buildViewPath(view);
+  const selectedApartado = view.apartado;
+  const romFilter = view.apartado === "roms" ? view : null;
+
+  // ── Estado de confirmación de mayoría de edad (+18)
+  const [ageVerified, setAgeVerified] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("sotano_age_verified") === "true";
+  });
+
   // Coincidencias de autocompletado (hasta 6 sugerencias)
   const suggestions = useMemo(() => {
     const q = debouncedSearch.toLowerCase().trim();
     if (q.length < 2) return [];
     return items
       .filter((item) => {
+        if (item.apartado === "adultos" && selectedApartado !== "adultos" && !ageVerified) {
+          return false;
+        }
         return (
           item.title.toLowerCase().includes(q) ||
           item.genre.toLowerCase().includes(q) ||
@@ -191,7 +231,7 @@ export default function Catalog() {
         );
       })
       .slice(0, 6);
-  }, [items, debouncedSearch]);
+  }, [items, debouncedSearch, selectedApartado, ageVerified]);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isDropdownOpen || debouncedSearch.trim().length < 2) {
@@ -221,33 +261,6 @@ export default function Catalog() {
       setIsDropdownOpen(false);
     }
   };
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
-
-  // ── Ruta actual → vista del catálogo y detalle abierto ───────────────────────
-  // Listados: /catalogo, /juegos, /mods-shaders, /herramientas, /rom/{marca}/{consola}
-  // Detalle:  /juego/{slug}-{codigo}, ..., /rom/{marca}/{consola}/{slug}-{codigo}
-  const [location, navigate] = useLocation();
-  const parsedRoute = parseCatalogRoute(location);
-  const isAdminCatalogPath = location === "/publish" || location === "/dashboard/crear";
-  const route: CatalogRoute | null =
-    parsedRoute ??
-    (isAdminCatalogPath ? { view: { apartado: "todos" }, detailCode: null, isDetail: false } : null);
-  const detailRoute = route?.isDetail ?? false;
-  const routeCode = route?.detailCode ?? null;
-
-  // Detrás del modal se mantiene el listado desde el que se abrió (guardado en history.state)
-  const historyState = (typeof window !== "undefined" ? window.history.state : null) as
-    | { fromCatalog?: boolean; bg?: string }
-    | null;
-  const backgroundRoute =
-    detailRoute && historyState?.bg ? parseCatalogRoute(historyState.bg) : null;
-  const view: CatalogView =
-    backgroundRoute && !backgroundRoute.isDetail
-      ? backgroundRoute.view
-      : route?.view ?? { apartado: "todos" };
-  const viewPath = buildViewPath(view);
-  const selectedApartado = view.apartado;
-  const romFilter = view.apartado === "roms" ? view : null;
 
   // Ruta inválida (/rom, /rom/{marca}, consola inexistente...) → catálogo completo
   const isInvalidRoute = route === null;
@@ -519,10 +532,27 @@ export default function Catalog() {
     }
   };
 
+  // ── Confirmación de mayoría de edad (+18) para /adultos y /adulto/...
+  const isAdultContext =
+    selectedApartado === "adultos" ||
+    route?.view.apartado === "adultos" ||
+    selectedItem?.apartado === "adultos";
+  const showAgeGate = isAdultContext && !ageVerified;
+
+  const handleConfirmAge = () => {
+    sessionStorage.setItem("sotano_age_verified", "true");
+    setAgeVerified(true);
+  };
+
+  const handleRejectAge = () => {
+    setLocalItem(null);
+    navigate("/catalogo", { replace: true });
+  };
+
   // Get list of genres based on active apartado
   /** El ítem pertenece a la vista actual (apartado y, en ROMs, marca + consola). */
   const matchesView = (it: CatalogItem) => {
-    if (selectedApartado === "todos") return true;
+    if (selectedApartado === "todos") return it.apartado !== "adultos";
     if (it.apartado !== selectedApartado) return false;
     if (romFilter) return it.brand === romFilter.brand && it.console === romFilter.console;
     return true;
@@ -720,7 +750,13 @@ export default function Catalog() {
         {/* Top Badges */}
         <div className="absolute top-2 left-2 right-2 sm:top-2.5 sm:left-2.5 sm:right-2.5 flex items-center justify-between">
           <div className="flex items-center gap-1.5 pointer-events-none">
-            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
+            <span
+              className={`px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] uppercase font-bold tracking-wider border shadow-sm ${
+                item.apartado === "adultos"
+                  ? "bg-rose-600/95 text-white border-rose-500"
+                  : "bg-zinc-950/90 text-zinc-200 border-zinc-700"
+              }`}
+            >
               {APARTADO_BADGE[item.apartado]}
             </span>
           </div>
@@ -1140,6 +1176,10 @@ export default function Catalog() {
                                         ? isLight
                                           ? "bg-violet-50 text-violet-700 border-violet-200"
                                           : "bg-violet-950/60 text-violet-300 border-violet-800"
+                                        : item.apartado === "adultos"
+                                        ? isLight
+                                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                                          : "bg-rose-950/60 text-rose-300 border-rose-800"
                                         : isLight
                                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                         : "bg-emerald-950/60 text-emerald-300 border-emerald-800"
@@ -1273,7 +1313,11 @@ export default function Catalog() {
         )}
 
         {/* Catalog Items Section */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+        <section
+          className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 transition-all ${
+            showAgeGate ? "blur-xl pointer-events-none select-none opacity-30" : ""
+          }`}
+        >
           {filteredItems.length === 0 ? (
             /* Empty State */
             <div
@@ -1559,7 +1603,7 @@ export default function Catalog() {
                     const isActive = selectedApartado === ap.id;
                     const count =
                       ap.id === "todos"
-                        ? items.length
+                        ? items.filter((it) => it.apartado !== "adultos").length
                         : items.filter((it) => it.apartado === ap.id).length;
 
                     return (
@@ -1788,10 +1832,10 @@ export default function Catalog() {
 
       {/* Fullscreen Info & Download Modal (Takes whole screen with animation) */}
       <FullscreenDetailModal
-        item={selectedItem}
+        item={showAgeGate ? null : selectedItem}
         onClose={closeItem}
         isAdmin={isAdmin}
-        disableEscape={isAddModalOpen || Boolean(itemToDelete)}
+        disableEscape={isAddModalOpen || Boolean(itemToDelete) || showAgeGate}
         onDelete={(item) => setItemToDelete(item)}
         onEdit={(item) => {
           setItemToEdit(item);
@@ -1801,6 +1845,76 @@ export default function Catalog() {
         onNavigateApartado={handleNavigateApartado}
         onNavigateGenre={handleNavigateGenre}
       />
+
+      {/* Modal de Confirmación de Mayoría de Edad (+18) al entrar a /adultos */}
+      {createPortal(
+        <AnimatePresence>
+          {showAgeGate && (
+            <motion.div
+              key="age-gate-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl font-share select-text"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className={`relative w-full max-w-md rounded-3xl p-6 sm:p-8 border shadow-2xl text-center transition-colors ${
+                  isLight
+                    ? "bg-white border-zinc-200 text-zinc-900"
+                    : "bg-zinc-950 border-zinc-800 text-zinc-100"
+                }`}
+              >
+                <div className="mx-auto mb-5 size-16 rounded-2xl bg-rose-600/15 border border-rose-500/30 flex items-center justify-center text-rose-500 shadow-inner">
+                  <span className="text-2xl font-extrabold tracking-tight">+18</span>
+                </div>
+
+                <h2
+                  className={`text-xl sm:text-2xl font-extrabold uppercase tracking-wider mb-2 ${
+                    isLight ? "text-zinc-950" : "text-white"
+                  }`}
+                >
+                  Contenido para Adultos
+                </h2>
+
+                <p
+                  className={`text-xs sm:text-sm leading-relaxed mb-6 ${
+                    isLight ? "text-zinc-600" : "text-zinc-400"
+                  }`}
+                >
+                  Esta sección contiene juegos y material exclusivo para mayores de edad (+18).
+                  Por favor, confirma que tienes al menos 18 años para continuar.
+                </p>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleRejectAge}
+                    className={`w-full sm:w-1/2 py-3 px-4 rounded-xl border text-xs uppercase tracking-wider font-semibold cursor-pointer transition-colors ${
+                      isLight
+                        ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300"
+                        : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-800"
+                    }`}
+                  >
+                    Salir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmAge}
+                    className="w-full sm:w-1/2 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs uppercase tracking-wider font-bold shadow-lg shadow-rose-600/25 transition-all cursor-pointer"
+                  >
+                    Tengo +18 años
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Add / Edit Item Modal (Rendered strictly for Admins) */}
       {isAdmin && (

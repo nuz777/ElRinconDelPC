@@ -84,6 +84,7 @@ function AppInner() {
               <Route path="/juegos" component={Catalog} />
               <Route path="/mods-shaders" component={Catalog} />
               <Route path="/herramientas" component={Catalog} />
+              <Route path="/adultos" component={Catalog} />
 
               {/* ROMs: siempre con marca y consola (/rom/{marca}/{consola}[/{slug}-{codigo}]) */}
               <Route path="/rom/:brand/:console" component={Catalog} />
@@ -130,6 +131,7 @@ function AppInner() {
               <Route path="/juego/:slugCode" component={Catalog} />
               <Route path="/mod-shader/:slugCode" component={Catalog} />
               <Route path="/herramienta/:slugCode" component={Catalog} />
+              <Route path="/adulto/:slugCode" component={Catalog} />
 
               {/* Subida de mods para un juego */}
               <Route path="/juego/:slugCode/subir-mod">

@@ -33,6 +33,17 @@ export function normalizeApartado(raw: unknown): { apartado: Apartado; section: 
   if (clean.startsWith("rom") || clean.startsWith("emula")) {
     return { apartado: "roms", section: "ROMS" };
   }
+  if (
+    clean.includes("18") ||
+    clean.startsWith("adult") ||
+    clean.startsWith("hentai") ||
+    clean.startsWith("eroge") ||
+    clean.startsWith("nsfw") ||
+    clean === "h" ||
+    clean.startsWith("juegos h")
+  ) {
+    return { apartado: "adultos", section: "ADULTOS" };
+  }
   return { apartado: "juegos", section: "JUEGOS" };
 }
 
@@ -89,6 +100,7 @@ export function parseSingleCatalogJson(raw: any, index = 0): ParsedItemResult {
     mods: "Gráficos & Shaders",
     herramientas: "Optimización del Sistema",
     roms: "Acción",
+    adultos: "Novela Visual / Eroge",
   };
   const genre = getFirstString(
     raw,

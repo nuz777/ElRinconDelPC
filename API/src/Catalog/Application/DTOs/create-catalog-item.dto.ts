@@ -54,7 +54,7 @@ export class CreateCatalogItemDto {
     description: 'Apartado del catálogo',
   })
   @IsEnum(CatalogSection, {
-    message: 'La sección debe ser JUEGOS, MODS, HERRAMIENTAS o ROMS',
+    message: 'La sección debe ser JUEGOS, MODS, HERRAMIENTAS, ROMS o ADULTOS',
   })
   @IsNotEmpty()
   section!: CatalogSection;

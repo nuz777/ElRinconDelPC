@@ -86,6 +86,7 @@ export default function FullscreenDetailModal({
     if (ap === "juegos") return "Juegos de PC";
     if (ap === "mods") return "Mods & Mejoras";
     if (ap === "roms") return "ROMs";
+    if (ap === "adultos") return "+18 Para Adultos";
     return "Herramientas de PC";
   };
 
