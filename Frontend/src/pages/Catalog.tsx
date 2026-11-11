@@ -683,7 +683,7 @@ export default function Catalog() {
     <div
       key={item.id}
       onClick={() => openItem(item)}
-      className={`group flex flex-col rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-colors cursor-pointer ${
+      className={`group flex flex-col rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-colors cursor-pointer ${
         isLight
           ? "bg-white border-zinc-200 hover:border-zinc-400 text-zinc-900"
           : "bg-zinc-900 border-zinc-800 hover:border-zinc-600 text-zinc-100"
@@ -718,15 +718,15 @@ export default function Catalog() {
         />
 
         {/* Top Badges */}
-        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+        <div className="absolute top-2 left-2 right-2 sm:top-2.5 sm:left-2.5 sm:right-2.5 flex items-center justify-between">
           <div className="flex items-center gap-1.5 pointer-events-none">
-            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] uppercase font-bold tracking-wider bg-zinc-950/90 text-zinc-200 border border-zinc-700 shadow-sm">
               {APARTADO_BADGE[item.apartado]}
             </span>
           </div>
 
           {isAdmin && (
-            <div className="flex items-center gap-1.5 z-10">
+            <div className="flex items-center gap-1 sm:gap-1.5 z-10">
               <button
                 type="button"
                 onClick={(e) => {
@@ -735,9 +735,9 @@ export default function Catalog() {
                   setIsAddModalOpen(true);
                 }}
                 title="Editar este elemento"
-                className="p-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-500 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+                className="p-1 sm:p-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-500 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
               >
-                <Pencil className="size-3.5" />
+                <Pencil className="size-3 sm:size-3.5" />
               </button>
               <button
                 type="button"
@@ -746,27 +746,27 @@ export default function Catalog() {
                   setItemToDelete(item);
                 }}
                 title="Eliminar elemento del catálogo"
-                className="p-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+                className="p-1 sm:p-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
               >
-                <Trash2 className="size-3.5" />
+                <Trash2 className="size-3 sm:size-3.5" />
               </button>
             </div>
           )}
         </div>
 
         {/* Bottom Tag */}
-        <div className="absolute bottom-2 left-2.5 pointer-events-none">
-          <span className="text-[11px] font-mono text-zinc-300 bg-black/85 px-2 py-0.5 rounded">
+        <div className="absolute bottom-1.5 left-2 sm:bottom-2 sm:left-2.5 pointer-events-none max-w-[85%]">
+          <span className="text-[10px] sm:text-[11px] font-mono text-zinc-300 bg-black/85 px-1.5 sm:px-2 py-0.5 rounded truncate inline-block max-w-full">
             {item.version}
           </span>
         </div>
       </div>
 
       {/* Card Body */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+      <div className="p-3 sm:p-5 flex-1 flex flex-col justify-between space-y-2.5 sm:space-y-4">
         <div>
           <span
-            className={`text-[11px] uppercase tracking-wider block mb-1 ${
+            className={`text-[10px] sm:text-[11px] uppercase tracking-wider block mb-0.5 sm:mb-1 truncate ${
               isLight ? "text-zinc-500" : "text-zinc-400"
             }`}
           >
@@ -775,14 +775,14 @@ export default function Catalog() {
               : item.genre}
           </span>
           <h3
-            className={`text-base font-bold line-clamp-1 transition-colors ${
+            className={`text-sm sm:text-base font-bold line-clamp-1 transition-colors ${
               isLight ? "text-zinc-900 group-hover:text-black" : "text-white group-hover:text-zinc-200"
             }`}
           >
             {item.title}
           </h3>
           <p
-            className={`text-xs mt-2 line-clamp-2 leading-relaxed ${
+            className={`text-[11px] sm:text-xs mt-1 sm:mt-2 line-clamp-2 leading-snug sm:leading-relaxed ${
               isLight ? "text-zinc-600" : "text-zinc-400"
             }`}
           >
@@ -792,26 +792,26 @@ export default function Catalog() {
 
         {/* Card Footer */}
         <div
-          className={`pt-3 border-t flex items-center justify-between text-xs ${
+          className={`pt-2 sm:pt-3 border-t flex items-center justify-between text-[10px] sm:text-xs ${
             isLight ? "border-zinc-200" : "border-zinc-800/80"
           }`}
         >
           <span
-            className={`flex items-center gap-1.5 font-mono ${
+            className={`flex items-center gap-1 sm:gap-1.5 font-mono truncate mr-1 ${
               isLight ? "text-zinc-600" : "text-zinc-400"
             }`}
           >
-            <HardDrive className="size-3.5 text-zinc-400" />
-            {item.size}
+            <HardDrive className="size-3 sm:size-3.5 text-zinc-400 shrink-0" />
+            <span className="truncate">{item.size}</span>
           </span>
 
           <span
-            className={`inline-flex items-center gap-1 font-semibold group-hover:translate-x-1 transition-transform ${
+            className={`inline-flex items-center gap-0.5 sm:gap-1 font-semibold shrink-0 group-hover:translate-x-1 transition-transform ${
               isLight ? "text-zinc-900" : "text-white"
             }`}
           >
             <span>Ver info</span>
-            <Download className="size-3.5" />
+            <Download className="size-3 sm:size-3.5" />
           </span>
         </div>
       </div>
@@ -1368,7 +1368,7 @@ export default function Catalog() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                 {filteredItems.map(renderCard)}
               </div>
             </div>
@@ -1416,7 +1416,7 @@ export default function Catalog() {
                 </div>
 
                 {/* Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                   {genreItems.map(renderCard)}
                 </div>
               </div>
