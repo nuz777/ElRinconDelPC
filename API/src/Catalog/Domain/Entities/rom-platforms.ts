@@ -30,7 +30,6 @@ export const ROM_PLATFORMS: Readonly<Record<string, readonly string[]>> = {
     'PlayStation 4',
     'PlayStation 5',
   ],
-  Xbox: ['Xbox', 'Xbox 360', 'Xbox One', 'Xbox Series X|S'],
   Atari: ['Atari 7800', 'Atari Lynx', 'Atari Jaguar'],
   NEC: ['TurboGrafx-16 / PC Engine'],
   SNK: ['Neo Geo AES', 'Neo Geo Pocket'],

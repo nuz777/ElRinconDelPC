@@ -110,15 +110,6 @@ export const ROM_BRANDS: RomBrand[] = [
     ],
   },
   {
-    name: "Xbox",
-    consoles: [
-      c("Xbox", "xemu", "high"),
-      c("Xbox 360", "Xenia", "ultra"),
-      c("Xbox One", NO_STABLE_EMULATOR, "none"),
-      c("Xbox Series X|S", NO_STABLE_EMULATOR, "none"),
-    ],
-  },
-  {
     name: "Atari",
     consoles: [
       c("Atari 7800", "A7800 / ProSystem", "low"),
