@@ -641,8 +641,8 @@ export default function FullscreenDetailModal({
                 </div>
               </section>
 
-              {/* Requirements Box */}
-              {item.requirements && (
+              {/* Requirements Box (no aplica para juegos H / +18 Adultos) */}
+              {item.apartado !== "adultos" && item.requirements && (
                 <section
                   className={`p-6 sm:p-8 rounded-2xl border shadow-xl space-y-4 transition-colors ${
                     isLight

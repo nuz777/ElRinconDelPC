@@ -119,6 +119,7 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
   const apartado = mapSectionToApartado(api.section);
   const downloadUrl = api.downloadUrl || "#";
   const isRom = apartado === "roms";
+  const isAdult = apartado === "adultos";
   const emulator = api.emulator || null;
 
   return {
@@ -150,13 +151,15 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
           "Descarga directa de alta velocidad",
           "Sin software malicioso ni añadidos innecesarios",
         ],
-    requirements: {
-      os: api.minimumRequirements?.os || "Windows 10 / 11 64-bit",
-      cpu: api.minimumRequirements?.cpu || "Procesador de 2 o 4 núcleos",
-      ram: api.minimumRequirements?.ram || "4 GB RAM",
-      gpu: api.minimumRequirements?.gpu || "GPU compatible con DirectX 11",
-      storage: api.minimumRequirements?.storage || api.size || "1 GB libre",
-    },
+    requirements: isAdult
+      ? undefined
+      : {
+          os: api.minimumRequirements?.os || "Windows 10 / 11 64-bit",
+          cpu: api.minimumRequirements?.cpu || "Procesador de 2 o 4 núcleos",
+          ram: api.minimumRequirements?.ram || "4 GB RAM",
+          gpu: api.minimumRequirements?.gpu || "GPU compatible con DirectX 11",
+          storage: api.minimumRequirements?.storage || api.size || "1 GB libre",
+        },
     downloadLinks: [
       {
         name: "Descarga Directa",

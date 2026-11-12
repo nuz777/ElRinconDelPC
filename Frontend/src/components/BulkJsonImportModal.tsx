@@ -439,25 +439,27 @@ export default function BulkJsonImportModal({
                             </div>
                           </div>
 
-                          {/* Especificaciones mínimas detectadas */}
-                          <div className="mt-2.5 pt-2 border-t border-zinc-800/50 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-zinc-400">
-                            <span className="flex items-center gap-1">
-                              <Monitor className="size-3 text-zinc-500" />
-                              {it.requirements.os}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Cpu className="size-3 text-zinc-500" />
-                              {it.requirements.cpu}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Layers className="size-3 text-zinc-500" />
-                              {it.requirements.ram}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <HardDrive className="size-3 text-zinc-500" />
-                              {it.requirements.gpu}
-                            </span>
-                          </div>
+                          {/* Especificaciones mínimas detectadas (no aplica para adultos) */}
+                          {it.apartado !== "adultos" && it.requirements && (
+                            <div className="mt-2.5 pt-2 border-t border-zinc-800/50 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-zinc-400">
+                              <span className="flex items-center gap-1">
+                                <Monitor className="size-3 text-zinc-500" />
+                                {it.requirements.os}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Cpu className="size-3 text-zinc-500" />
+                                {it.requirements.cpu}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Layers className="size-3 text-zinc-500" />
+                                {it.requirements.ram}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <HardDrive className="size-3 text-zinc-500" />
+                                {it.requirements.gpu}
+                              </span>
+                            </div>
+                          )}
 
                           {entry.errors.length > 0 && (
                             <div className="mt-2 text-[10px] text-red-400">

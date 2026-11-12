@@ -444,7 +444,9 @@ export default function Catalog() {
       downloadUrl: validDownloadUrl,
       developer: newItem.developer,
       shortDescription: cleanDescription(newItem.shortDesc || newItem.fullDesc),
-      minimumRequirements: newItem.requirements,
+      ...(newItem.apartado !== "adultos" && newItem.requirements
+        ? { minimumRequirements: newItem.requirements }
+        : {}),
       ...(newItem.apartado === "roms"
         ? {
             brand: newItem.brand ?? undefined,
@@ -491,7 +493,9 @@ export default function Catalog() {
             emulator: updatedItem.emulator ?? undefined,
           }
         : {}),
-      minimumRequirements: updatedItem.requirements,
+      ...(updatedItem.apartado !== "adultos" && updatedItem.requirements
+        ? { minimumRequirements: updatedItem.requirements }
+        : {}),
     });
 
     // Actualizar en el estado de items locales

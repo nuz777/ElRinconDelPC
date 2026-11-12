@@ -31,7 +31,7 @@ export interface CatalogItem {
   shortDesc: string;
   fullDesc: string;
   features: string[];
-  requirements: {
+  requirements?: {
     os: string;
     cpu: string;
     ram: string;

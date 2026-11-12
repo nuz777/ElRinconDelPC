@@ -282,6 +282,7 @@ export class CatalogService {
 
   /**
    * ROMs: marca y consola obligatorias y deben existir en ROM_PLATFORMS.
+   * ADULTOS (juegos H): no tienen apartado de requisitos (minimumRequirements se guarda como null).
    * Otros apartados: marca, consola y emulador se descartan (null).
    */
   private applyRomRules<T extends UpdateCatalogItemData>(
@@ -289,7 +290,13 @@ export class CatalogService {
     section: CatalogSection | undefined,
   ): T {
     if (section !== CatalogSection.ROMS) {
-      return { ...data, brand: null, console: null, emulator: null };
+      return {
+        ...data,
+        brand: null,
+        console: null,
+        emulator: null,
+        ...(section === CatalogSection.ADULTOS ? { minimumRequirements: null } : {}),
+      };
     }
     const brand = data.brand?.trim();
     const consoleName = data.console?.trim();

@@ -204,13 +204,16 @@ export function parseSingleCatalogJson(raw: any, index = 0): ParsedItemResult {
   const bannerUrl = undefined;
   const downloadUrl = undefined;
 
-  const minimumRequirements = {
-    os: minOs,
-    cpu: minCpu,
-    ram: minRam,
-    storage: minStorage,
-    gpu: minGpu,
-  };
+  const isAdult = apartado === "adultos";
+  const minimumRequirements = isAdult
+    ? undefined
+    : {
+        os: minOs,
+        cpu: minCpu,
+        ram: minRam,
+        storage: minStorage,
+        gpu: minGpu,
+      };
 
   const payload: CreateCatalogItemPayload = {
     section,
@@ -224,7 +227,7 @@ export function parseSingleCatalogJson(raw: any, index = 0): ParsedItemResult {
     downloadUrl,
     developer,
     shortDescription: shortDesc,
-    minimumRequirements,
+    ...(minimumRequirements ? { minimumRequirements } : {}),
     ...(apartado === "roms"
       ? {
           brand,

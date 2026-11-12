@@ -190,6 +190,32 @@ describe('CatalogService (Unit)', () => {
     );
   });
 
+  it('createItem en ADULTOS descarta minimumRequirements (los juegos H no tienen requisitos)', async () => {
+    vi.mocked(repository.create).mockResolvedValue(buildItem());
+    await service.createItem({
+      section: CatalogSection.ADULTOS,
+      title: 'Visual Novel H',
+      genre: 'Novela Visual / Eroge',
+      shortDescription: 'Novela visual.',
+      minimumRequirements: {
+        os: 'Windows 10',
+        cpu: 'i5',
+        ram: '4 GB',
+        storage: '2 GB',
+        gpu: 'Integrada',
+      },
+    });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        section: CatalogSection.ADULTOS,
+        minimumRequirements: null,
+        brand: null,
+        console: null,
+        emulator: null,
+      }),
+    );
+  });
+
   it('updateItem lanza NotFoundException si el ítem no existe', async () => {
     vi.mocked(repository.findById).mockResolvedValue(null);
     await expect(service.updateItem(ID, { title: 'Nuevo' })).rejects.toThrow(

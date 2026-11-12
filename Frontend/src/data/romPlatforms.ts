@@ -7,7 +7,7 @@ import type { CatalogItem } from "./catalog";
  * (el admin puede editarlos).
  */
 
-type Requirements = CatalogItem["requirements"];
+type Requirements = NonNullable<CatalogItem["requirements"]>;
 
 export interface RomConsole {
   name: string;

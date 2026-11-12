@@ -117,6 +117,17 @@ function normalizeSection(raw) {
   if (str.startsWith('mod')) return 'MODS';
   if (str.startsWith('herramienta') || str.startsWith('tool')) return 'HERRAMIENTAS';
   if (str.startsWith('rom')) return 'ROMS';
+  if (
+    str.includes('18') ||
+    str.startsWith('adult') ||
+    str.startsWith('hentai') ||
+    str.startsWith('eroge') ||
+    str.startsWith('nsfw') ||
+    str === 'h' ||
+    str.startsWith('juegos h')
+  ) {
+    return 'ADULTOS';
+  }
   return 'JUEGOS';
 }
 
@@ -132,7 +143,16 @@ for (let i = 0; i < itemsList.length; i++) {
   }
 
   const section = normalizeSection(getVal(raw, ['apartado', 'seccion', 'section', 'tipo']));
-  const defaultGenre = section === 'MODS' ? 'Gráficos & Shaders' : section === 'HERRAMIENTAS' ? 'Optimización del Sistema' : section === 'ROMS' ? 'Acción' : 'Acción / Shooter';
+  const defaultGenre =
+    section === 'MODS'
+      ? 'Gráficos & Shaders'
+      : section === 'HERRAMIENTAS'
+      ? 'Optimización del Sistema'
+      : section === 'ROMS'
+      ? 'Acción'
+      : section === 'ADULTOS'
+      ? 'Novela Visual / Eroge'
+      : 'Acción / Shooter';
   const genre = getVal(raw, ['genero', 'género', 'genre', 'categoria'], defaultGenre);
   const size = getVal(raw, ['peso', 'tamano', 'tamaño', 'size'], '1.0 GB');
   const version = getVal(raw, ['version', 'versión', 'ver'], 'v1.0');
@@ -140,7 +160,7 @@ for (let i = 0; i < itemsList.length; i++) {
   const badge = getVal(raw, ['etiqueta', 'tag', 'badge'], 'Nuevo');
   const shortDescription = getVal(raw, ['descripcion', 'descripción', 'shortDesc', 'shortDescription', 'description'], `${title} en El Sótano.`);
 
-  // Especificaciones
+  // Especificaciones (los juegos H / ADULTOS no llevan requisitos)
   const specs = raw.especificaciones || raw.especificaciones_pc || raw.requisitos || raw.requirements || raw.minimumRequirements || raw;
   const os = getVal(specs, ['so', 'os', 'sistema_operativo'], 'Windows 10 / 11 64-bit');
   const cpu = getVal(specs, ['cpu', 'procesador'], 'Intel Core i5 / AMD Ryzen 5');
@@ -159,7 +179,7 @@ for (let i = 0; i < itemsList.length; i++) {
     developer,
     shortDescription,
     coverUrl: '/img/indicado.webp',
-    minimumRequirements: { os, cpu, ram, storage, gpu },
+    ...(section !== 'ADULTOS' ? { minimumRequirements: { os, cpu, ram, storage, gpu } } : {}),
     ...(section === 'ROMS'
       ? {
           brand: getVal(raw, ['marca', 'brand'], 'Nintendo'),
