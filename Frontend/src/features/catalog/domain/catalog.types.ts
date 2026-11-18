@@ -41,5 +41,3 @@ export interface CatalogItem {
   downloadLinks: DownloadLink[];
   installationSteps: string[];
 }
-
-export const initialCatalogItems: CatalogItem[] = [];

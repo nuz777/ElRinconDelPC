@@ -37,7 +37,13 @@ export class SyncSchemaAndAddPerformanceIndexes1700000000011
     await queryRunner.query(`
       UPDATE "users"
       SET "email" = LOWER(TRIM("email"))
-      WHERE "email" <> LOWER(TRIM("email"));
+      WHERE "email" <> LOWER(TRIM("email"))
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "users" u2
+          WHERE LOWER(TRIM(u2."email")) = LOWER(TRIM("users"."email"))
+            AND u2."id" <> "users"."id"
+        );
     `);
 
     // 3. Extensión pg_trgm para búsquedas ILIKE '%...%' aceleradas con GIN
@@ -63,8 +69,12 @@ export class SyncSchemaAndAddPerformanceIndexes1700000000011
 
     // 5. Índices de games
     await queryRunner.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "idx_games_slug"
-      ON "games" ("slug");
+      DO $$
+      BEGIN
+        CREATE UNIQUE INDEX IF NOT EXISTS "idx_games_slug" ON "games" ("slug");
+      EXCEPTION
+        WHEN unique_violation OR duplicate_table THEN NULL;
+      END $$;
     `);
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "idx_games_is_active_created_at"
@@ -83,8 +93,12 @@ export class SyncSchemaAndAddPerformanceIndexes1700000000011
 
     // 7. Índices de tools
     await queryRunner.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "idx_tools_slug"
-      ON "tools" ("slug");
+      DO $$
+      BEGIN
+        CREATE UNIQUE INDEX IF NOT EXISTS "idx_tools_slug" ON "tools" ("slug");
+      EXCEPTION
+        WHEN unique_violation OR duplicate_table THEN NULL;
+      END $$;
     `);
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "idx_tools_active_category_created"

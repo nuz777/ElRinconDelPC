@@ -12,8 +12,20 @@ export class AddRomsSectionToCatalogItems1700000000009 implements MigrationInter
       ALTER TABLE "catalog_items" DROP CONSTRAINT IF EXISTS "catalog_items_section_check";
     `);
     await queryRunner.query(`
+      UPDATE "catalog_items"
+      SET "section" = CASE
+        WHEN UPPER(TRIM("section")) IN ('JUEGOS', 'MODS', 'HERRAMIENTAS', 'ROMS', 'ADULTOS') THEN UPPER(TRIM("section"))
+        WHEN UPPER(TRIM("section")) LIKE 'ROM%' THEN 'ROMS'
+        WHEN UPPER(TRIM("section")) LIKE 'MOD%' THEN 'MODS'
+        WHEN UPPER(TRIM("section")) LIKE 'HERRAMIENTA%' OR UPPER(TRIM("section")) LIKE 'TOOL%' THEN 'HERRAMIENTAS'
+        WHEN UPPER(TRIM("section")) LIKE 'ADULT%' OR UPPER(TRIM("section")) LIKE '%18%' THEN 'ADULTOS'
+        ELSE 'JUEGOS'
+      END
+      WHERE "section" NOT IN ('JUEGOS', 'MODS', 'HERRAMIENTAS', 'ROMS', 'ADULTOS');
+    `);
+    await queryRunner.query(`
       ALTER TABLE "catalog_items" ADD CONSTRAINT "catalog_items_section_check"
-      CHECK ("section" IN ('JUEGOS', 'MODS', 'HERRAMIENTAS', 'ROMS'));
+      CHECK ("section" IN ('JUEGOS', 'MODS', 'HERRAMIENTAS', 'ROMS', 'ADULTOS'));
     `);
     await queryRunner.query(`
       ALTER TABLE "catalog_items"
