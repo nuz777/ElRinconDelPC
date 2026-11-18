@@ -14,11 +14,7 @@ import { ROUTES } from "./routes";
 
 const HomePage = lazy(() => import("../features/home/pages/HomePage"));
 const CatalogPage = lazy(() => import("../features/catalog/pages/CatalogPage"));
-const ToolsPage = lazy(() => import("../features/tools/pages/ToolsPage"));
-const ProgrammingPage = lazy(() => import("../features/tools/pages/ProgrammingPage"));
-const WindowsToolsPage = lazy(() => import("../features/tools/pages/WindowsToolsPage"));
 const AuthPage = lazy(() => import("../features/auth/pages/AuthPage"));
-const CreateGamePage = lazy(() => import("../features/games/pages/CreateGamePage"));
 const UploadModPage = lazy(() => import("../features/games/pages/UploadModPage"));
 const LegacyGameRedirect = lazy(
   () => import("../features/games/pages/LegacyGameRedirect"),
@@ -107,10 +103,12 @@ function AppInner() {
                   <Redirect to={ROUTES.CATALOG} replace />
                 </Route>
 
-                <Route path="/tools" component={ToolsPage} />
-                <Route path="/tools/all" component={ToolsPage} />
-                <Route path="/tools/programming" component={ProgrammingPage} />
-                <Route path="/tools/windows" component={WindowsToolsPage} />
+                <Route path="/tools">
+                  <Redirect to={ROUTES.TOOLS} replace />
+                </Route>
+                <Route path="/tools/:rest*">
+                  <Redirect to={ROUTES.TOOLS} replace />
+                </Route>
 
                 <Route path="/publish">
                   <ProtectedRoute>
@@ -123,14 +121,6 @@ function AppInner() {
                   <ProtectedRoute>
                     <AdminRoute>
                       <CatalogPage />
-                    </AdminRoute>
-                  </ProtectedRoute>
-                </Route>
-
-                <Route path={ROUTES.ADMIN_CREATE_GAME}>
-                  <ProtectedRoute>
-                    <AdminRoute>
-                      <CreateGamePage />
                     </AdminRoute>
                   </ProtectedRoute>
                 </Route>

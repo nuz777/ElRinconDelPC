@@ -7,7 +7,6 @@ export const ROUTES = {
   ADULT: "/adultos",
   LOGIN: "/login",
   REGISTER: "/register",
-  ADMIN_CREATE_GAME: "/admin/juegos/nuevo",
 } as const;
 
 const CATALOG_PREFIXES = [
