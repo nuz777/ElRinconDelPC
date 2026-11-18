@@ -240,6 +240,14 @@ html:not(.light) .text-theme-desc {
   animation-delay: 0.4s;
 }
 
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-radius: 0 !important;
+  }
+}
+
 body {
   font-family: "Share Tech Mono", monospace;
 }
