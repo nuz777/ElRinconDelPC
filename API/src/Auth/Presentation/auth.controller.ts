@@ -190,11 +190,18 @@ export class AuthController {
   @ApiOperation({ summary: 'Verificar si existe una sesión válida' })
   @ApiOkResponse({ description: 'Sesión activa', type: AuthResponseDto })
   @ApiUnauthorizedResponse({ description: 'No autenticado o token expirado' })
-  async check(@Req() req: Request & { user: AuthenticatedUser }) {
-    const user = await this.authService.getUserSession(req.user.id, req.user);
+  check(@Req() req: Request & { user: AuthenticatedUser }) {
+    const { user } = req;
     return {
       authenticated: true,
-      user,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        provider: user.provider ?? 'local',
+        role: user.role,
+        picture: user.picture,
+      },
     };
   }
 }

@@ -191,6 +191,13 @@ export class ToolsService {
   }
 
   async incrementDownloadCount(id: string): Promise<void> {
+    if (this.toolsRepository.incrementDownloadsIfExists) {
+      const incremented = await this.toolsRepository.incrementDownloadsIfExists(id);
+      if (!incremented) {
+        throw new NotFoundException(`Herramienta con id "${id}" no encontrada`);
+      }
+      return;
+    }
     const tool = await this.toolsRepository.findById(id);
     if (!tool) {
       throw new NotFoundException(`Herramienta con id "${id}" no encontrada`);

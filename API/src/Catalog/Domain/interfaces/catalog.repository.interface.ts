@@ -11,6 +11,15 @@ export interface CatalogFilters {
   search?: string;
   page: number;
   limit: number;
+  /** Cuando es true, omite campos pesados de detalle (`bannerUrl`, `minimumRequirements`). */
+  summary?: boolean;
+}
+
+export type CatalogMediaKind = 'cover' | 'banner';
+
+export interface CatalogMediaRecord {
+  value: string | null;
+  updatedAt: Date;
 }
 
 export interface PaginatedResult<T> {
@@ -33,6 +42,7 @@ export interface CatalogRepository {
   findAll(filters: CatalogFilters): Promise<PaginatedResult<CatalogItem>>;
   findById(id: string): Promise<CatalogItem | null>;
   findByPublicCode(code: string): Promise<CatalogItem | null>;
+  findMedia?(id: string, kind: CatalogMediaKind): Promise<CatalogMediaRecord | null>;
   create(item: CreateCatalogItemData): Promise<CatalogItem>;
   update(id: string, item: UpdateCatalogItemData): Promise<CatalogItem | null>;
   delete(id: string): Promise<boolean>;

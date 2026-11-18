@@ -5,22 +5,32 @@ import type { Transporter } from 'nodemailer';
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
+  private transporter?: Transporter;
+  private transporterKey?: string;
 
-  private createTransporter(): Transporter {
-    const user = process.env.MAIL_USER?.trim();
-    const pass = process.env.MAIL_PASS?.replace(/\s+/g, '');
+  private getTransporter(): Transporter {
+    const user = process.env.MAIL_USER?.trim() ?? '';
+    const pass = process.env.MAIL_PASS?.replace(/\s+/g, '') ?? '';
+    const key = `${user}:${pass}`;
 
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user,
-        pass,
-      },
-    });
+    if (!this.transporter || this.transporterKey !== key) {
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        pool: true,
+        maxConnections: 3,
+        auth: {
+          user,
+          pass,
+        },
+      });
+      this.transporterKey = key;
+    }
+
+    return this.transporter;
   }
 
   async sendResetCode(to: string, code: string): Promise<void> {
-    const transporter = this.createTransporter();
+    const transporter = this.getTransporter();
     const from =
       process.env.MAIL_FROM ||
       '"El Sótano del PC" <soporte.elsotanodelpc@gmail.com>';

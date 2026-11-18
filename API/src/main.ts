@@ -4,13 +4,9 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
+// El .env se carga una sola vez en database/data-source.ts (importado por AppModule)
 import { AppModule } from './app.module.js';
-
-try {
-  process.loadEnvFile?.();
-} catch {
-  // Ignorar si el archivo .env no existe en producción
-}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -22,6 +18,8 @@ async function bootstrap() {
 
   app.set('trust proxy', 1);
 
+  // Compresión gzip/deflate de respuestas (JSON) mayores a 1 KB
+  app.use(compression({ threshold: 1024 }));
   app.use(cookieParser());
 
   const allowedOrigins = [

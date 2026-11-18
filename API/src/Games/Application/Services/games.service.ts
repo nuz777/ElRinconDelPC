@@ -20,6 +20,7 @@ import {
   type UpdateGameData,
 } from '../../Domain/interfaces/game.repository.interface.js';
 import { slugify } from '../../../Common/utils/slugify.js';
+import { isUuid } from '../../../Common/utils/sql.js';
 import type { CreateGameDto } from '../DTOs/create-game.dto.js';
 import type { FilterGamesDto } from '../DTOs/filter-games.dto.js';
 import type { UpdateGameDto } from '../DTOs/update-game.dto.js';
@@ -129,13 +130,12 @@ export class GamesService {
     return game;
   }
 
-  /** Intenta localizar un juego por UUID; si no existe, intenta por slug. */
+  /** Localiza un juego por UUID o por slug en una única consulta según el formato. */
   async resolveId(id: string): Promise<Game | null> {
-    let game = await this.gamesRepository.findById(id);
-    if (!game) {
-      game = await this.gamesRepository.findBySlug(id);
+    if (isUuid(id)) {
+      return this.gamesRepository.findById(id);
     }
-    return game;
+    return this.gamesRepository.findBySlug(id);
   }
 
   async updateGame(id: string, dto: UpdateGameDto): Promise<Game> {
@@ -188,10 +188,7 @@ export class GamesService {
   }
 
   async deleteGame(id: string): Promise<{ message: string; id: string }> {
-    let existing = await this.gamesRepository.findById(id);
-    if (!existing) {
-      existing = await this.gamesRepository.findBySlug(id);
-    }
+    const existing = await this.resolveId(id);
     if (!existing) {
       throw new NotFoundException(`Juego con id "${id}" no encontrado`);
     }

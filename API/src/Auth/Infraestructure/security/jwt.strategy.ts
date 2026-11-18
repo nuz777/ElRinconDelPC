@@ -23,7 +23,12 @@ export interface AuthenticatedUser {
   email: string;
   role: Role | `${Role}`;
   name?: string;
+  provider?: string;
+  picture?: string;
 }
+
+const USER_CACHE_TTL_MS = 30_000;
+const USER_CACHE_MAX_SIZE = 1000;
 
 function getCookieName(): string {
   return process.env.JWT_COOKIE_NAME ?? 'access_token';
@@ -39,6 +44,19 @@ function extractJwtFromCookie(req: Request): string | null {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private static readonly userCache = new Map<
+    string,
+    { user: User; expiresAt: number }
+  >();
+
+  static invalidateUserCache(userId: string): void {
+    JwtStrategy.userCache.delete(userId);
+  }
+
+  static clearUserCache(): void {
+    JwtStrategy.userCache.clear();
+  }
+
   constructor(
     @Inject(AUTH_REPOSITORY)
     private readonly authRepository: AuthRepository,
@@ -54,9 +72,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    // Consultar el estado actual del usuario en BD para detectar
-    // revocación de rol o eliminación de cuenta antes de que expire el JWT.
-    const user = await this.authRepository.findById(payload.sub);
+    const now = Date.now();
+    const cached = JwtStrategy.userCache.get(payload.sub);
+    let user: User | null;
+
+    if (cached && cached.expiresAt > now) {
+      user = cached.user;
+    } else {
+      user = await this.authRepository.findById(payload.sub);
+      if (user) {
+        if (JwtStrategy.userCache.size >= USER_CACHE_MAX_SIZE) {
+          JwtStrategy.userCache.clear();
+        }
+        JwtStrategy.userCache.set(payload.sub, {
+          user,
+          expiresAt: now + USER_CACHE_TTL_MS,
+        });
+      } else {
+        JwtStrategy.userCache.delete(payload.sub);
+      }
+    }
+
     if (!user) {
       throw new UnauthorizedException(
         'Usuario no encontrado o cuenta inactiva. Inicie sesión nuevamente.',
@@ -76,6 +112,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email ?? payload.email,
       role: user.role,
       name: (user as User & { name?: string }).name ?? payload.name,
+      provider: user.provider,
+      picture: user.picture,
     };
   }
 }

@@ -1,11 +1,17 @@
 import { DataSource, type DataSourceOptions } from 'typeorm';
 import { config } from 'dotenv';
+import { existsSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
-config();
-config({ path: resolve(process.cwd(), '.env') });
-config({ path: resolve(process.cwd(), 'API/.env') });
+// Carga única del .env: el de la carpeta actual o, si se ejecuta desde la raíz del repo, API/.env
+const envPath = [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), 'API/.env'),
+].find((path) => existsSync(path));
+if (envPath) {
+  config({ path: envPath, quiet: true });
+}
 
 const currentFile = fileURLToPath(import.meta.url);
 const currentDir = dirname(currentFile);
@@ -66,8 +72,14 @@ export const dataSourceOptions: DataSourceOptions = {
       ? join(currentDir, 'migrations', '*.js')
       : 'src/database/migrations/*.ts',
   ],
+  migrationsRun: process.env.DB_RUN_MIGRATIONS !== 'false',
   synchronize: false,
-  logging: !isProduction,
+  logging: process.env.DB_LOGGING === 'true',
+  extra: {
+    max: parseInt(process.env.DB_POOL_MAX ?? '15', 10),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  },
 };
 
 const dataSource = new DataSource(dataSourceOptions);

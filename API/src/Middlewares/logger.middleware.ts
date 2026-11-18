@@ -9,16 +9,18 @@ export class LoggerMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
     const { method, originalUrl } = req;
     const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+    const startTime = Date.now();
 
     res.on('finish', () => {
       const { statusCode } = res;
+      const durationMs = Date.now() - startTime;
       const requestIdHeader =
         req.headers[CORRELATION_ID_HEADER] ??
         res.getHeader(CORRELATION_ID_HEADER);
       const requestId =
         typeof requestIdHeader === 'string' ? requestIdHeader : 'N/A';
 
-      const message = `[${requestId}] ${method} ${originalUrl} ${statusCode} - IP: ${ip}`;
+      const message = `[${requestId}] ${method} ${originalUrl} ${statusCode} +${durationMs}ms - IP: ${ip}`;
 
       if (statusCode >= 500) {
         this.logger.error(message);

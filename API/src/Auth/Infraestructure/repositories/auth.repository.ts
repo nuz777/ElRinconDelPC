@@ -82,8 +82,8 @@ export class PostgresAuthRepository implements AuthRepository {
     }
 
     const rows = await this.dataSource.query<UserRow[]>(
-      `SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
-      [email.trim()],
+      `SELECT * FROM users WHERE email = $1 LIMIT 1`,
+      [email.trim().toLowerCase()],
     );
     return rows[0] ? this.mapRowToUser(rows[0]) : null;
   }
@@ -133,49 +133,58 @@ export class PostgresAuthRepository implements AuthRepository {
       return this.inMemoryRepo.update(id, data);
     }
 
-    const existing = await this.findById(id);
-    if (!existing) return null;
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
 
-    const updatedName = data.name !== undefined ? data.name : existing.name;
-    const { firstName, lastName } = this.splitName(updatedName);
+    const addSet = (column: string, value: unknown) => {
+      sets.push(`${column} = $${paramIndex}`);
+      params.push(value);
+      paramIndex++;
+    };
 
-    const resetToken =
-      'resetToken' in data ? (data.resetToken ?? null) : (existing.resetToken ?? null);
-    const resetTokenExpires =
-      'resetTokenExpires' in data
-        ? (data.resetTokenExpires ?? null)
-        : (existing.resetTokenExpires ?? null);
+    if (data.email !== undefined) {
+      addSet('email', data.email.trim().toLowerCase());
+    }
+    if ('passwordHash' in data) {
+      addSet('password_hash', data.passwordHash ?? null);
+    }
+    if (data.provider !== undefined) {
+      addSet('provider', data.provider);
+    }
+    if (data.name !== undefined) {
+      const { firstName, lastName } = this.splitName(data.name);
+      addSet('first_name', firstName);
+      addSet('last_name', lastName);
+    }
+    if ('picture' in data) {
+      addSet('picture', data.picture ?? null);
+    }
+    if (data.role !== undefined) {
+      addSet('role', data.role);
+    }
+    if ('resetToken' in data) {
+      addSet('reset_token', data.resetToken ?? null);
+    }
+    if ('resetTokenExpires' in data) {
+      addSet('reset_token_expires', data.resetTokenExpires ?? null);
+    }
+
+    if (sets.length === 0) {
+      return this.findById(id);
+    }
+
+    sets.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
 
     const rows = await this.dataSource.query<UserRow[]>(
       `
       UPDATE users
-      SET email = $1,
-          password_hash = $2,
-          provider = $3,
-          first_name = $4,
-          last_name = $5,
-          picture = $6,
-          role = $7,
-          reset_token = $8,
-          reset_token_expires = $9,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $10
+      SET ${sets.join(', ')}
+      WHERE id = $${paramIndex}
       RETURNING *;
       `,
-      [
-        (data.email ?? existing.email).trim().toLowerCase(),
-        data.passwordHash !== undefined
-          ? data.passwordHash
-          : (existing.passwordHash ?? null),
-        data.provider ?? existing.provider,
-        firstName,
-        lastName,
-        data.picture !== undefined ? data.picture : (existing.picture ?? null),
-        data.role ?? existing.role ?? Role.USER,
-        resetToken,
-        resetTokenExpires,
-        id,
-      ],
+      params,
     );
 
     return rows[0] ? this.mapRowToUser(rows[0]) : null;

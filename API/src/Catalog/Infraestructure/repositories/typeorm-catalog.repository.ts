@@ -1,22 +1,75 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CatalogItem } from '../../Domain/Entities/catalog-item.entity.js';
+import { generatePublicCode } from '../../../Common/utils/public-code.js';
+import { escapeLike, toDate } from '../../../Common/utils/sql.js';
+import {
+  CatalogItem,
+  type CatalogMinimumRequirements,
+} from '../../Domain/Entities/catalog-item.entity.js';
+import type { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 import type {
   CatalogFilters,
+  CatalogMediaKind,
+  CatalogMediaRecord,
   CatalogRepository,
   CreateCatalogItemData,
   PaginatedResult,
   UpdateCatalogItemData,
 } from '../../Domain/interfaces/catalog.repository.interface.js';
 import { CatalogItemTypeormEntity } from '../entities/catalog-item.typeorm-entity.js';
-import { generatePublicCode } from '../../../Common/utils/public-code.js';
 
 const MAX_PUBLIC_CODE_ATTEMPTS = 10;
+export const CATALOG_MEDIA_PLACEHOLDER = '__MEDIA__';
 
-/** Escapa los comodines de LIKE para que la búsqueda sea literal. */
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+interface CatalogRawRow {
+  id: string;
+  section: CatalogSection;
+  title: string;
+  genre: string;
+  size: string | null;
+  version: string | null;
+  badge: string | null;
+  coverUrl: string | null;
+  bannerUrl?: string | null;
+  downloadUrl: string | null;
+  developer: string | null;
+  shortDescription: string;
+  minimumRequirements?: CatalogMinimumRequirements | null;
+  publicCode: string | null;
+  brand: string | null;
+  console: string | null;
+  emulator: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+const RETURNING_COLUMNS = [
+  'id',
+  'section',
+  'title',
+  'genre',
+  'size',
+  'version',
+  'badge',
+  'cover_url AS "coverUrl"',
+  'banner_url AS "bannerUrl"',
+  'download_url AS "downloadUrl"',
+  'developer',
+  'short_description AS "shortDescription"',
+  'minimum_requirements AS "minimumRequirements"',
+  'public_code AS "publicCode"',
+  'brand',
+  'console',
+  'emulator',
+  'created_at AS "createdAt"',
+  'updated_at AS "updatedAt"',
+].join(', ');
+
+function isUniquePublicCodeViolation(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const record = err as { code?: string; driverError?: { code?: string } };
+  return record.code === '23505' || record.driverError?.code === '23505';
 }
 
 @Injectable()
@@ -26,7 +79,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
     private readonly repository: Repository<CatalogItemTypeormEntity>,
   ) {}
 
-  private toDomain(row: CatalogItemTypeormEntity): CatalogItem {
+  private toDomain(row: CatalogItemTypeormEntity | CatalogRawRow): CatalogItem {
     return new CatalogItem({
       id: row.id,
       section: row.section,
@@ -36,7 +89,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       version: row.version,
       badge: row.badge,
       coverUrl: row.coverUrl,
-      bannerUrl: row.bannerUrl,
+      bannerUrl: row.bannerUrl ?? null,
       downloadUrl: row.downloadUrl,
       developer: row.developer,
       shortDescription: row.shortDescription,
@@ -45,37 +98,69 @@ export class TypeormCatalogRepository implements CatalogRepository {
       brand: row.brand,
       console: row.console,
       emulator: row.emulator,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      createdAt: toDate(row.createdAt),
+      updatedAt: toDate(row.updatedAt),
     });
   }
 
   async findAll(filters: CatalogFilters): Promise<PaginatedResult<CatalogItem>> {
-    const { section, genre, search, page, limit } = filters;
-    const query = this.repository.createQueryBuilder('item');
+    const { section, genre, search, page, limit, summary } = filters;
+    const baseQuery = this.repository.createQueryBuilder('item');
 
     if (section) {
-      query.andWhere('item.section = :section', { section });
+      baseQuery.andWhere('item.section = :section', { section });
     }
 
     if (genre?.trim()) {
-      query.andWhere('item.genre ILIKE :genre', {
+      baseQuery.andWhere('item.genre ILIKE :genre', {
         genre: escapeLike(genre.trim()),
       });
     }
 
     if (search?.trim()) {
-      query.andWhere(
+      baseQuery.andWhere(
         '(item.title ILIKE :search OR item.developer ILIKE :search)',
         { search: `%${escapeLike(search.trim())}%` },
       );
     }
 
-    const [rows, total] = await query
+    const selectColumns = [
+      'item.id AS "id"',
+      'item.section AS "section"',
+      'item.title AS "title"',
+      'item.genre AS "genre"',
+      'item.size AS "size"',
+      'item.version AS "version"',
+      'item.badge AS "badge"',
+      `CASE WHEN substring(item.cover_url from 1 for 11) = 'data:image/' THEN '${CATALOG_MEDIA_PLACEHOLDER}' ELSE item.cover_url END AS "coverUrl"`,
+      ...(summary
+        ? []
+        : [
+            `CASE WHEN substring(item.banner_url from 1 for 11) = 'data:image/' THEN '${CATALOG_MEDIA_PLACEHOLDER}' ELSE item.banner_url END AS "bannerUrl"`,
+            'item.minimum_requirements AS "minimumRequirements"',
+          ]),
+      'item.download_url AS "downloadUrl"',
+      'item.developer AS "developer"',
+      'item.short_description AS "shortDescription"',
+      'item.public_code AS "publicCode"',
+      'item.brand AS "brand"',
+      'item.console AS "console"',
+      'item.emulator AS "emulator"',
+      'item.created_at AS "createdAt"',
+      'item.updated_at AS "updatedAt"',
+    ];
+
+    const rowsQuery = baseQuery
+      .clone()
+      .select(selectColumns)
       .orderBy('item.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+      .offset((page - 1) * limit)
+      .limit(limit);
+
+    const [rows, total] = await Promise.all([
+      rowsQuery.getRawMany<CatalogRawRow>(),
+      baseQuery.getCount(),
+    ]);
 
     return {
       items: rows.map((row) => this.toDomain(row)),
@@ -96,19 +181,29 @@ export class TypeormCatalogRepository implements CatalogRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  /** Genera un código público que no esté en uso (36^6 ≈ 2.176 millones de combinaciones). */
-  private async generateUniquePublicCode(): Promise<string> {
-    for (let attempt = 0; attempt < MAX_PUBLIC_CODE_ATTEMPTS; attempt++) {
-      const code = generatePublicCode();
-      const taken = await this.repository.exists({ where: { publicCode: code } });
-      if (!taken) return code;
-    }
-    throw new Error('No se pudo generar un código público único para el ítem.');
+  async findMedia(
+    id: string,
+    kind: CatalogMediaKind,
+  ): Promise<CatalogMediaRecord | null> {
+    const column = kind === 'cover' ? 'item.coverUrl' : 'item.bannerUrl';
+    const row = await this.repository
+      .createQueryBuilder('item')
+      .select([`${column} AS "value"`, 'item.updatedAt AS "updatedAt"'])
+      .where('item.id = :id', { id })
+      .getRawOne<{ value: string | null; updatedAt: Date | string }>();
+
+    if (!row) return null;
+    return {
+      value: row.value ?? null,
+      updatedAt: toDate(row.updatedAt),
+    };
   }
 
-  async create(item: CreateCatalogItemData): Promise<CatalogItem> {
-    const publicCode = item.publicCode ?? (await this.generateUniquePublicCode());
-    const entity = this.repository.create({
+  private buildEntity(
+    item: CreateCatalogItemData,
+    publicCode: string,
+  ): CatalogItemTypeormEntity {
+    return this.repository.create({
       publicCode,
       ...(item.id ? { id: item.id } : {}),
       section: item.section,
@@ -127,24 +222,66 @@ export class TypeormCatalogRepository implements CatalogRepository {
       shortDescription: item.shortDescription,
       minimumRequirements: item.minimumRequirements ?? null,
     });
-    const saved = await this.repository.save(entity);
-    return this.toDomain(saved);
+  }
+
+  async create(item: CreateCatalogItemData): Promise<CatalogItem> {
+    if (item.publicCode) {
+      const saved = await this.repository.save(
+        this.buildEntity(item, item.publicCode),
+      );
+      return this.toDomain(saved);
+    }
+
+    // Inserta directamente sin SELECT exists() previo; solo reintenta si hay colisión (23505)
+    for (let attempt = 0; attempt < MAX_PUBLIC_CODE_ATTEMPTS; attempt++) {
+      const publicCode = generatePublicCode();
+      try {
+        const saved = await this.repository.save(
+          this.buildEntity(item, publicCode),
+        );
+        return this.toDomain(saved);
+      } catch (err) {
+        if (isUniquePublicCodeViolation(err)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error('No se pudo generar un código público único para el ítem.');
   }
 
   async update(
     id: string,
     item: UpdateCatalogItemData,
   ): Promise<CatalogItem | null> {
-    const existing = await this.repository.findOne({ where: { id } });
-    if (!existing) return null;
-
     // El código público es fijo: nunca se sobrescribe en una actualización.
     const { publicCode: _ignored, ...changes } = item as UpdateCatalogItemData & {
       publicCode?: unknown;
     };
-    const merged = this.repository.merge(existing, changes);
-    const saved = await this.repository.save(merged);
-    return this.toDomain(saved);
+
+    const setPayload: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(changes)) {
+      if (value !== undefined) {
+        setPayload[key] = value;
+      }
+    }
+
+    if (Object.keys(setPayload).length === 0) {
+      return this.findById(id);
+    }
+
+    setPayload.updatedAt = new Date();
+
+    const result = await this.repository
+      .createQueryBuilder()
+      .update(CatalogItemTypeormEntity)
+      .set(setPayload)
+      .where('id = :id', { id })
+      .returning(RETURNING_COLUMNS)
+      .execute();
+
+    const row = (result.raw as CatalogRawRow[] | undefined)?.[0];
+    return row ? this.toDomain(row) : null;
   }
 
   async delete(id: string): Promise<boolean> {

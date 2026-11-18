@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   Optional,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import {
   type MailService,
   type JwtService,
 } from '../../Domain/services/index.js';
+import { JwtStrategy } from '../../Infraestructure/security/jwt.strategy.js';
 import type { LoginRequestDto } from '../DTOs/login-request.dto.js';
 import type { RegisterRequestDto } from '../DTOs/register-request.dto.js';
 
@@ -39,6 +41,8 @@ export interface AuthResult {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject(AUTH_REPOSITORY) private readonly authRepository: AuthRepository,
     @Inject(HASHING_SERVICE) private readonly hashingService: HashingService,
@@ -104,7 +108,12 @@ export class AuthService {
     });
 
     if (this.mailService) {
-      await this.mailService.sendResetCode(user.email, code);
+      // Envío asíncrono no bloqueante: reduce la latencia del endpoint y evita filtrar existencia por tiempo
+      void this.mailService.sendResetCode(user.email, code).catch((err) => {
+        this.logger.error(
+          `Error enviando código de recuperación a ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
     }
 
     return genericResponse;
@@ -138,6 +147,7 @@ export class AuthService {
       resetToken: null,
       resetTokenExpires: null,
     });
+    JwtStrategy.invalidateUserCache(user.id);
 
     return { message: 'Contraseña actualizada exitosamente.' };
   }

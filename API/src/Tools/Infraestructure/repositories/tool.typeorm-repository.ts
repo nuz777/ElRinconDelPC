@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { escapeLike, isUuid, toDate } from '../../../Common/utils/sql.js';
 import { Tool } from '../../Domain/Entities/tool.entity.js';
 import type {
   CreateToolData,
@@ -29,11 +30,6 @@ interface ToolRow {
   updated_at: Date | string;
 }
 
-/** Escapa los comodines de LIKE para que la búsqueda sea literal. */
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
-}
-
 function mapRowToTool(row: ToolRow): Tool {
   return new Tool({
     id: row.id,
@@ -49,10 +45,8 @@ function mapRowToTool(row: ToolRow): Tool {
     authorId: row.author_id,
     downloadsCount: row.downloads_count,
     isActive: row.is_active,
-    createdAt:
-      row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
-    updatedAt:
-      row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
+    createdAt: toDate(row.created_at),
+    updatedAt: toDate(row.updated_at),
   });
 }
 
@@ -65,7 +59,7 @@ export class TypeormToolRepository implements ToolRepository {
   ) {}
 
   private toDomain(row: ToolTypeormEntity): Tool {
-    return mapRowToTool({
+    return new Tool({
       id: row.id,
       title: row.title,
       slug: row.slug,
@@ -73,15 +67,15 @@ export class TypeormToolRepository implements ToolRepository {
       category: row.category,
       version: row.version,
       size: row.size,
-      download_url: row.downloadUrl,
-      image_url: row.imageUrl,
-      tags: row.tags,
-      author_id: row.authorId,
-      downloads_count: row.downloadsCount,
-      is_active: row.isActive,
-      created_at: row.createdAt,
-      updated_at: row.updatedAt,
-    } as unknown as ToolRow);
+      downloadUrl: row.downloadUrl,
+      imageUrl: row.imageUrl,
+      tags: row.tags ?? [],
+      authorId: row.authorId,
+      downloadsCount: row.downloadsCount,
+      isActive: row.isActive,
+      createdAt: toDate(row.createdAt),
+      updatedAt: toDate(row.updatedAt),
+    });
   }
 
   async create(data: CreateToolData): Promise<Tool> {
@@ -105,6 +99,7 @@ export class TypeormToolRepository implements ToolRepository {
   }
 
   async findById(id: string): Promise<Tool | null> {
+    if (!isUuid(id)) return null;
     const row = await this.repository.findOne({ where: { id } });
     return row ? this.toDomain(row) : null;
   }
@@ -115,7 +110,10 @@ export class TypeormToolRepository implements ToolRepository {
   }
 
   async slugExists(slug: string, excludeId?: string): Promise<boolean> {
-    const existing = await this.repository.findOne({ where: { slug } });
+    const existing = await this.repository.findOne({
+      where: { slug },
+      select: { id: true },
+    });
     if (!existing) return false;
     if (excludeId && existing.id === excludeId) return false;
     return true;
@@ -145,19 +143,21 @@ export class TypeormToolRepository implements ToolRepository {
       paramIndex++;
     }
 
-    const rows = await this.dataSource.query<ToolRow[]>(
-      [
-        `SELECT * FROM tools WHERE ${conditions.join(' AND ')}`,
-        `ORDER BY created_at DESC`,
-        `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      ].join('\n'),
-      [...params, take, skip],
-    );
-
-    const countRows = await this.dataSource.query<{ count: string }[]>(
-      `SELECT COUNT(*)::int AS count FROM tools WHERE ${conditions.join(' AND ')}`,
-      params,
-    );
+    const whereClause = conditions.join(' AND ');
+    const [rows, countRows] = await Promise.all([
+      this.dataSource.query<ToolRow[]>(
+        [
+          `SELECT * FROM tools WHERE ${whereClause}`,
+          `ORDER BY created_at DESC`,
+          `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        ].join('\n'),
+        [...params, take, skip],
+      ),
+      this.dataSource.query<{ count: string }[]>(
+        `SELECT COUNT(*)::int AS count FROM tools WHERE ${whereClause}`,
+        params,
+      ),
+    ]);
 
     const total = Number(countRows[0]?.count ?? 0);
 
@@ -171,31 +171,77 @@ export class TypeormToolRepository implements ToolRepository {
   }
 
   async update(id: string, data: UpdateToolData): Promise<Tool | null> {
-    const existing = await this.repository.findOne({ where: { id } });
-    if (!existing) return null;
+    if (!isUuid(id)) return null;
 
-    const merged = this.repository.merge(existing, {
-      ...data,
-      slug: data.slug ?? existing.slug,
-    });
-    const saved = await this.repository.save(merged);
-    return this.toDomain(saved);
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    const addSet = (column: string, value: unknown) => {
+      if (value !== undefined) {
+        sets.push(`${column} = $${paramIndex}`);
+        params.push(value);
+        paramIndex++;
+      }
+    };
+
+    if (data.title !== undefined) addSet('title', data.title);
+    if (data.slug !== undefined) addSet('slug', data.slug);
+    if (data.description !== undefined) addSet('description', data.description);
+    if (data.category !== undefined) addSet('category', data.category);
+    if (data.version !== undefined) addSet('version', data.version);
+    if (data.size !== undefined) addSet('size', data.size);
+    if (data.downloadUrl !== undefined) addSet('download_url', data.downloadUrl);
+    if (data.imageUrl !== undefined) addSet('image_url', data.imageUrl);
+    if (data.tags !== undefined) addSet('tags', data.tags);
+    if (data.isActive !== undefined) addSet('is_active', data.isActive);
+
+    if (sets.length === 0) {
+      return this.findById(id);
+    }
+
+    sets.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
+
+    const rows = await this.dataSource.query<ToolRow[]>(
+      `
+      UPDATE tools
+      SET ${sets.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *;
+      `,
+      params,
+    );
+    return rows[0] ? mapRowToTool(rows[0]) : null;
   }
 
   async delete(id: string): Promise<boolean> {
-    const existing = await this.repository.findOne({ where: { id } });
-    if (!existing) return false;
-    existing.isActive = false;
-    const saved = await this.repository.save(existing);
-    return saved.isActive === false;
+    if (!isUuid(id)) return false;
+    const result = await this.repository.update({ id }, { isActive: false });
+    return (result.affected ?? 0) > 0;
   }
 
   async hardDelete(id: string): Promise<boolean> {
+    if (!isUuid(id)) return false;
     const result = await this.repository.delete({ id });
     return (result.affected ?? 0) > 0;
   }
 
   async incrementDownloads(id: string): Promise<void> {
     await this.repository.increment({ id }, 'downloadsCount', 1);
+  }
+
+  async incrementDownloadsIfExists(id: string): Promise<boolean> {
+    if (!isUuid(id)) return false;
+    const rows = await this.dataSource.query<{ id: string }[]>(
+      `
+      UPDATE tools
+      SET downloads_count = downloads_count + 1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND is_active = TRUE
+      RETURNING id;
+      `,
+      [id],
+    );
+    return (rows?.length ?? 0) > 0;
   }
 }

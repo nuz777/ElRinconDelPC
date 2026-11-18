@@ -123,6 +123,14 @@ export class ModsService {
     game: { id: string; title: string } | null;
     author: { id: string } | null;
   }> {
+    if (this.modsRepository.findDetailsById) {
+      const details = await this.modsRepository.findDetailsById(id);
+      if (!details) {
+        throw new NotFoundException(`Mod con id "${id}" no encontrado`);
+      }
+      return details;
+    }
+
     const mod = await this.modsRepository.findById(id);
     if (!mod) {
       throw new NotFoundException(`Mod con id "${id}" no encontrado`);
@@ -138,11 +146,34 @@ export class ModsService {
   }
 
   async incrementDownloadCount(id: string): Promise<void> {
+    if (this.modsRepository.incrementAndGetDownloadUrl) {
+      const url = await this.modsRepository.incrementAndGetDownloadUrl(id);
+      if (!url) {
+        throw new NotFoundException(`Mod con id "${id}" no encontrado`);
+      }
+      return;
+    }
     const mod = await this.modsRepository.findById(id);
     if (!mod) {
       throw new NotFoundException(`Mod con id "${id}" no encontrado`);
     }
     await this.modsRepository.incrementDownloads(id);
+  }
+
+  async downloadMod(id: string): Promise<{ downloadUrl: string }> {
+    if (this.modsRepository.incrementAndGetDownloadUrl) {
+      const downloadUrl = await this.modsRepository.incrementAndGetDownloadUrl(id);
+      if (!downloadUrl) {
+        throw new NotFoundException(`Mod con id "${id}" no encontrado`);
+      }
+      return { downloadUrl };
+    }
+    const mod = await this.modsRepository.findById(id);
+    if (!mod) {
+      throw new NotFoundException(`Mod con id "${id}" no encontrado`);
+    }
+    await this.modsRepository.incrementDownloads(id);
+    return { downloadUrl: mod.downloadUrl };
   }
 
   async updateMod(
@@ -227,6 +258,14 @@ export class ModsService {
   }
 
   async approveMod(id: string): Promise<Mod> {
+    if (this.modsRepository.approveAndReturn) {
+      const updated = await this.modsRepository.approveAndReturn(id);
+      if (!updated) {
+        throw new NotFoundException(`Mod con id "${id}" no encontrado`);
+      }
+      return updated;
+    }
+
     const mod = await this.modsRepository.findById(id);
     if (!mod) {
       throw new NotFoundException(`Mod con id "${id}" no encontrado`);

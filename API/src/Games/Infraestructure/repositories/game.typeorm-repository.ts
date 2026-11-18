@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { escapeLike, isUuid, toDate } from '../../../Common/utils/sql.js';
 import { Game } from '../../Domain/Entities/game.entity.js';
 import type {
   CreateGameData,
@@ -8,11 +9,6 @@ import type {
   PaginatedResult,
   UpdateGameData,
 } from '../../Domain/interfaces/game.repository.interface.js';
-
-/** Escapa los comodines de LIKE para que la búsqueda sea literal. */
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
-}
 
 interface GameRow {
   id: string;
@@ -52,7 +48,7 @@ function mapRowToGame(row: GameRow): Game {
     title: row.title,
     slug: row.slug,
     description: row.description,
-    price: typeof row.price === 'string' ? Number(row.price) : row.price ?? 0,
+    price: typeof row.price === 'string' ? Number(row.price) : (row.price ?? 0),
     discountPrice:
       row.discount_price !== null && row.discount_price !== undefined
         ? typeof row.discount_price === 'string'
@@ -65,10 +61,7 @@ function mapRowToGame(row: GameRow): Game {
     bannerImage: row.banner_image,
     developer: row.developer,
     publisher: row.publisher,
-    releaseDate:
-      row.release_date instanceof Date
-        ? row.release_date
-        : new Date(row.release_date),
+    releaseDate: toDate(row.release_date),
     isActive: row.is_active,
     minimumRequirements: {
       os: row.min_os ?? minReq?.os ?? '',
@@ -77,10 +70,8 @@ function mapRowToGame(row: GameRow): Game {
       cpu: row.min_cpu ?? minReq?.cpu ?? '',
       gpu: row.min_gpu ?? minReq?.gpu ?? '',
     },
-    createdAt:
-      row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
-    updatedAt:
-      row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
+    createdAt: toDate(row.created_at),
+    updatedAt: toDate(row.updated_at),
   });
 }
 
@@ -99,88 +90,69 @@ export class TypeormGameRepository implements GameRepository {
         }
       : null;
 
-    if (data.id) {
-      const rows = await this.dataSource.query<GameRow[]>(
-        `
-        INSERT INTO games (
-          id, title, slug, description, price, discount_price, stock, genres, cover_image, banner_image,
-          developer, publisher, release_date, is_active,
-          min_os, min_storage, min_ram, min_cpu, min_gpu, minimum_requirements
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-        RETURNING *;
-        `,
-        [
-          data.id,
-          data.title,
-          data.slug,
-          data.description,
-          data.price ?? 0,
-          data.discountPrice ?? null,
-          data.stock,
-          data.genres ?? [],
-          data.coverImage,
-          data.bannerImage ?? null,
-          data.developer,
-          data.publisher,
-          data.releaseDate ?? null,
-          data.isActive ?? true,
-          data.minimumRequirements?.os ?? null,
-          data.minimumRequirements?.storage ?? null,
-          data.minimumRequirements?.ram ?? null,
-          data.minimumRequirements?.cpu ?? null,
-          data.minimumRequirements?.gpu ?? null,
-          minimumReqJson ? JSON.stringify(minimumReqJson) : null,
-        ],
-      );
-      return mapRowToGame(rows[0]);
-    }
+    const baseColumns = [
+      'title',
+      'slug',
+      'description',
+      'price',
+      'discount_price',
+      'stock',
+      'genres',
+      'cover_image',
+      'banner_image',
+      'developer',
+      'publisher',
+      'release_date',
+      'is_active',
+      'min_os',
+      'min_storage',
+      'min_ram',
+      'min_cpu',
+      'min_gpu',
+      'minimum_requirements',
+    ];
+    const baseValues: unknown[] = [
+      data.title,
+      data.slug,
+      data.description,
+      data.price ?? 0,
+      data.discountPrice ?? null,
+      data.stock,
+      data.genres ?? [],
+      data.coverImage,
+      data.bannerImage ?? null,
+      data.developer,
+      data.publisher,
+      data.releaseDate ?? null,
+      data.isActive ?? true,
+      data.minimumRequirements?.os ?? null,
+      data.minimumRequirements?.storage ?? null,
+      data.minimumRequirements?.ram ?? null,
+      data.minimumRequirements?.cpu ?? null,
+      data.minimumRequirements?.gpu ?? null,
+      minimumReqJson ? JSON.stringify(minimumReqJson) : null,
+    ];
+
+    const columns = data.id ? ['id', ...baseColumns] : baseColumns;
+    const values = data.id ? [data.id, ...baseValues] : baseValues;
+    const placeholders = values.map((_, idx) => `$${idx + 1}`).join(', ');
 
     const rows = await this.dataSource.query<GameRow[]>(
-      `
-      INSERT INTO games (
-        title, slug, description, price, discount_price, stock, genres, cover_image, banner_image,
-        developer, publisher, release_date, is_active,
-        min_os, min_storage, min_ram, min_cpu, min_gpu, minimum_requirements
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-      RETURNING *;
-      `,
-      [
-        data.title,
-        data.slug,
-        data.description,
-        data.price ?? 0,
-        data.discountPrice ?? null,
-        data.stock,
-        data.genres ?? [],
-        data.coverImage,
-        data.bannerImage ?? null,
-        data.developer,
-        data.publisher,
-        data.releaseDate ?? null,
-        data.isActive ?? true,
-        data.minimumRequirements?.os ?? null,
-        data.minimumRequirements?.storage ?? null,
-        data.minimumRequirements?.ram ?? null,
-        data.minimumRequirements?.cpu ?? null,
-        data.minimumRequirements?.gpu ?? null,
-        minimumReqJson ? JSON.stringify(minimumReqJson) : null,
-      ],
+      `INSERT INTO games (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *;`,
+      values,
     );
     return mapRowToGame(rows[0]);
   }
 
   async findById(id: string): Promise<Game | null> {
-    try {
-      const rows = await this.dataSource.query<GameRow[]>(
-        `SELECT * FROM games WHERE id = $1 LIMIT 1`,
-        [id],
-      );
-      return rows[0] ? mapRowToGame(rows[0]) : null;
-    } catch {
+    if (!isUuid(id)) {
       return null;
     }
+    const rows = await this.dataSource.query<GameRow[]>(
+      `SELECT * FROM games WHERE id = $1 LIMIT 1`,
+      [id],
+    );
+    return rows[0] ? mapRowToGame(rows[0]) : null;
   }
 
   async findBySlug(slug: string): Promise<Game | null> {
@@ -237,20 +209,22 @@ export class TypeormGameRepository implements GameRepository {
     };
     const orderField =
       sortBy && sortColumnMap[sortBy] ? sortColumnMap[sortBy] : 'created_at';
+    const whereClause = conditions.join(' AND ');
 
-    const rows = await this.dataSource.query<GameRow[]>(
-      [
-        `SELECT * FROM games WHERE ${conditions.join(' AND ')}`,
-        `ORDER BY ${orderField} DESC`,
-        `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      ].join('\n'),
-      [...params, take, skip],
-    );
-
-    const countRows = await this.dataSource.query<{ count: string }[]>(
-      `SELECT COUNT(*)::int AS count FROM games WHERE ${conditions.join(' AND ')}`,
-      params,
-    );
+    const [rows, countRows] = await Promise.all([
+      this.dataSource.query<GameRow[]>(
+        [
+          `SELECT * FROM games WHERE ${whereClause}`,
+          `ORDER BY ${orderField} DESC`,
+          `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        ].join('\n'),
+        [...params, take, skip],
+      ),
+      this.dataSource.query<{ count: string }[]>(
+        `SELECT COUNT(*)::int AS count FROM games WHERE ${whereClause}`,
+        params,
+      ),
+    ]);
 
     const total = Number(countRows[0]?.count ?? 0);
 
@@ -264,8 +238,9 @@ export class TypeormGameRepository implements GameRepository {
   }
 
   async update(id: string, data: UpdateGameData): Promise<Game | null> {
-    const existing = await this.findById(id);
-    if (!existing) return null;
+    if (!isUuid(id)) {
+      return null;
+    }
 
     const sets: string[] = [];
     const params: unknown[] = [];
@@ -300,58 +275,71 @@ export class TypeormGameRepository implements GameRepository {
       addSet('discount_price', data.discountPrice ?? null);
 
     if (data.minimumRequirements) {
-      if (data.minimumRequirements.os !== undefined)
+      const partialReq: Record<string, string> = {};
+      if (data.minimumRequirements.os !== undefined) {
         addSet('min_os', data.minimumRequirements.os);
-      if (data.minimumRequirements.storage !== undefined)
+        partialReq.os = data.minimumRequirements.os;
+      }
+      if (data.minimumRequirements.storage !== undefined) {
         addSet('min_storage', data.minimumRequirements.storage);
-      if (data.minimumRequirements.ram !== undefined)
+        partialReq.storage = data.minimumRequirements.storage;
+      }
+      if (data.minimumRequirements.ram !== undefined) {
         addSet('min_ram', data.minimumRequirements.ram);
-      if (data.minimumRequirements.cpu !== undefined)
+        partialReq.ram = data.minimumRequirements.ram;
+      }
+      if (data.minimumRequirements.cpu !== undefined) {
         addSet('min_cpu', data.minimumRequirements.cpu);
-      if (data.minimumRequirements.gpu !== undefined)
+        partialReq.cpu = data.minimumRequirements.cpu;
+      }
+      if (data.minimumRequirements.gpu !== undefined) {
         addSet('min_gpu', data.minimumRequirements.gpu);
+        partialReq.gpu = data.minimumRequirements.gpu;
+      }
 
-      const mergedMinReq = {
-        os: data.minimumRequirements.os ?? existing.minimumRequirements?.os ?? '',
-        storage:
-          data.minimumRequirements.storage ??
-          existing.minimumRequirements?.storage ??
-          '',
-        ram: data.minimumRequirements.ram ?? existing.minimumRequirements?.ram ?? '',
-        cpu: data.minimumRequirements.cpu ?? existing.minimumRequirements?.cpu ?? '',
-        gpu: data.minimumRequirements.gpu ?? existing.minimumRequirements?.gpu ?? '',
-      };
-      addSet('minimum_requirements', JSON.stringify(mergedMinReq));
+      if (Object.keys(partialReq).length > 0) {
+        sets.push(
+          `minimum_requirements = COALESCE(minimum_requirements, '{}'::jsonb) || $${paramIndex}::jsonb`,
+        );
+        params.push(JSON.stringify(partialReq));
+        paramIndex++;
+      }
     }
 
-    sets.push(`updated_at = CURRENT_TIMESTAMP`);
+    if (sets.length === 0) {
+      return this.findById(id);
+    }
+
+    sets.push('updated_at = CURRENT_TIMESTAMP');
     params.push(id);
 
-    await this.dataSource.query(
+    const rows = await this.dataSource.query<GameRow[]>(
       `
       UPDATE games
       SET ${sets.join(', ')}
       WHERE id = $${paramIndex}
+      RETURNING *;
       `,
       params,
     );
-    return this.findById(id);
+    return rows[0] ? mapRowToGame(rows[0]) : null;
   }
 
   async delete(id: string): Promise<boolean> {
-    const exists = await this.dataSource.query<{ count: string }[]>(
-      `SELECT COUNT(*)::int AS count FROM games WHERE id = $1 AND is_active = TRUE;`,
+    if (!isUuid(id)) {
+      return false;
+    }
+    const rows = await this.dataSource.query<{ id: string }[]>(
+      `UPDATE games SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND is_active = TRUE RETURNING id;`,
       [id],
     );
-    if (Number(exists[0]?.count ?? 0) === 0) return false;
-    await this.dataSource.query(
-      `UPDATE games SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1;`,
-      [id],
-    );
-    return true;
+    return (rows?.length ?? 0) > 0;
   }
 
   async hardDelete(id: string): Promise<boolean> {
+    if (!isUuid(id)) {
+      return false;
+    }
     const rows = await this.dataSource.query<{ id: string }[]>(
       `DELETE FROM games WHERE id = $1 RETURNING id;`,
       [id],

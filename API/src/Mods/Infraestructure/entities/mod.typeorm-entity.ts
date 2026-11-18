@@ -56,19 +56,19 @@ export class ModTypeormEntity {
   isActive!: boolean;
 
   // Requisitos mínimos
-  @Column({ name: 'min_os', type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'min_os', type: 'varchar', length: 255, nullable: true })
   minOs!: string | null;
 
-  @Column({ name: 'min_storage', type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'min_storage', type: 'varchar', length: 255, nullable: true })
   minStorage!: string | null;
 
-  @Column({ name: 'min_ram', type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'min_ram', type: 'varchar', length: 255, nullable: true })
   minRam!: string | null;
 
-  @Column({ name: 'min_cpu', type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'min_cpu', type: 'varchar', length: 255, nullable: true })
   minCpu!: string | null;
 
-  @Column({ name: 'min_gpu', type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'min_gpu', type: 'varchar', length: 255, nullable: true })
   minGpu!: string | null;
 
   @ManyToOne(() => GameTypeormEntity, { onDelete: 'CASCADE', nullable: true })
