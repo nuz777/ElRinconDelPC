@@ -53,6 +53,45 @@ export function buildCatalogPayload(item: CatalogItem): CreateCatalogItemPayload
   };
 }
 
+const PUBLIC_SECTIONS: CatalogSectionApi[] = [
+  "JUEGOS",
+  "MODS",
+  "HERRAMIENTAS",
+  "ROMS",
+];
+
+async function fetchAllPagesForSection(
+  section: CatalogSectionApi,
+  genre?: string,
+  search?: string,
+): Promise<CatalogItem[]> {
+  const firstPage = await catalogService.getPaginatedItems({
+    section,
+    genre,
+    search,
+    page: 1,
+    limit: 100,
+    view: "summary",
+  });
+  if (firstPage.totalPages <= 1) {
+    return firstPage.items;
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.totalPages - 1 }, (_, idx) =>
+      catalogService.getPaginatedItems({
+        section,
+        genre,
+        search,
+        page: idx + 2,
+        limit: 100,
+        view: "summary",
+      }),
+    ),
+  );
+  return [firstPage, ...remainingPages].flatMap((p) => p.items);
+}
+
 export function useCatalogData({
   activeView,
   selectedGenre,
@@ -62,6 +101,7 @@ export function useCatalogData({
 }: UseCatalogDataParams) {
   const [reloadNonce, setReloadNonce] = useState(0);
   const [snapshot, setSnapshot] = useState<CatalogQuerySnapshot | null>(null);
+  const [publicIndexItems, setPublicIndexItems] = useState<CatalogItem[]>([]);
 
   const section: CatalogSectionApi | undefined =
     activeView.apartado === "todos" ? undefined : mapApartadoToSection(activeView.apartado);
@@ -75,7 +115,7 @@ export function useCatalogData({
     section: section ?? "ALL",
     genre: genreParam ?? "ALL",
     search: debouncedSearch,
-    page: isRomView ? 1 : page,
+    page: isRomView || isAllView ? 1 : page,
     limit,
     reloadNonce,
   });
@@ -88,28 +128,18 @@ export function useCatalogData({
     const loadData = async () => {
       try {
         if (!section) {
-          // En "Todo el Catálogo" consultamos los apartados públicos explícitamente
-          // para que los ítems +18 recientes no desplacen ni vacíen la página 1.
-          const publicSections: CatalogSectionApi[] = [
-            "JUEGOS",
-            "MODS",
-            "HERRAMIENTAS",
-            "ROMS",
-          ];
-          const pages = await Promise.all(
-            publicSections.map((sec) =>
-              catalogService.getPaginatedItems({
-                section: sec,
-                genre: genreParam,
-                search: debouncedSearch || undefined,
-                page: 1,
-                limit: 100,
-                view: "summary",
-              }),
+          // En "Todo el Catálogo" traemos TODOS los ítems públicos (JUEGOS, MODS, HERRAMIENTAS, ROMS)
+          // excluyendo siempre +18 (ADULTOS).
+          const sectionLists = await Promise.all(
+            PUBLIC_SECTIONS.map((sec) =>
+              fetchAllPagesForSection(sec, genreParam, debouncedSearch || undefined),
             ),
           );
           if (cancelled) return;
-          const mergedItems = pages.flatMap((p) => p.items);
+          const mergedItems = sectionLists.flat();
+          if (!genreParam && !debouncedSearch) {
+            setPublicIndexItems(mergedItems);
+          }
           setSnapshot({
             queryKey,
             items: mergedItems,
@@ -159,25 +189,54 @@ export function useCatalogData({
     return () => {
       cancelled = true;
     };
-  }, [isAdultBlocked, section, genreParam, debouncedSearch, isRomView, page, limit, queryKey]);
+  }, [isAdultBlocked, section, isAllView, genreParam, debouncedSearch, isRomView, page, limit, queryKey]);
+
+  // Mantener cargada la base de ítems públicos (sin +18) para los conteos de ROMs,
+  // conteos del drawer de filtros y autocompletado incluso desde otras pestañas.
+  useEffect(() => {
+    if (!section && !genreParam && !debouncedSearch) return;
+    let cancelled = false;
+    Promise.all(PUBLIC_SECTIONS.map((sec) => fetchAllPagesForSection(sec)))
+      .then((lists) => {
+        if (!cancelled) {
+          setPublicIndexItems(lists.flat());
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadNonce, section, genreParam, debouncedSearch]);
 
   const rawItems = useMemo(() => snapshot?.items ?? [], [snapshot]);
+  const indexSource = useMemo(
+    () => (publicIndexItems.length > 0 ? publicIndexItems : rawItems),
+    [publicIndexItems, rawItems],
+  );
 
   const romCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const it of rawItems) {
+    for (const it of indexSource) {
       if (it.apartado === "roms" && it.brand && it.console) {
         const key = romCountKey(it.brand, it.console);
         counts[key] = (counts[key] ?? 0) + 1;
       }
     }
     return counts;
-  }, [rawItems]);
+  }, [indexSource]);
 
   const totalRoms = useMemo(
-    () => rawItems.filter((it) => it.apartado === "roms").length,
-    [rawItems],
+    () => indexSource.filter((it) => it.apartado === "roms").length,
+    [indexSource],
   );
+
+  const allKnownItems = useMemo(() => {
+    if (publicIndexItems.length === 0) return rawItems;
+    const byId = new Map<string, CatalogItem>();
+    for (const it of publicIndexItems) byId.set(it.id, it);
+    for (const it of rawItems) byId.set(it.id, it);
+    return Array.from(byId.values());
+  }, [publicIndexItems, rawItems]);
 
   const visibleItems = useMemo(() => {
     return rawItems.filter((item) => {
@@ -240,6 +299,9 @@ export function useCatalogData({
           }
         : prev,
     );
+    setPublicIndexItems((prev) =>
+      prev.map((it) => (it.id === saved.id ? saved : it)),
+    );
     return saved;
   };
 
@@ -259,13 +321,14 @@ export function useCatalogData({
           }
         : prev,
     );
+    setPublicIndexItems((prev) => prev.filter((it) => it.id !== item.id));
   };
 
   const isLoading = !isAdultBlocked && snapshot?.queryKey !== queryKey;
 
   return {
     items: visibleItems,
-    allFetchedItems: rawItems,
+    allFetchedItems: allKnownItems,
     itemsByGenre,
     availableGenres,
     romCounts,
