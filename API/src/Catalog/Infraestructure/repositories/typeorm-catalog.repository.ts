@@ -7,7 +7,7 @@ import {
   CatalogItem,
   type CatalogMinimumRequirements,
 } from '../../Domain/Entities/catalog-item.entity.js';
-import type { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
+import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 import type {
   CatalogFilters,
   CatalogMediaKind,
@@ -109,6 +109,10 @@ export class TypeormCatalogRepository implements CatalogRepository {
 
     if (section) {
       baseQuery.andWhere('item.section = :section', { section });
+    } else {
+      baseQuery.andWhere('item.section != :adultSection', {
+        adultSection: CatalogSection.ADULTOS,
+      });
     }
 
     if (genre?.trim()) {

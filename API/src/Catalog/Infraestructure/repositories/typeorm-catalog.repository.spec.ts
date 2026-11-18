@@ -121,9 +121,12 @@ describe('TypeormCatalogRepository (Unit)', () => {
       expect(result.totalPages).toBe(1);
     });
 
-    it('omite bannerUrl y minimumRequirements cuando summary=true', async () => {
+    it('omite bannerUrl y minimumRequirements cuando summary=true y excluye ADULTOS cuando no se especifica section', async () => {
       await repo.findAll({ page: 1, limit: 10, summary: true });
 
+      expect(qb.andWhere).toHaveBeenCalledWith('item.section != :adultSection', {
+        adultSection: CatalogSection.ADULTOS,
+      });
       const selectedCols = vi.mocked(qb.select).mock.calls[0][0] as string[];
       expect(selectedCols.some((c) => c.includes('banner_url'))).toBe(false);
       expect(selectedCols.some((c) => c.includes('minimum_requirements'))).toBe(false);

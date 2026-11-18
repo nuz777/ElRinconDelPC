@@ -67,7 +67,8 @@ export function useCatalogData({
     activeView.apartado === "todos" ? undefined : mapApartadoToSection(activeView.apartado);
 
   const isRomView = activeView.apartado === "roms";
-  const limit = isRomView ? 100 : 24;
+  const isAllView = activeView.apartado === "todos";
+  const limit = isRomView || isAllView ? 100 : 24;
   const genreParam = !isRomView && selectedGenre !== "todos" ? selectedGenre : undefined;
 
   const queryKey = JSON.stringify({
@@ -83,16 +84,51 @@ export function useCatalogData({
     if (isAdultBlocked) return;
 
     let cancelled = false;
-    catalogService
-      .getPaginatedItems({
-        section,
-        genre: genreParam,
-        search: debouncedSearch || undefined,
-        page: isRomView ? 1 : page,
-        limit,
-        view: "summary",
-      })
-      .then((res) => {
+
+    const loadData = async () => {
+      try {
+        if (!section) {
+          // En "Todo el Catálogo" consultamos los apartados públicos explícitamente
+          // para que los ítems +18 recientes no desplacen ni vacíen la página 1.
+          const publicSections: CatalogSectionApi[] = [
+            "JUEGOS",
+            "MODS",
+            "HERRAMIENTAS",
+            "ROMS",
+          ];
+          const pages = await Promise.all(
+            publicSections.map((sec) =>
+              catalogService.getPaginatedItems({
+                section: sec,
+                genre: genreParam,
+                search: debouncedSearch || undefined,
+                page: 1,
+                limit: 100,
+                view: "summary",
+              }),
+            ),
+          );
+          if (cancelled) return;
+          const mergedItems = pages.flatMap((p) => p.items);
+          setSnapshot({
+            queryKey,
+            items: mergedItems,
+            total: mergedItems.length,
+            page: 1,
+            totalPages: 1,
+            error: null,
+          });
+          return;
+        }
+
+        const res = await catalogService.getPaginatedItems({
+          section,
+          genre: genreParam,
+          search: debouncedSearch || undefined,
+          page: isRomView ? 1 : page,
+          limit,
+          view: "summary",
+        });
         if (cancelled) return;
         setSnapshot({
           queryKey,
@@ -102,8 +138,7 @@ export function useCatalogData({
           totalPages: res.totalPages,
           error: null,
         });
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         setSnapshot({
           queryKey,
@@ -116,7 +151,10 @@ export function useCatalogData({
               ? err.message
               : "No se pudo conectar con la API del catálogo.",
         });
-      });
+      }
+    };
+
+    void loadData();
 
     return () => {
       cancelled = true;
