@@ -3,6 +3,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Game } from '../../Domain/Entities/game.entity.js';
 import type { GameRepository } from '../../Domain/interfaces/game.repository.interface.js';
+import type { ExeIoService } from '../../../Common/shortener/exe-io.service.js';
 import { GamesService } from './games.service.js';
 
 const ID = '11111111-2222-3333-4444-555555555555';
@@ -25,6 +26,7 @@ const buildGame = (override: Partial<Game> = {}): Game =>
 describe('GamesService (Unit)', () => {
   let service: GamesService;
   let repository: GameRepository;
+  let exeIoService: ExeIoService;
 
   beforeEach(() => {
     repository = {
@@ -35,7 +37,10 @@ describe('GamesService (Unit)', () => {
       update: vi.fn(),
       delete: vi.fn(),
     };
-    service = new GamesService(repository);
+    exeIoService = {
+      shortenUrl: vi.fn(async (url: string) => `https://exe.io/short-${url.length}`),
+    } as unknown as ExeIoService;
+    service = new GamesService(repository, undefined, exeIoService);
   });
 
   describe('createGame', () => {
@@ -68,6 +73,42 @@ describe('GamesService (Unit)', () => {
           title: 'Hollow Knight',
           slug: 'hollow-knight',
           price: 15,
+        }),
+      );
+    });
+
+    it('acorta automáticamente downloadUrl con ExeIoService al crear un juego', async () => {
+      vi.mocked(repository.findBySlug).mockResolvedValue(null);
+      vi.mocked(exeIoService.shortenUrl).mockResolvedValueOnce(
+        'https://exe.io/hk123',
+      );
+      const expected = buildGame({ downloadUrl: 'https://exe.io/hk123' });
+      vi.mocked(repository.create).mockResolvedValue(expected);
+
+      await service.createGame({
+        title: 'Hollow Knight',
+        description: 'Metroidvania',
+        price: 15,
+        stock: 100,
+        coverImage: 'https://ejemplo.com/cover.jpg',
+        downloadUrl: 'https://gofile.io/d/hollowknight',
+        developer: 'Team Cherry',
+        publisher: 'Team Cherry',
+        minimumRequirements: {
+          os: 'Windows 10',
+          storage: '9 GB',
+          ram: '8 GB',
+          cpu: 'Intel i5',
+          gpu: 'GTX 1060',
+        },
+      });
+
+      expect(exeIoService.shortenUrl).toHaveBeenCalledWith(
+        'https://gofile.io/d/hollowknight',
+      );
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          downloadUrl: 'https://exe.io/hk123',
         }),
       );
     });
@@ -167,6 +208,31 @@ describe('GamesService (Unit)', () => {
       });
 
       expect(result).toBe(updatedGame);
+    });
+
+    it('acorta downloadUrl al actualizar solo si viene en el DTO y es diferente al guardado', async () => {
+      const existing = buildGame({ downloadUrl: 'https://exe.io/existing' });
+      vi.mocked(repository.findById).mockResolvedValue(existing);
+      vi.mocked(repository.update).mockResolvedValue(existing);
+
+      // Misma URL -> no llama a ExeIoService
+      await service.updateGame(ID, { downloadUrl: 'https://exe.io/existing' });
+      expect(exeIoService.shortenUrl).not.toHaveBeenCalled();
+
+      // Nueva URL -> sí llama a ExeIoService
+      vi.mocked(exeIoService.shortenUrl).mockResolvedValueOnce(
+        'https://exe.io/newshort',
+      );
+      await service.updateGame(ID, {
+        downloadUrl: 'https://gofile.io/d/newfile',
+      });
+      expect(exeIoService.shortenUrl).toHaveBeenCalledWith(
+        'https://gofile.io/d/newfile',
+      );
+      expect(repository.update).toHaveBeenLastCalledWith(
+        ID,
+        expect.objectContaining({ downloadUrl: 'https://exe.io/newshort' }),
+      );
     });
 
     it('debe lanzar NotFoundException si el juego no existe al actualizar', async () => {

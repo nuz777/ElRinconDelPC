@@ -7,6 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { isValidPublicCode } from '../../../Common/utils/public-code.js';
+import { ExeIoService } from '../../../Common/shortener/exe-io.service.js';
 import { slugify } from '../../../Common/utils/slugify.js';
 import {
   GAMES_REPOSITORY,
@@ -61,6 +62,8 @@ export class CatalogService {
     @Optional()
     @Inject(TOOLS_REPOSITORY)
     private readonly toolsRepository?: ToolRepository,
+    @Optional()
+    private readonly exeIoService?: ExeIoService,
   ) {}
 
   getCatalog(filters: CatalogFilters): Promise<PaginatedResult<CatalogItem>> {
@@ -119,8 +122,15 @@ export class CatalogService {
     data: CreateCatalogItemData,
     authorId?: string,
   ): Promise<CatalogItem> {
+    const normalized = this.normalize(data);
+    if (normalized.downloadUrl && this.exeIoService) {
+      normalized.downloadUrl = await this.exeIoService.shortenUrl(
+        normalized.downloadUrl,
+      );
+    }
+
     const saved = await this.catalogRepository.create(
-      this.applyRomRules(this.normalize(data), data.section),
+      this.applyRomRules(normalized, data.section),
     );
     try {
       await this.syncCreateToSpecificTable(saved, authorId);
@@ -148,6 +158,17 @@ export class CatalogService {
     }
     if (isSelfMediaUrl(normalized.bannerUrl, id, 'banner')) {
       delete normalized.bannerUrl;
+    }
+
+    if (
+      normalized.downloadUrl !== undefined &&
+      normalized.downloadUrl &&
+      normalized.downloadUrl !== (existing.downloadUrl ?? '').trim() &&
+      this.exeIoService
+    ) {
+      normalized.downloadUrl = await this.exeIoService.shortenUrl(
+        normalized.downloadUrl,
+      );
     }
 
     const section = normalized.section ?? existing.section;
@@ -214,6 +235,7 @@ export class CatalogService {
         genres: [saved.genre],
         coverImage: saved.coverUrl ?? '/img/indicado.webp',
         bannerImage: saved.bannerUrl ?? null,
+        downloadUrl: saved.downloadUrl ?? null,
         developer: saved.developer ?? 'Comunidad El Sótano',
         publisher: saved.developer ?? 'Comunidad El Sótano',
         releaseDate: saved.createdAt,
@@ -303,6 +325,7 @@ export class CatalogService {
         genres: [updated.genre],
         coverImage: updated.coverUrl ?? '/img/indicado.webp',
         bannerImage: updated.bannerUrl ?? null,
+        downloadUrl: updated.downloadUrl ?? null,
         developer: updated.developer ?? 'Comunidad El Sótano',
         publisher: updated.developer ?? 'Comunidad El Sótano',
         minimumRequirements: updated.minimumRequirements ?? undefined,

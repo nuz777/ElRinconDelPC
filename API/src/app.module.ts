@@ -5,6 +5,7 @@ import {
   type NestModule,
   type OnModuleInit,
 } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -13,6 +14,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './Auth/Infraestructure/auth.module.js';
 import { CatalogModule } from './Catalog/catalog.module.js';
+import { ShortenerModule } from './Common/shortener/shortener.module.js';
 import { dataSourceOptions } from './database/data-source.js';
 import { seedAdmins } from './database/seeds/admin.seed.js';
 import { GamesModule } from './Games/games.module.js';
@@ -24,6 +26,10 @@ import { ToolsModule } from './Tools/tools.module.js';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env', '../.env'],
+    }),
     ThrottlerModule.forRoot([
       {
         name: 'default',
@@ -32,6 +38,7 @@ import { ToolsModule } from './Tools/tools.module.js';
       },
     ]),
     TypeOrmModule.forRoot(dataSourceOptions),
+    ShortenerModule,
     AuthModule,
     CatalogModule,
     GamesModule,

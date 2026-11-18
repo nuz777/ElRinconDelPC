@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   MaxLength,
   Min,
@@ -116,6 +117,17 @@ export class CreateGameDto {
     message: 'El banner debe ser una URL válida, una ruta relativa o una imagen en base64',
   })
   bannerImage?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://gofile.io/d/abc123',
+    description: 'URL de descarga del juego (se acorta automáticamente mediante exe.io)',
+  })
+  @IsOptional()
+  @IsUrl(
+    { require_protocol: true, protocols: ['http', 'https'] },
+    { message: 'downloadUrl debe ser una URL válida (http/https)' },
+  )
+  downloadUrl?: string;
 
   @ApiProperty({ example: 'Team Cherry', description: 'Desarrollador del juego' })
   @IsString()

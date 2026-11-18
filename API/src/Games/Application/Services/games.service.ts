@@ -10,6 +10,7 @@ import {
   CATALOG_REPOSITORY,
   type CatalogRepository,
 } from '../../../Catalog/Domain/interfaces/catalog.repository.interface.js';
+import { ExeIoService } from '../../../Common/shortener/exe-io.service.js';
 import type { Game } from '../../Domain/Entities/game.entity.js';
 import {
   GAMES_REPOSITORY,
@@ -33,7 +34,22 @@ export class GamesService {
     @Optional()
     @Inject(CATALOG_REPOSITORY)
     private readonly catalogRepository?: CatalogRepository,
+    @Optional()
+    private readonly exeIoService?: ExeIoService,
   ) {}
+
+  private async resolveShortenedDownloadUrl(
+    rawUrl?: string | null,
+  ): Promise<string | null | undefined> {
+    if (rawUrl === undefined || rawUrl === null) {
+      return rawUrl;
+    }
+    const trimmed = rawUrl.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return this.exeIoService ? this.exeIoService.shortenUrl(trimmed) : trimmed;
+  }
 
   async createGame(dto: CreateGameDto): Promise<Game> {
     const title = dto.title.trim();
@@ -54,6 +70,10 @@ export class GamesService {
       }
     }
 
+    const shortenedDownloadUrl = await this.resolveShortenedDownloadUrl(
+      dto.downloadUrl,
+    );
+
     const data: CreateGameData = {
       title,
       slug,
@@ -64,6 +84,9 @@ export class GamesService {
       genres: dto.genres ?? [],
       coverImage: dto.coverImage,
       bannerImage: dto.bannerImage ?? null,
+      ...(shortenedDownloadUrl !== undefined
+        ? { downloadUrl: shortenedDownloadUrl }
+        : {}),
       developer: dto.developer.trim(),
       publisher: dto.publisher.trim(),
       releaseDate: dto.releaseDate ? new Date(dto.releaseDate) : new Date(),
@@ -84,7 +107,7 @@ export class GamesService {
           version: 'v1.0',
           badge: 'Nuevo',
           coverUrl: created.coverImage,
-          downloadUrl: null,
+          downloadUrl: created.downloadUrl ?? shortenedDownloadUrl ?? null,
           developer: created.developer,
           shortDescription: created.description,
           minimumRequirements: created.minimumRequirements,
@@ -170,6 +193,14 @@ export class GamesService {
     if (dto.genres !== undefined) data.genres = dto.genres;
     if (dto.coverImage !== undefined) data.coverImage = dto.coverImage;
     if (dto.bannerImage !== undefined) data.bannerImage = dto.bannerImage;
+    if (dto.downloadUrl !== undefined) {
+      const nextUrl = dto.downloadUrl.trim();
+      const prevUrl = existing.downloadUrl?.trim() ?? '';
+      data.downloadUrl =
+        nextUrl && nextUrl !== prevUrl
+          ? ((await this.resolveShortenedDownloadUrl(nextUrl)) ?? nextUrl)
+          : nextUrl || null;
+    }
     if (dto.developer !== undefined) data.developer = dto.developer.trim();
     if (dto.publisher !== undefined) data.publisher = dto.publisher.trim();
     if (dto.releaseDate !== undefined)

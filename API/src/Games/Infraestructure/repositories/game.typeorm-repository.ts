@@ -21,6 +21,7 @@ interface GameRow {
   genres: string[];
   cover_image: string;
   banner_image: string | null;
+  download_url?: string | null;
   developer: string;
   publisher: string;
   release_date: Date | string;
@@ -59,6 +60,7 @@ function mapRowToGame(row: GameRow): Game {
     genres: row.genres ?? [],
     coverImage: row.cover_image,
     bannerImage: row.banner_image,
+    downloadUrl: row.download_url ?? null,
     developer: row.developer,
     publisher: row.publisher,
     releaseDate: toDate(row.release_date),
@@ -100,6 +102,7 @@ export class TypeormGameRepository implements GameRepository {
       'genres',
       'cover_image',
       'banner_image',
+      ...(data.downloadUrl !== undefined ? ['download_url'] : []),
       'developer',
       'publisher',
       'release_date',
@@ -121,6 +124,7 @@ export class TypeormGameRepository implements GameRepository {
       data.genres ?? [],
       data.coverImage,
       data.bannerImage ?? null,
+      ...(data.downloadUrl !== undefined ? [data.downloadUrl] : []),
       data.developer,
       data.publisher,
       data.releaseDate ?? null,
@@ -263,6 +267,8 @@ export class TypeormGameRepository implements GameRepository {
     if (data.coverImage !== undefined) addSet('cover_image', data.coverImage);
     if (data.bannerImage !== undefined)
       addSet('banner_image', data.bannerImage);
+    if (data.downloadUrl !== undefined)
+      addSet('download_url', data.downloadUrl);
     if (data.developer !== undefined)
       addSet('developer', data.developer.trim());
     if (data.publisher !== undefined)

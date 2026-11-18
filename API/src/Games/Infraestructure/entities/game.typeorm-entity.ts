@@ -41,6 +41,9 @@ export class GameTypeormEntity {
   @Column({ name: 'banner_image', type: 'text', nullable: true })
   bannerImage!: string | null;
 
+  @Column({ name: 'download_url', type: 'text', nullable: true })
+  downloadUrl!: string | null;
+
   @Column({ type: 'varchar', length: 150 })
   developer!: string;
 

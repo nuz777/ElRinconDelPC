@@ -17,6 +17,7 @@ export interface GameProps {
   genres: string[];
   coverImage: string;
   bannerImage?: string | null;
+  downloadUrl?: string | null;
   developer: string;
   publisher: string;
   releaseDate?: Date;
@@ -41,6 +42,7 @@ export class Game {
   public genres: string[];
   public coverImage: string;
   public bannerImage: string | null;
+  public downloadUrl: string | null;
   public developer: string;
   public publisher: string;
   public releaseDate: Date;
@@ -60,6 +62,7 @@ export class Game {
     this.genres = props.genres ?? [];
     this.coverImage = props.coverImage ?? '';
     this.bannerImage = props.bannerImage ?? null;
+    this.downloadUrl = props.downloadUrl ?? null;
     this.developer = (props.developer ?? '').trim();
     this.publisher = (props.publisher ?? '').trim();
     this.releaseDate = props.releaseDate ?? new Date();
