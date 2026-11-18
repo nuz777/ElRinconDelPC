@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   HttpStatus,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -11,6 +13,7 @@ import {
   Put,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -20,10 +23,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
-import { CatalogService } from '../Application/Services/catalog.service.js';
-import type { CatalogItem } from '../Domain/Entities/catalog-item.entity.js';
-import type { PaginatedResult } from '../Domain/interfaces/catalog.repository.interface.js';
 import {
   CatalogItemResponseDto,
   PaginatedCatalogResponseDto,
@@ -31,8 +32,22 @@ import {
 import { CreateCatalogItemDto } from '../Application/DTOs/create-catalog-item.dto.js';
 import { FilterCatalogDto } from '../Application/DTOs/filter-catalog.dto.js';
 import { UpdateCatalogItemDto } from '../Application/DTOs/update-catalog-item.dto.js';
+import { CatalogService } from '../Application/Services/catalog.service.js';
+import type { CatalogItem } from '../Domain/Entities/catalog-item.entity.js';
+import type {
+  CatalogMediaKind,
+  PaginatedResult,
+} from '../Domain/interfaces/catalog.repository.interface.js';
+import { CATALOG_MEDIA_PLACEHOLDER } from '../Infraestructure/repositories/typeorm-catalog.repository.js';
 
 const ID_PARAM = { name: 'id', format: 'uuid', description: 'UUID del ítem' };
+const DATA_IMAGE_REGEX = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i;
+
+function resolveApiOrigin(req?: Request): string {
+  const host = req?.get?.('host');
+  if (!host) return '';
+  return `${req?.protocol || 'http'}://${host}`;
+}
 
 @ApiTags('Catalog')
 @Controller('catalog')
@@ -45,10 +60,90 @@ export class CatalogController {
   @ApiOperation({ summary: 'Listar el catálogo con filtros y paginación' })
   @ApiResponse({ status: HttpStatus.OK, type: PaginatedCatalogResponseDto })
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Filtros inválidos' })
-  findAll(
+  async findAll(
     @Query() filters: FilterCatalogDto,
+    @Req() req?: Request,
   ): Promise<PaginatedResult<CatalogItem>> {
-    return this.catalogService.getCatalog(filters);
+    const { view, ...rest } = filters;
+    const result = await this.catalogService.getCatalog({
+      ...rest,
+      summary: view === 'summary',
+    });
+
+    const origin = resolveApiOrigin(req);
+    for (const item of result.items) {
+      const version = item.updatedAt?.getTime?.() ?? Date.now();
+      if (item.coverUrl === CATALOG_MEDIA_PLACEHOLDER) {
+        item.coverUrl = `${origin}/catalog/${item.id}/media/cover?v=${version}`;
+      }
+      if (item.bannerUrl === CATALOG_MEDIA_PLACEHOLDER) {
+        item.bannerUrl = `${origin}/catalog/${item.id}/media/banner?v=${version}`;
+      }
+    }
+
+    return result;
+  }
+
+  @Get(':id/media/:kind')
+  @ApiOperation({
+    summary: 'Servir portada o banner del catálogo con caché HTTP',
+  })
+  @ApiParam(ID_PARAM)
+  @ApiParam({ name: 'kind', enum: ['cover', 'banner'] })
+  async getMedia(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('kind') kind: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    if (kind !== 'cover' && kind !== 'banner') {
+      throw new BadRequestException('El tipo de media debe ser cover o banner');
+    }
+
+    const media = await this.catalogService.getItemMedia(
+      id,
+      kind as CatalogMediaKind,
+    );
+    const value = media.value;
+    if (!value) {
+      throw new NotFoundException(`Recurso multimedia (${kind}) no encontrado`);
+    }
+
+    const match = DATA_IMAGE_REGEX.exec(value);
+    if (match) {
+      const mimeType = match[1];
+      const buffer = Buffer.from(match[2], 'base64');
+      const etag = `"${id}-${kind}-${media.updatedAt.getTime()}"`;
+
+      if (req.headers['if-none-match'] === etag) {
+        res.status(HttpStatus.NOT_MODIFIED).end();
+        return;
+      }
+
+      const cacheControl = req.query?.v
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=86400';
+
+      res
+        .status(HttpStatus.OK)
+        .setHeader('Content-Type', mimeType)
+        .setHeader('Content-Length', buffer.length)
+        .setHeader('ETag', etag)
+        .setHeader('Cache-Control', cacheControl)
+        .send(buffer);
+      return;
+    }
+
+    if (
+      value.startsWith('http://') ||
+      value.startsWith('https://') ||
+      value.startsWith('/')
+    ) {
+      res.redirect(HttpStatus.FOUND, value);
+      return;
+    }
+
+    throw new NotFoundException(`Formato de media no soportado para "${id}"`);
   }
 
   @Get('code/:code')

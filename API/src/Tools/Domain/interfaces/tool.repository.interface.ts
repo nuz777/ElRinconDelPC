@@ -35,6 +35,8 @@ export interface ToolRepository {
   hardDelete?(id: string): Promise<boolean>;
   /** Incrementa el contador de descargas de la herramienta. */
   incrementDownloads(id: string): Promise<void>;
+  /** Incrementa el contador de descargas si existe y está activa en una única consulta. */
+  incrementDownloadsIfExists?(id: string): Promise<boolean>;
   /** Verifica si existe una herramienta con el slug dado. */
   slugExists(slug: string, excludeId?: string): Promise<boolean>;
 }

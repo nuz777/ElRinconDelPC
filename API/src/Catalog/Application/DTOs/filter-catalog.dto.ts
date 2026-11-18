@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -49,4 +50,12 @@ export class FilterCatalogDto implements CatalogFilters {
   @Min(1)
   @Max(100)
   limit: number = 10;
+
+  @ApiPropertyOptional({
+    enum: ['full', 'summary'],
+    description: 'summary omite bannerUrl y minimumRequirements en el listado',
+  })
+  @IsOptional()
+  @IsIn(['full', 'summary'])
+  view?: 'full' | 'summary';
 }

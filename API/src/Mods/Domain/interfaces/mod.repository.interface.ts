@@ -42,10 +42,20 @@ export interface ModRepository {
   hardDelete?(id: string): Promise<boolean>;
   /** Incrementa el contador de descargas del mod. */
   incrementDownloads(id: string): Promise<void>;
+  /** Incrementa las descargas y devuelve `downloadUrl` en una única consulta. */
+  incrementAndGetDownloadUrl?(id: string): Promise<string | null>;
   /** Aprueba un mod pendiente (marca isApproved = true). */
   approve(id: string): Promise<boolean>;
+  /** Aprueba y devuelve el mod actualizado en una única consulta. */
+  approveAndReturn?(id: string): Promise<Mod | null>;
   /** Obtiene detalles relacionados (juego y autor) sin exponer datos sensibles del autor. */
   getModDetails(id: string): Promise<{
+    game: { id: string; title: string } | null;
+    author: { id: string } | null;
+  } | null>;
+  /** Obtiene el mod junto con juego y autor mediante JOIN en una única consulta. */
+  findDetailsById?(id: string): Promise<{
+    mod: Mod;
     game: { id: string; title: string } | null;
     author: { id: string } | null;
   } | null>;

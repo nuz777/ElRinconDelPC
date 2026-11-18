@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, IsNull, Repository } from 'typeorm';
+import { escapeLike, isUuid, toDate } from '../../../Common/utils/sql.js';
 import { Mod } from '../../Domain/Entities/mod.entity.js';
 import type {
   CreateModData,
@@ -20,7 +21,7 @@ interface ModRow {
   download_url: string;
   file_size: string | null;
   thumbnail_url: string | null;
-  game_id: string;
+  game_id: string | null;
   author_id: string;
   downloads_count: number;
   is_approved: boolean;
@@ -41,13 +42,6 @@ interface GameRow {
 
 interface AuthorRow {
   id: string;
-  email: string;
-  role: string;
-}
-
-/** Escapa los comodines de LIKE para que la búsqueda sea literal. */
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
 function mapRowToMod(row: ModRow): Mod {
@@ -72,8 +66,8 @@ function mapRowToMod(row: ModRow): Mod {
       cpu: row.min_cpu ?? '',
       gpu: row.min_gpu ?? '',
     },
-    createdAt: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
-    updatedAt: row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
+    createdAt: toDate(row.created_at),
+    updatedAt: toDate(row.updated_at),
   });
 }
 
@@ -138,6 +132,7 @@ export class TypeormModRepository implements ModRepository {
   }
 
   async findById(id: string): Promise<Mod | null> {
+    if (!isUuid(id)) return null;
     const row = await this.repository.findOne({ where: { id } });
     return row ? this.toDomain(row) : null;
   }
@@ -177,19 +172,20 @@ export class TypeormModRepository implements ModRepository {
     }
 
     const whereClause = conditions.join(' AND ');
-    const rows = await this.dataSource.query<ModRow[]>(
-      [
-        `SELECT * FROM mods WHERE ${whereClause}`,
-        `ORDER BY created_at DESC`,
-        `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      ].join('\n'),
-      [...params, take, skip],
-    );
-
-    const countRows = await this.dataSource.query<{ count: string }[]>(
-      `SELECT COUNT(*)::int AS count FROM mods WHERE ${whereClause}`,
-      params,
-    );
+    const [rows, countRows] = await Promise.all([
+      this.dataSource.query<ModRow[]>(
+        [
+          `SELECT * FROM mods WHERE ${whereClause}`,
+          `ORDER BY created_at DESC`,
+          `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        ].join('\n'),
+        [...params, take, skip],
+      ),
+      this.dataSource.query<{ count: string }[]>(
+        `SELECT COUNT(*)::int AS count FROM mods WHERE ${whereClause}`,
+        params,
+      ),
+    ]);
 
     const total = Number(countRows[0]?.count ?? 0);
 
@@ -203,31 +199,72 @@ export class TypeormModRepository implements ModRepository {
   }
 
   async update(id: string, data: UpdateModData): Promise<Mod | null> {
-    const existing = await this.repository.findOne({ where: { id } });
-    if (!existing) return null;
+    if (!isUuid(id)) return null;
 
-    const merged = this.repository.merge(existing, {
-      ...data,
-      slug: data.slug ?? existing.slug,
-      minOs: data.minimumRequirements?.os ?? existing.minOs,
-      minStorage: data.minimumRequirements?.storage ?? existing.minStorage,
-      minRam: data.minimumRequirements?.ram ?? existing.minRam,
-      minCpu: data.minimumRequirements?.cpu ?? existing.minCpu,
-      minGpu: data.minimumRequirements?.gpu ?? existing.minGpu,
-    });
-    const saved = await this.repository.save(merged);
-    return this.toDomain(saved);
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    const addSet = (column: string, value: unknown) => {
+      if (value !== undefined) {
+        sets.push(`${column} = $${paramIndex}`);
+        params.push(value);
+        paramIndex++;
+      }
+    };
+
+    if (data.title !== undefined) addSet('title', data.title);
+    if (data.slug !== undefined) addSet('slug', data.slug);
+    if (data.description !== undefined) addSet('description', data.description);
+    if (data.version !== undefined) addSet('version', data.version);
+    if (data.downloadUrl !== undefined) addSet('download_url', data.downloadUrl);
+    if (data.fileSize !== undefined) addSet('file_size', data.fileSize);
+    if (data.thumbnailUrl !== undefined)
+      addSet('thumbnail_url', data.thumbnailUrl);
+    if (data.gameId !== undefined) addSet('game_id', data.gameId);
+    if (data.isApproved !== undefined) addSet('is_approved', data.isApproved);
+    if (data.isActive !== undefined) addSet('is_active', data.isActive);
+
+    if (data.minimumRequirements) {
+      if (data.minimumRequirements.os !== undefined)
+        addSet('min_os', data.minimumRequirements.os);
+      if (data.minimumRequirements.storage !== undefined)
+        addSet('min_storage', data.minimumRequirements.storage);
+      if (data.minimumRequirements.ram !== undefined)
+        addSet('min_ram', data.minimumRequirements.ram);
+      if (data.minimumRequirements.cpu !== undefined)
+        addSet('min_cpu', data.minimumRequirements.cpu);
+      if (data.minimumRequirements.gpu !== undefined)
+        addSet('min_gpu', data.minimumRequirements.gpu);
+    }
+
+    if (sets.length === 0) {
+      return this.findById(id);
+    }
+
+    sets.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
+
+    const rows = await this.dataSource.query<ModRow[]>(
+      `
+      UPDATE mods
+      SET ${sets.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *;
+      `,
+      params,
+    );
+    return rows[0] ? mapRowToMod(rows[0]) : null;
   }
 
   async delete(id: string): Promise<boolean> {
-    const existing = await this.repository.findOne({ where: { id } });
-    if (!existing) return false;
-    existing.isActive = false;
-    const saved = await this.repository.save(existing);
-    return saved.isActive === false;
+    if (!isUuid(id)) return false;
+    const result = await this.repository.update({ id }, { isActive: false });
+    return (result.affected ?? 0) > 0;
   }
 
   async hardDelete(id: string): Promise<boolean> {
+    if (!isUuid(id)) return false;
     const result = await this.repository.delete({ id });
     return (result.affected ?? 0) > 0;
   }
@@ -236,24 +273,79 @@ export class TypeormModRepository implements ModRepository {
     await this.repository.increment({ id }, 'downloadsCount', 1);
   }
 
+  async incrementAndGetDownloadUrl(id: string): Promise<string | null> {
+    if (!isUuid(id)) return null;
+    const rows = await this.dataSource.query<{ download_url: string }[]>(
+      `
+      UPDATE mods
+      SET downloads_count = downloads_count + 1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND is_active = TRUE
+      RETURNING download_url;
+      `,
+      [id],
+    );
+    return rows[0]?.download_url ?? null;
+  }
+
   async approve(id: string): Promise<boolean> {
-    const existing = await this.repository.findOne({ where: { id } });
-    if (!existing) return false;
-    existing.isApproved = true;
-    const saved = await this.repository.save(existing);
-    return saved.isApproved === true;
+    if (!isUuid(id)) return false;
+    const result = await this.repository.update({ id }, { isApproved: true });
+    return (result.affected ?? 0) > 0;
+  }
+
+  async approveAndReturn(id: string): Promise<Mod | null> {
+    if (!isUuid(id)) return null;
+    const rows = await this.dataSource.query<ModRow[]>(
+      `
+      UPDATE mods
+      SET is_approved = TRUE, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *;
+      `,
+      [id],
+    );
+    return rows[0] ? mapRowToMod(rows[0]) : null;
   }
 
   async gameExists(gameId: string): Promise<boolean> {
-    try {
-      const rows = await this.dataSource.query<{ count: string }[]>(
-        `SELECT COUNT(*)::int AS count FROM games WHERE id = $1 LIMIT 1`,
-        [gameId],
-      );
-      return Number(rows[0]?.count ?? 0) > 0;
-    } catch {
-      return false;
-    }
+    if (!isUuid(gameId)) return false;
+    const rows = await this.dataSource.query<unknown[]>(
+      `SELECT 1 FROM games WHERE id = $1 LIMIT 1`,
+      [gameId],
+    );
+    return (rows?.length ?? 0) > 0;
+  }
+
+  async findDetailsById(id: string): Promise<{
+    mod: Mod;
+    game: { id: string; title: string } | null;
+    author: { id: string } | null;
+  } | null> {
+    if (!isUuid(id)) return null;
+    const rows = await this.dataSource.query<
+      (ModRow & { game_title: string | null })[]
+    >(
+      `
+      SELECT m.*, g.title AS game_title
+      FROM mods m
+      LEFT JOIN games g ON g.id = m.game_id
+      WHERE m.id = $1
+      LIMIT 1;
+      `,
+      [id],
+    );
+
+    const row = rows[0];
+    if (!row) return null;
+
+    return {
+      mod: mapRowToMod(row),
+      game:
+        row.game_id && row.game_title
+          ? { id: row.game_id, title: row.game_title }
+          : null,
+      author: { id: row.author_id },
+    };
   }
 
   async getModDetails(id: string): Promise<{
@@ -264,12 +356,14 @@ export class TypeormModRepository implements ModRepository {
     if (!mod) return null;
 
     const [gameRows, authorRows] = await Promise.all([
-      this.dataSource
-        .query<GameRow[]>(
-          `SELECT id, title FROM games WHERE id = $1 LIMIT 1`,
-          [mod.gameId],
-        )
-        .catch(() => []),
+      mod.gameId
+        ? this.dataSource
+            .query<GameRow[]>(
+              `SELECT id, title FROM games WHERE id = $1 LIMIT 1`,
+              [mod.gameId],
+            )
+            .catch(() => [])
+        : Promise.resolve([]),
       this.dataSource
         .query<AuthorRow[]>(
           `SELECT id FROM users WHERE id = $1 LIMIT 1`,

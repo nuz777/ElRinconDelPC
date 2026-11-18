@@ -192,5 +192,16 @@ describe('ToolsService (Unit)', () => {
         NotFoundException,
       );
     });
+
+    it('usa incrementDownloadsIfExists en 1 sola consulta cuando está disponible', async () => {
+      repository.incrementDownloadsIfExists = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+      await expect(service.incrementDownloadCount(TOOL_ID)).resolves.toBeUndefined();
+      expect(repository.findById).not.toHaveBeenCalled();
+
+      await expect(service.incrementDownloadCount(TOOL_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });

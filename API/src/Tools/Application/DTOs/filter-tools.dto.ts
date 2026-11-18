@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
 } from 'class-validator';
 
@@ -16,11 +17,12 @@ export class FilterToolsDto {
   @Min(1)
   page?: number;
 
-  @ApiPropertyOptional({ example: 10, description: 'Elementos por página' })
+  @ApiPropertyOptional({ example: 10, description: 'Elementos por página (máximo 100)' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit?: number;
 
   @ApiPropertyOptional({

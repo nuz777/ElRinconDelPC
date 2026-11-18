@@ -188,4 +188,86 @@ describe('ModsService (Unit)', () => {
       expect(repository.approve).toHaveBeenCalledWith(MOD_ID);
     });
   });
+
+  describe('getModsByGame / getModById / incrementDownloadCount', () => {
+    it('getModsByGame delega con isApproved=true e isActive=true', async () => {
+      const paginated = {
+        items: [buildMod()],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      };
+      vi.mocked(repository.findByGameId).mockResolvedValue(paginated);
+
+      const res = await service.getModsByGame(GAME_ID, {
+        search: ' sod ',
+        page: 1,
+        limit: 10,
+      });
+
+      expect(res).toBe(paginated);
+      expect(repository.findByGameId).toHaveBeenCalledWith(GAME_ID, {
+        gameId: GAME_ID,
+        search: 'sod',
+        isApproved: true,
+        isActive: true,
+        page: 1,
+        limit: 10,
+      });
+    });
+
+    it('getModById ejecuta findById y luego getModDetails (redundante)', async () => {
+      const mod = buildMod();
+      vi.mocked(repository.findById).mockResolvedValue(mod);
+      vi.mocked(repository.getModDetails).mockResolvedValue({
+        game: { id: GAME_ID, title: 'Minecraft' },
+        author: { id: AUTHOR_ID },
+      });
+
+      const res = await service.getModById(MOD_ID);
+      expect(repository.findById).toHaveBeenCalledWith(MOD_ID);
+      expect(repository.getModDetails).toHaveBeenCalledWith(MOD_ID);
+      expect(res.game?.title).toBe('Minecraft');
+    });
+
+    it('incrementDownloadCount ejecuta findById antes de incrementDownloads', async () => {
+      vi.mocked(repository.findById).mockResolvedValue(buildMod());
+      vi.mocked(repository.incrementDownloads).mockResolvedValue();
+
+      await service.incrementDownloadCount(MOD_ID);
+      expect(repository.findById).toHaveBeenCalledWith(MOD_ID);
+      expect(repository.incrementDownloads).toHaveBeenCalledWith(MOD_ID);
+
+      vi.mocked(repository.findById).mockResolvedValue(null);
+      await expect(service.incrementDownloadCount(MOD_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('usa rutas de 1 consulta (findDetailsById, incrementAndGetDownloadUrl, approveAndReturn) cuando el repositorio las provee', async () => {
+      const mod = buildMod({ isApproved: true });
+      repository.findDetailsById = vi.fn().mockResolvedValue({
+        mod,
+        game: { id: GAME_ID, title: 'Minecraft' },
+        author: { id: AUTHOR_ID },
+      });
+      repository.incrementAndGetDownloadUrl = vi
+        .fn()
+        .mockResolvedValue('https://modrinth.com/mod/sodium');
+      repository.approveAndReturn = vi.fn().mockResolvedValue(mod);
+
+      const details = await service.getModById(MOD_ID);
+      expect(details.game?.title).toBe('Minecraft');
+      expect(repository.findById).not.toHaveBeenCalled();
+
+      const dl = await service.downloadMod(MOD_ID);
+      expect(dl).toEqual({ downloadUrl: 'https://modrinth.com/mod/sodium' });
+      expect(repository.incrementAndGetDownloadUrl).toHaveBeenCalledWith(MOD_ID);
+
+      const approved = await service.approveMod(MOD_ID);
+      expect(approved.isApproved).toBe(true);
+      expect(repository.approveAndReturn).toHaveBeenCalledWith(MOD_ID);
+    });
+  });
 });

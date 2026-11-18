@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -20,6 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
+import { isUuid } from '../../Common/utils/sql.js';
 import { GamesService } from '../Application/Services/games.service.js';
 import { ModsService } from '../../Mods/Application/Services/mods.service.js';
 import type { Game } from '../Domain/Entities/game.entity.js';
@@ -66,16 +66,10 @@ export class GamesController {
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Detalle del juego' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Juego no encontrado' })
-  async findOne(@Param('id') id: string): Promise<Game> {
-    // Intentar por UUID primero; si no, tratar el parámetro como slug
-    let game = await this.gamesService.getGameById(id).catch(() => null);
-    if (!game) {
-      game = await this.gamesService.getGameBySlug(id).catch(() => null);
-    }
-    if (!game) {
-      throw new NotFoundException(`Juego "${id}" no encontrado`);
-    }
-    return game;
+  findOne(@Param('id') id: string): Promise<Game> {
+    return isUuid(id)
+      ? this.gamesService.getGameById(id)
+      : this.gamesService.getGameBySlug(id);
   }
 
   // ─────────────────────── Escritura (solo administradores) ───────────────────────

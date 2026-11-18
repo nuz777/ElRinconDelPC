@@ -6,7 +6,6 @@ import {
   Param,
   Patch,
   Post,
-  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -26,10 +25,8 @@ import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
 import type { AuthenticatedUser } from '../../Auth/Infraestructure/security/jwt.strategy.js';
 import { ModsService } from '../Application/Services/mods.service.js';
 import type { Mod } from '../Domain/Entities/mod.entity.js';
-import type { PaginatedResult } from '../Domain/interfaces/mod.repository.interface.js';
 import { CreateModDto } from '../Application/DTOs/create-mod.dto.js';
 import { UpdateModDto } from '../Application/DTOs/update-mod.dto.js';
-import { FilterModsDto } from '../Application/DTOs/filter-mods.dto.js';
 
 @ApiTags('Mods')
 @Controller('mods')
@@ -57,9 +54,7 @@ export class ModsController {
     description: 'Demasiadas descargas seguidas. Intente más tarde.',
   })
   async downloadMod(@Param('id') id: string) {
-    await this.modsService.incrementDownloadCount(id);
-    const { mod } = await this.modsService.getModById(id);
-    return { downloadUrl: mod.downloadUrl };
+    return this.modsService.downloadMod(id);
   }
 
   // ──────────────────── Rutas protegidas (sesión activa) ────────────────────

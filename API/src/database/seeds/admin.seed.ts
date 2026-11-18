@@ -1,13 +1,7 @@
 import * as bcrypt from 'bcrypt';
-import { config } from 'dotenv';
-import { resolve } from 'path';
 import { DataSource } from 'typeorm';
 import type { Role } from '../../Auth/Domain/Entities/roles.enum.js';
 import { dataSourceOptions } from '../data-source.js';
-
-config();
-config({ path: resolve(process.cwd(), '.env') });
-config({ path: resolve(process.cwd(), 'API/.env') });
 
 interface AdminSeedData {
   firstName: string;
@@ -57,13 +51,27 @@ export async function seedAdmins(existingDataSource?: DataSource): Promise<void>
   }
 
   try {
-    for (const admin of INITIAL_ADMINS) {
+    const expectedEmails = INITIAL_ADMINS.map((a) => a.email.toLowerCase());
+    const existingRows = await ds.query<{ email: string }[]>(
+      `SELECT email FROM users WHERE email = ANY($1) AND role = 'admin' AND provider = 'system';`,
+      [expectedEmails],
+    );
+    const existingEmails = new Set(existingRows.map((r) => r.email.toLowerCase()));
+    const missingAdmins = INITIAL_ADMINS.filter(
+      (a) => !existingEmails.has(a.email.toLowerCase()),
+    );
+
+    if (missingAdmins.length === 0) {
+      return;
+    }
+
+    for (const admin of missingAdmins) {
       const normalizedEmail = admin.email.toLowerCase();
       const passwordHash = await bcrypt.hash(admin.plainPassword, SALT_ROUNDS);
 
       // Si el correo ya existía registrado como usuario corriente, se elimina primero
       await ds.query(
-        `DELETE FROM users WHERE LOWER(email) = $1 AND (role != 'admin' OR provider != 'system');`,
+        `DELETE FROM users WHERE email = $1 AND (role != 'admin' OR provider != 'system');`,
         [normalizedEmail],
       );
 

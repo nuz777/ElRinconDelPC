@@ -26,11 +26,24 @@ import { isValidRomPlatform } from '../../Domain/Entities/rom-platforms.js';
 import {
   CATALOG_REPOSITORY,
   type CatalogFilters,
+  type CatalogMediaKind,
+  type CatalogMediaRecord,
   type CatalogRepository,
   type CreateCatalogItemData,
   type PaginatedResult,
   type UpdateCatalogItemData,
 } from '../../Domain/interfaces/catalog.repository.interface.js';
+
+function isSelfMediaUrl(
+  url: string | null | undefined,
+  id: string,
+  kind: CatalogMediaKind,
+): boolean {
+  if (!url) return false;
+  const suffix = `/catalog/${id}/media/${kind}`;
+  const pathOnly = url.split('?')[0]?.toLowerCase() ?? '';
+  return pathOnly.endsWith(suffix.toLowerCase());
+}
 
 @Injectable()
 export class CatalogService {
@@ -64,6 +77,30 @@ export class CatalogService {
       throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
     }
     return item;
+  }
+
+  /** Obtiene únicamente la URL/Base64 y fecha de actualización de la portada o banner. */
+  async getItemMedia(
+    id: string,
+    kind: CatalogMediaKind,
+  ): Promise<CatalogMediaRecord> {
+    const media = this.catalogRepository.findMedia
+      ? await this.catalogRepository.findMedia(id, kind)
+      : await this.catalogRepository.findById(id).then((item) =>
+          item
+            ? {
+                value: kind === 'cover' ? item.coverUrl : item.bannerUrl,
+                updatedAt: item.updatedAt,
+              }
+            : null,
+        );
+
+    if (!media || !media.value) {
+      throw new NotFoundException(
+        `Recurso multimedia (${kind}) no encontrado para el ítem "${id}"`,
+      );
+    }
+    return media;
   }
 
   /** Busca un ítem por su código público fijo (el que va al final de la URL compartible). */
@@ -105,6 +142,14 @@ export class CatalogService {
     }
     // Validar marca/consola sobre el resultado final (lo existente + los cambios)
     const normalized = this.normalize(data);
+    // Evitar sobrescribir data:image/... en BD cuando el cliente reenvía la URL /catalog/:id/media/... sin cambios
+    if (isSelfMediaUrl(normalized.coverUrl, id, 'cover')) {
+      delete normalized.coverUrl;
+    }
+    if (isSelfMediaUrl(normalized.bannerUrl, id, 'banner')) {
+      delete normalized.bannerUrl;
+    }
+
     const section = normalized.section ?? existing.section;
     const merged = this.applyRomRules(
       {
@@ -131,15 +176,15 @@ export class CatalogService {
 
   async deleteItem(id: string): Promise<{ message: string; id: string }> {
     const deleted = await this.catalogRepository.delete(id);
+    if (!deleted) {
+      throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
+    }
     try {
       await this.syncDeleteFromSpecificTables(id);
     } catch (err) {
       this.logger.warn(
         `Error sincronizando borrado del ítem "${id}": ${err instanceof Error ? err.message : String(err)}`,
       );
-    }
-    if (!deleted) {
-      throw new NotFoundException(`Ítem del catálogo con id "${id}" no encontrado`);
     }
     return { message: 'Ítem eliminado correctamente', id };
   }

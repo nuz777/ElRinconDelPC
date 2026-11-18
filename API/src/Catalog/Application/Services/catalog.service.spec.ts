@@ -297,5 +297,74 @@ describe('CatalogService (Unit)', () => {
     expect(gamesRepo.hardDelete).toHaveBeenCalledWith(ID);
     expect(modsRepo.hardDelete).toHaveBeenCalledWith(ID);
     expect(toolsRepo.hardDelete).toHaveBeenCalledWith(ID);
+
+    // Sincronización MODS y HERRAMIENTAS al crear
+    vi.mocked(repository.create).mockResolvedValue(
+      new CatalogItem({
+        id: ID,
+        section: CatalogSection.MODS,
+        title: 'Shader Pack',
+        genre: 'Mods & Shaders',
+        shortDescription: 'Shaders',
+      }),
+    );
+    await syncedService.createItem(
+      {
+        section: CatalogSection.MODS,
+        title: 'Shader Pack',
+        genre: 'Mods & Shaders',
+        shortDescription: 'Shaders',
+      },
+      'author-1',
+    );
+    expect(modsRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ id: ID, slug: 'shader-pack', authorId: 'author-1' }),
+    );
+
+    vi.mocked(repository.create).mockResolvedValue(
+      new CatalogItem({
+        id: ID,
+        section: CatalogSection.HERRAMIENTAS,
+        title: '7-Zip',
+        genre: 'Utilidades',
+        shortDescription: 'Compresor',
+      }),
+    );
+    await syncedService.createItem(
+      {
+        section: CatalogSection.HERRAMIENTAS,
+        title: '7-Zip',
+        genre: 'Utilidades',
+        shortDescription: 'Compresor',
+      },
+      'author-1',
+    );
+    expect(toolsRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ id: ID, slug: '7-zip', authorId: 'author-1' }),
+    );
+
+    // deleteItem NO debe disparar los 3 hardDelete cuando el ítem no existía en catalog_items
+    vi.clearAllMocks();
+    vi.mocked(repository.delete).mockResolvedValue(false);
+    await expect(syncedService.deleteItem(ID)).rejects.toThrow(NotFoundException);
+    expect(gamesRepo.hardDelete).not.toHaveBeenCalled();
+    expect(modsRepo.hardDelete).not.toHaveBeenCalled();
+    expect(toolsRepo.hardDelete).not.toHaveBeenCalled();
+  });
+
+  it('updateItem no sobrescribe data:image si el cliente reenvía la URL /catalog/:id/media/...', async () => {
+    vi.mocked(repository.findById).mockResolvedValue(buildItem());
+    vi.mocked(repository.update).mockResolvedValue(buildItem());
+
+    await service.updateItem(ID, {
+      title: 'Elden Ring GOTY',
+      coverUrl: `https://api.example.com/catalog/${ID}/media/cover?v=12345`,
+      bannerUrl: `/catalog/${ID}/media/banner?v=12345`,
+    });
+
+    const updatePayload = vi.mocked(repository.update).mock.calls[0][1];
+    expect(updatePayload.title).toBe('Elden Ring GOTY');
+    expect(updatePayload.coverUrl).toBeUndefined();
+    expect(updatePayload.bannerUrl).toBeUndefined();
   });
 });
