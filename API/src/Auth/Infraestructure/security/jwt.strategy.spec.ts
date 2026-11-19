@@ -24,7 +24,7 @@ describe('Auth Security (JwtStrategy, Constants & Adapters) (Unit)', () => {
       delete process.env.JWT_SECRET;
       process.env.NODE_ENV = 'test';
       expect(getJwtSecret()).toBe('dev-only-insecure-secret-change-me');
-      expect(getJwtExpiresIn()).toBe('1d');
+      expect(getJwtExpiresIn()).toBe('30d');
 
       process.env.NODE_ENV = 'production';
       expect(() => getJwtSecret()).toThrow('JWT_SECRET no está definido');

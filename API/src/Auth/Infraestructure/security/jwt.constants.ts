@@ -1,4 +1,6 @@
-export const DEFAULT_JWT_EXPIRES_IN = '1d';
+/** Sesión de 30 días; el frontend la renueva (/auth/refresh) mientras el usuario esté activo. */
+export const DEFAULT_JWT_EXPIRES_IN = '30d';
+export const DEFAULT_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Lee el secreto desde JWT_SECRET. En producción es obligatorio;
