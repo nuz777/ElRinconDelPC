@@ -255,3 +255,38 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* ---------- UX base: foco visible, selección y movimiento reducido ---------- */
+@layer base {
+  :where(a, button, [role="button"], [role="tab"], [role="radio"], summary, select, input[type="range"]):focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-canvas);
+  }
+
+  /* Evita que el contenido quede debajo de la Navbar fija al saltar a un ancla */
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

@@ -10,6 +10,7 @@ import { PublicRoute } from "../features/auth/guards/PublicRoute";
 import { AudioProvider } from "../shared/context/AudioContext";
 import ChatWidget from "../shared/ui/ChatWidget";
 import LoadingScreen from "../shared/ui/LoadingScreen";
+import { DialogHost } from "../shared/ui/dialog";
 import { ROUTES } from "./routes";
 
 const HomePage = lazy(() => import("../features/home/pages/HomePage"));
@@ -167,6 +168,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppInner />
+      <DialogHost />
     </AuthProvider>
   );
 }
