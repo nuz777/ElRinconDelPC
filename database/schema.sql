@@ -186,3 +186,18 @@ CREATE TRIGGER trg_mods_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Tabla: admin_ai_configs (configuración cifrada de API Key IA por administrador)
+CREATE TABLE IF NOT EXISTS admin_ai_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(20) NOT NULL DEFAULT 'gemini' CHECK (provider IN ('gemini', 'claude', 'nvidia')),
+    encrypted_api_key TEXT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TRIGGER IF EXISTS trg_admin_ai_configs_updated_at ON admin_ai_configs;
+CREATE TRIGGER trg_admin_ai_configs_updated_at
+    BEFORE UPDATE ON admin_ai_configs
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+

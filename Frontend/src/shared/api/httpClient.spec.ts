@@ -4,6 +4,7 @@ import {
   extractErrorMessage,
   requestJson,
   resolveApiMediaUrl,
+  UNAUTHORIZED_EVENT,
   unwrapApiData,
 } from "./httpClient";
 import { API_BASE_URL } from "../config/env";
@@ -60,5 +61,51 @@ describe("httpClient", () => {
       `${API_BASE_URL}/catalog`,
       expect.objectContaining({ credentials: "include" }),
     );
+  });
+
+  it("no dispara UNAUTHORIZED_EVENT ante 401 de proveedor IA (AI_PROVIDER_AUTH_ERROR)", async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal("window", { dispatchEvent });
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            statusCode: 401,
+            code: "AI_PROVIDER_AUTH_ERROR",
+            message: "Tu API Key falló o sin cuota, actualízala aquí.",
+          }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ statusCode: 401, message: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    await expect(
+      requestJson("/ai-copilot/autocomplete", {
+        method: "POST",
+        headers: { Authorization: "Bearer jwt-admin" },
+      }),
+    ).rejects.toMatchObject({
+      status: 401,
+      code: "AI_PROVIDER_AUTH_ERROR",
+    } satisfies Partial<ApiError>);
+
+    expect(dispatchEvent).not.toHaveBeenCalled();
+
+    await expect(
+      requestJson("/ai-copilot/config", {
+        method: "GET",
+        headers: { Authorization: "Bearer jwt-expired" },
+      }),
+    ).rejects.toMatchObject({ status: 401 });
+
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
+    expect((dispatchEvent.mock.calls[0][0] as Event).type).toBe(UNAUTHORIZED_EVENT);
+    vi.unstubAllGlobals();
   });
 });

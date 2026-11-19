@@ -10,6 +10,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { AiCopilotModule } from './AiCopilot/ai-copilot.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './Auth/Infraestructure/auth.module.js';
@@ -40,6 +41,7 @@ import { ToolsModule } from './Tools/tools.module.js';
     TypeOrmModule.forRoot(dataSourceOptions),
     ShortenerModule,
     AuthModule,
+    AiCopilotModule,
     CatalogModule,
     GamesModule,
     ModsModule,
