@@ -17,6 +17,7 @@ const HomePage = lazy(() => import("../features/home/pages/HomePage"));
 const CatalogPage = lazy(() => import("../features/catalog/pages/CatalogPage"));
 const AuthPage = lazy(() => import("../features/auth/pages/AuthPage"));
 const UploadModPage = lazy(() => import("../features/games/pages/UploadModPage"));
+const ProfilePage = lazy(() => import("../features/auth/pages/ProfilePage"));
 const LegacyGameRedirect = lazy(
   () => import("../features/games/pages/LegacyGameRedirect"),
 );
@@ -139,6 +140,12 @@ function AppInner() {
 
                 <Route path="/juegos/:id" component={LegacyGameRedirect} />
                 <Route path="/juegos/:id/subir-mod" component={LegacyGameRedirect} />
+
+                <Route path={ROUTES.PROFILE}>
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                </Route>
 
                 <Route path={ROUTES.LOGIN}>
                   <PublicRoute redirectTo={ROUTES.CATALOG}>

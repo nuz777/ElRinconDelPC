@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cleanDescription } from "../../../shared/utils/cleanDescription";
 import {
   catalogService,
@@ -196,13 +196,23 @@ export function useCatalogData({
 
   // Mantener cargada la base de ítems públicos (sin +18) para los conteos de ROMs,
   // conteos del drawer de filtros y autocompletado incluso desde otras pestañas.
+  // Solo depende de reloadNonce/section: el índice es global (sin filtros) y no debe
+  // refetchearse al cambiar búsqueda/género para evitar ráfagas y 429.
+  const indexLoadedForReload = useRef(-1);
   useEffect(() => {
-    if (!section && !genreParam && !debouncedSearch) return;
+    const needsGlobalIndex = Boolean(section) || Boolean(genreParam) || Boolean(debouncedSearch);
+    if (!needsGlobalIndex) {
+      // Vista "todos" sin filtros: loadData ya llena publicIndexItems.
+      indexLoadedForReload.current = reloadNonce;
+      return;
+    }
+    if (indexLoadedForReload.current === reloadNonce) return;
     let cancelled = false;
     Promise.all(PUBLIC_SECTIONS.map((sec) => fetchAllPagesForSection(sec)))
       .then((lists) => {
         if (!cancelled) {
           setPublicIndexItems(lists.flat());
+          indexLoadedForReload.current = reloadNonce;
         }
       })
       .catch(() => undefined);

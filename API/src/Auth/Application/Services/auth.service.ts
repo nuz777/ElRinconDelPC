@@ -24,8 +24,10 @@ import {
   type JwtService,
 } from '../../Domain/services/index.js';
 import { JwtStrategy } from '../../Infraestructure/security/jwt.strategy.js';
+import type { ChangePasswordDto } from '../DTOs/change-password.dto.js';
 import type { LoginRequestDto } from '../DTOs/login-request.dto.js';
 import type { RegisterRequestDto } from '../DTOs/register-request.dto.js';
+import type { UpdateProfileDto } from '../DTOs/update-profile.dto.js';
 
 export interface AuthResult {
   accessToken: string;
@@ -185,9 +187,102 @@ export class AuthService {
   async refresh(userId: string): Promise<AuthResult> {
     const user = await this.authRepository.findById(userId);
     if (!user) {
-      throw new UnauthorizedException('Sesión inválida. Inicie sesión nuevamente.');
+      throw new UnauthorizedException(
+        'Sesión inválida. Inicie sesión nuevamente.',
+      );
     }
     return this.buildResponse(user);
+  }
+
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<AuthResult['user']> {
+    const user = await this.authRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException(
+        'Sesión inválida. Inicie sesión nuevamente.',
+      );
+    }
+
+    const updates: Partial<User> = {};
+    if (dto.name !== undefined) {
+      const trimmed = dto.name.trim();
+      if (trimmed.length < 2) {
+        throw new BadRequestException(
+          'El nombre debe tener al menos 2 caracteres',
+        );
+      }
+      updates.name = trimmed;
+    }
+    if (dto.picture !== undefined) {
+      updates.picture = dto.picture;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return this.toSessionUser(user);
+    }
+
+    const updated = await this.authRepository.update(user.id, updates);
+    if (!updated) {
+      throw new UnauthorizedException(
+        'Sesión inválida. Inicie sesión nuevamente.',
+      );
+    }
+    JwtStrategy.invalidateUserCache(user.id);
+    return this.toSessionUser(updated);
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const user = await this.authRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException(
+        'Sesión inválida. Inicie sesión nuevamente.',
+      );
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Esta cuenta no tiene una contraseña local configurada.',
+      );
+    }
+
+    const matches = await this.hashingService.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+    if (!matches) {
+      throw new BadRequestException('La contraseña actual es incorrecta.');
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException(
+        'La nueva contraseña debe ser diferente a la actual.',
+      );
+    }
+
+    const passwordHash = await this.hashingService.hash(dto.newPassword);
+    await this.authRepository.update(user.id, {
+      passwordHash,
+      resetToken: null,
+      resetTokenExpires: null,
+    });
+    JwtStrategy.invalidateUserCache(user.id);
+    return { message: 'Contraseña actualizada correctamente.' };
+  }
+
+  private toSessionUser(user: User): AuthResult['user'] {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      provider: user.provider,
+      role: (user.role ?? Role.USER) as Role,
+      picture: user.picture,
+    };
   }
 
   private async buildResponse(user: User): Promise<AuthResult> {
@@ -202,14 +297,7 @@ export class AuthService {
 
     return {
       accessToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        provider: user.provider,
-        role,
-        picture: user.picture,
-      },
+      user: this.toSessionUser(user),
     };
   }
 }

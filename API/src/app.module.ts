@@ -35,7 +35,7 @@ import { ToolsModule } from './Tools/tools.module.js';
       {
         name: 'default',
         ttl: 60000, // 1 minuto (60,000 ms)
-        limit: 60, // 60 solicitudes por minuto por IP
+        limit: 300, // 300 solicitudes por minuto por IP (evita 429 por ráfagas del catálogo en SPA)
       },
     ]),
     TypeOrmModule.forRoot(dataSourceOptions),

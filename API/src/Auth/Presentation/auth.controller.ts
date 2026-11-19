@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -28,10 +29,12 @@ import { AuthService, type AuthResult } from '../Application/Services/auth.servi
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../../Guards/index.js';
 import type { AuthenticatedUser } from '../Infraestructure/security/jwt.strategy.js';
 import { AuthResponseDto } from '../Application/DTOs/auth-response.dto.js';
+import { ChangePasswordDto } from '../Application/DTOs/change-password.dto.js';
 import { ForgotPasswordDto } from '../Application/DTOs/forgot-password.dto.js';
 import { LoginRequestDto } from '../Application/DTOs/login-request.dto.js';
 import { RegisterRequestDto } from '../Application/DTOs/register-request.dto.js';
 import { ResetPasswordDto } from '../Application/DTOs/reset-password.dto.js';
+import { UpdateProfileDto } from '../Application/DTOs/update-profile.dto.js';
 import { DEFAULT_SESSION_MAX_AGE_MS } from '../Infraestructure/security/jwt.constants.js';
 
 function getCookieOptions(): Record<string, unknown> {
@@ -193,7 +196,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Renovar el token de sesión (sesión deslizante de 30 días)' })
+  @ApiOperation({
+    summary: 'Renovar el token de sesión (sesión deslizante de 30 días)',
+  })
   @ApiOkResponse({ description: 'Token renovado', type: AuthResponseDto })
   @ApiUnauthorizedResponse({ description: 'No autenticado o token expirado' })
   async refresh(
@@ -224,5 +229,53 @@ export class AuthController {
         picture: user.picture,
       },
     };
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener el perfil del usuario autenticado' })
+  @ApiOkResponse({ description: 'Perfil del usuario', type: AuthResponseDto })
+  @ApiUnauthorizedResponse({ description: 'No autenticado o token expirado' })
+  async getProfile(
+    @Req() req: Request & { user: AuthenticatedUser },
+  ): Promise<{ user: AuthResult['user'] }> {
+    const user = await this.authService.getUserSession(req.user.id, {
+      email: req.user.email,
+      role: req.user.role,
+      name: req.user.name,
+    });
+    return { user };
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualizar nombre y/o foto de perfil' })
+  @ApiOkResponse({ description: 'Perfil actualizado', type: AuthResponseDto })
+  @ApiBadRequestResponse({ description: 'Datos inválidos' })
+  @ApiUnauthorizedResponse({ description: 'No autenticado o token expirado' })
+  async updateProfile(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Body() dto: UpdateProfileDto,
+  ): Promise<{ user: AuthResult['user'] }> {
+    const user = await this.authService.updateProfile(req.user.id, dto);
+    return { user };
+  }
+
+  @Patch('profile/password')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cambiar la contraseña de la cuenta actual' })
+  @ApiOkResponse({ description: 'Contraseña actualizada' })
+  @ApiBadRequestResponse({ description: 'Contraseña actual incorrecta o datos inválidos' })
+  @ApiUnauthorizedResponse({ description: 'No autenticado o token expirado' })
+  changePassword(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.changePassword(req.user.id, dto);
   }
 }

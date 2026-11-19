@@ -48,6 +48,16 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface UpdateProfilePayload {
+  name?: string;
+  picture?: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
 const USER_STORAGE_KEY = "sotano_user";
 const TOKEN_STORAGE_KEY = "sotano_token";
 const REFRESHED_AT_KEY = "sotano_token_refreshed_at";
@@ -232,6 +242,37 @@ export const authService = {
 
     if (!data?.message) {
       throw new Error("Respuesta inválida del servidor al restablecer la contraseña.");
+    }
+
+    return data;
+  },
+
+  async updateProfile(payload: UpdateProfilePayload): Promise<AuthResponse> {
+    const data = await requestJson<AuthResponse>("/auth/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...this.authHeaders() },
+      body: JSON.stringify(payload),
+      fallbackError: "No se pudo actualizar el perfil.",
+    });
+
+    if (!data?.user) {
+      throw new Error("Respuesta inválida del servidor al actualizar el perfil.");
+    }
+
+    this.saveSession(data.user);
+    return data;
+  },
+
+  async changePassword(payload: ChangePasswordPayload): Promise<MessageResponse> {
+    const data = await requestJson<MessageResponse>("/auth/profile/password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...this.authHeaders() },
+      body: JSON.stringify(payload),
+      fallbackError: "No se pudo cambiar la contraseña.",
+    });
+
+    if (!data?.message) {
+      throw new Error("Respuesta inválida del servidor al cambiar la contraseña.");
     }
 
     return data;

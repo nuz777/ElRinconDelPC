@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, ChevronDown, ChevronUp, LogOut, ShieldCheck } from "lucide-react";
+import { Menu, X, ChevronDown, ChevronUp, LogOut, ShieldCheck, UserCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../context/useTheme";
 import { useAuth } from "../../features/auth/context/useAuth";
-import { isCatalogPath } from "../../app/routes";
+import { isCatalogPath, ROUTES } from "../../app/routes";
 import { dialog } from "./dialog";
 import { authService } from "../../features/auth/services/auth.service";
 
@@ -116,18 +116,46 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
   const inCatalog = isCatalogPath(location);
   const displayName = user?.name || user?.username || user?.email || "Mi cuenta";
   const isAdmin = user?.role === "admin";
+  const avatarSrc = user?.picture;
 
   const userChip = (
-    <div className="flex items-center gap-2 min-w-0" title={user?.email ?? displayName}>
-      <span className="size-2 bg-emerald-500 animate-pulse shrink-0" aria-hidden />
-      <span className="font-bold uppercase max-w-[140px] lg:max-w-[200px] truncate">{displayName}</span>
+    <Link
+      href={ROUTES.PROFILE}
+      onClick={() => {
+        setDropdownOpen(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+      className={`group flex items-center gap-2 min-w-0 px-1.5 py-1 -mx-1.5 transition-all duration-200 ${
+        isLight ? "hover:text-black hover:bg-zinc-100/80" : "hover:text-white hover:bg-zinc-800/50"
+      }`}
+      title={user?.email ?? displayName}
+      aria-label="Ir a mi perfil"
+    >
+      {avatarSrc ? (
+        <img
+          src={avatarSrc}
+          alt={displayName}
+          className="size-7 sm:size-8 object-cover border border-zinc-500/40 shrink-0 transition-transform duration-200 group-hover:scale-105"
+        />
+      ) : (
+        <span
+          className={`size-7 sm:size-8 inline-flex items-center justify-center border shrink-0 transition-transform duration-200 group-hover:scale-105 ${
+            isLight ? "bg-zinc-100 border-zinc-300 text-zinc-700" : "bg-zinc-800 border-zinc-700 text-zinc-200"
+          }`}
+        >
+          <UserCircle className="size-4" aria-hidden />
+        </span>
+      )}
+      <span className="font-bold uppercase max-w-[110px] sm:max-w-[140px] lg:max-w-[200px] truncate transition-colors duration-200">
+        {displayName}
+      </span>
       {isAdmin && (
         <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/25">
           <ShieldCheck className="size-3" aria-hidden />
           Admin
         </span>
       )}
-    </div>
+    </Link>
   );
 
   return (
