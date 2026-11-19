@@ -6,7 +6,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type { CatalogMinimumRequirements } from '../../Domain/Entities/catalog-item.entity.js';
+import type {
+  CatalogCoverFraming,
+  CatalogMinimumRequirements,
+} from '../../Domain/Entities/catalog-item.entity.js';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 
 @Entity({ name: 'catalog_items' })
@@ -35,6 +38,9 @@ export class CatalogItemTypeormEntity {
 
   @Column({ name: 'cover_url', type: 'text', nullable: true })
   coverUrl!: string | null;
+
+  @Column({ name: 'cover_framing', type: 'jsonb', nullable: true })
+  coverFraming!: CatalogCoverFraming | null;
 
   @Column({ name: 'banner_url', type: 'text', nullable: true })
   bannerUrl!: string | null;

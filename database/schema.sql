@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS catalog_items (
     version VARCHAR(50) NULL DEFAULT 'v1.0',
     badge VARCHAR(50) NULL,
     cover_url TEXT NULL,
+    cover_framing JSONB NULL,
     download_url TEXT NULL,
     developer VARCHAR(150) NULL,
     short_description TEXT NOT NULL,

@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Menu, X, ChevronDown, ChevronUp, LogOut, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "../context/useTheme";
 import { useAuth } from "../../features/auth/context/useAuth";
-
-const isCatalogRoute = (path: string) => path === "/catalogo" || path === "/sotano";
+import { isCatalogPath } from "../../app/routes";
+import { dialog } from "./dialog";
+import { authService } from "../../features/auth/services/auth.service";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -60,8 +61,15 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
     };
   }, [sidebarOpen]);
 
-  const handleLogout = useCallback(() => {
-    authLogout();
+  const handleLogout = useCallback(async () => {
+    setSidebarOpen(false);
+    const confirmed = await dialog.confirm({
+      title: "¿Cerrar sesión?",
+      text: "Tendrás que volver a ingresar tu correo y contraseña para administrar el catálogo.",
+      confirmText: "Cerrar sesión",
+      cancelText: "Cancelar",
+    });
+    if (confirmed) void authLogout();
   }, [authLogout]);
 
   const handleNavClick = (href: string) => {
@@ -104,8 +112,23 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
     }
   `;
 
-  const inCatalogWithSession = isCatalogRoute(location) && isAuthenticated;
-  const displayName = user?.name || user?.username || user?.email;
+  // La sesión se muestra en todas las rutas: antes solo aparecía en /catalogo y parecía que se cerraba
+  const inCatalog = isCatalogPath(location);
+  const displayName = user?.name || user?.username || user?.email || "Mi cuenta";
+  const isAdmin = user?.role === "admin";
+
+  const userChip = (
+    <div className="flex items-center gap-2 min-w-0" title={user?.email ?? displayName}>
+      <span className="size-2 bg-emerald-500 animate-pulse shrink-0" aria-hidden />
+      <span className="font-bold uppercase max-w-[140px] lg:max-w-[200px] truncate">{displayName}</span>
+      {isAdmin && (
+        <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/25">
+          <ShieldCheck className="size-3" aria-hidden />
+          Admin
+        </span>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -119,11 +142,11 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
         <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           {/* En catálogo con sesión activa: sin logo ni menú desplegable */}
           <div ref={dropdownContainerRef} className="flex items-center gap-2 relative group">
-            {inCatalogWithSession ? (
-              <div />
-            ) : (
               <button
+                type="button"
                 onClick={toggleDropdown}
+                aria-expanded={dropdownOpen}
+                aria-haspopup="menu"
                 className={`flex items-center gap-2 transition-colors cursor-pointer ${
                   isLight
                     ? "text-zinc-950 hover:text-black"
@@ -145,11 +168,10 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
                   <ChevronDown size={16} className="transition-transform duration-200" />
                 )}
               </button>
-            )}
 
             {/* Menú desplegable con animación de bajada (solo cuando NO está en catálogo con sesión activa) */}
             <AnimatePresence>
-              {!inCatalogWithSession && dropdownOpen && (
+              {dropdownOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: -12, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -180,28 +202,33 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
           {/* Área derecha:
               - En catálogo con sesión activa: SOLO nombre de usuario y botón "Cerrar sesión".
               - En cualquier otra ruta (o catálogo sin sesión): link a Catálogo + botones "Iniciar sesión" y "Crear cuenta". */}
-          {inCatalogWithSession ? (
-            <div className="flex items-center gap-3 text-xs sm:text-sm font-share tracking-wider">
-              <div className="flex items-center gap-2">
-                <span className="size-2  bg-emerald-500 animate-pulse shrink-0" />
-                <span
-                  className="font-bold uppercase max-w-[180px] truncate"
-                  title={displayName}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3 text-xs sm:text-sm font-share tracking-wider min-w-0">
+              {!inCatalog && (
+                <Link
+                  href="/catalogo"
+                  onClick={() => window.scrollTo({ top: 0 })}
+                  className={`hidden md:inline text-xs lg:text-sm uppercase tracking-wider transition-colors ${
+                    isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
+                  }`}
                 >
-                  {displayName}
-                </span>
-              </div>
+                  Catálogo
+                </Link>
+              )}
+              {userChip}
               <button
                 type="button"
-                onClick={handleLogout}
-                className={`text-xs uppercase tracking-wider px-3 py-1.5  border transition-colors cursor-pointer ${
+                onClick={() => void handleLogout()}
+                className={`inline-flex items-center gap-1.5 text-xs uppercase tracking-wider px-2.5 sm:px-3 py-1.5 border transition-colors cursor-pointer ${
                   isLight
                     ? "border-zinc-300 text-zinc-700 hover:text-red-600 hover:border-red-300 hover:bg-red-50"
                     : "border-zinc-700 text-zinc-300 hover:text-red-400 hover:border-red-800/60 hover:bg-red-950/30"
                 }`}
                 title="Cerrar sesión"
+                aria-label="Cerrar sesión"
               >
-                Cerrar sesión
+                <LogOut className="size-3.5" aria-hidden />
+                <span className="hidden sm:inline">Cerrar sesión</span>
               </button>
             </div>
           ) : (
@@ -234,6 +261,7 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
                 <div className="flex items-center gap-2">
                   <Link
                     href="/login"
+                    onClick={() => authService.rememberReturnPath(location)}
                     className={`text-xs lg:text-sm uppercase tracking-wider px-3 py-1.5  transition-colors border ${
                       isLight
                         ? "border-zinc-200 text-zinc-600 hover:text-black hover:bg-zinc-50"
@@ -275,7 +303,7 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
       </header>
 
       {/* Mobile Backdrop & Drawer (solo cuando NO estamos en catálogo con sesión activa) */}
-      {!inCatalogWithSession && (
+      {!isAuthenticated && (
         <>
           <div
             className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
@@ -348,7 +376,10 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
             >
               <Link
                 href="/login"
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  authService.rememberReturnPath(location);
+                  setSidebarOpen(false);
+                }}
                 className={`w-full text-center text-xs uppercase tracking-wider py-2  transition-colors border ${
                   isLight
                     ? "border-zinc-300 text-zinc-700 hover:text-black hover:bg-zinc-100"

@@ -1,6 +1,7 @@
 import { Download, HardDrive, Pencil, Trash2 } from "lucide-react";
 import { APARTADO_BADGE } from "../domain/catalogViews";
 import type { CatalogItem } from "../domain/catalog.types";
+import FramedCover from "./FramedCover";
 
 interface CatalogCardProps {
   item: CatalogItem;
@@ -22,7 +23,10 @@ export default function CatalogCard({
   return (
     <div
       onClick={() => onSelect(item)}
-      className={`group flex flex-col   border overflow-hidden shadow-sm hover:shadow-md transition-colors cursor-pointer ${
+      aria-label={`Ver detalles de ${item.title}`}
+      className={`group flex flex-col border overflow-hidden shadow-sm hover:shadow-md transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+        isLight ? "focus-visible:ring-zinc-900 focus-visible:ring-offset-white" : "focus-visible:ring-zinc-200 focus-visible:ring-offset-zinc-950"
+      } ${
         isLight
           ? "bg-white border-zinc-200 hover:border-zinc-400 text-zinc-900"
           : "bg-zinc-900 border-zinc-800 hover:border-zinc-600 text-zinc-100"
@@ -30,23 +34,20 @@ export default function CatalogCard({
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onSelect(item);
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(item);
+        }
       }}
     >
       {/* Card Image Thumbnail (Portada Vertical 3:4) */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-900">
-        <img
+        <FramedCover
           src={item.img}
           alt={item.title}
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 ease-out"
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-            const target = e.currentTarget;
-            if (!target.src.endsWith("/img/SN-tools.jpg")) {
-              target.src = "/img/SN-tools.jpg";
-            }
-          }}
+          framing={item.coverFraming}
+          hoverClassName="transition-transform duration-300 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
         <div
           className={`absolute inset-0 bg-gradient-to-t opacity-70 pointer-events-none ${
@@ -80,7 +81,8 @@ export default function CatalogCard({
                     onEdit(item);
                   }}
                   title="Editar este elemento"
-                  className="p-1 sm:p-1.5  bg-amber-500/90 hover:bg-amber-500 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+                  aria-label={`Editar ${item.title}`}
+                  className="p-1 sm:p-1.5  bg-amber-500/90 hover:bg-amber-500 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
                 >
                   <Pencil className="size-3 sm:size-3.5" />
                 </button>
@@ -93,7 +95,8 @@ export default function CatalogCard({
                     onDelete(item);
                   }}
                   title="Eliminar elemento del catálogo"
-                  className="p-1 sm:p-1.5  bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+                  aria-label={`Eliminar ${item.title}`}
+                  className="p-1 sm:p-1.5  bg-red-600/90 hover:bg-red-600 text-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
                 >
                   <Trash2 className="size-3 sm:size-3.5" />
                 </button>

@@ -32,6 +32,7 @@ import { ForgotPasswordDto } from '../Application/DTOs/forgot-password.dto.js';
 import { LoginRequestDto } from '../Application/DTOs/login-request.dto.js';
 import { RegisterRequestDto } from '../Application/DTOs/register-request.dto.js';
 import { ResetPasswordDto } from '../Application/DTOs/reset-password.dto.js';
+import { DEFAULT_SESSION_MAX_AGE_MS } from '../Infraestructure/security/jwt.constants.js';
 
 function getCookieOptions(): Record<string, unknown> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -41,7 +42,10 @@ function getCookieOptions(): Record<string, unknown> {
     secure: isSecure,
     sameSite: isSecure ? 'none' : 'lax',
     path: '/',
-    maxAge: parseInt(process.env.JWT_COOKIE_MAX_AGE ?? '604800000', 10),
+    maxAge: parseInt(
+      process.env.JWT_COOKIE_MAX_AGE ?? String(DEFAULT_SESSION_MAX_AGE_MS),
+      10,
+    ),
   };
 }
 
@@ -182,6 +186,23 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     this.clearAuthCookie(res);
     return { statusCode: 200, message: 'Sesión cerrada correctamente' };
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Renovar el token de sesión (sesión deslizante de 30 días)' })
+  @ApiOkResponse({ description: 'Token renovado', type: AuthResponseDto })
+  @ApiUnauthorizedResponse({ description: 'No autenticado o token expirado' })
+  async refresh(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto & { token: string }> {
+    const result: AuthResult = await this.authService.refresh(req.user.id);
+    this.setAuthCookie(res, result.accessToken);
+    return { user: result.user, token: result.accessToken };
   }
 
   @Get('check')

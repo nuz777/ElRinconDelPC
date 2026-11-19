@@ -236,18 +236,20 @@ export default function CatalogToolbar({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
-            className={`p-3 sm:p-4  border shadow-md flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${
+            className={`p-3 sm:p-4  border shadow-md flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-3 2xl:gap-4 transition-colors ${
               isLight ? "bg-white border-zinc-200 shadow-zinc-200/50" : "bg-zinc-900 border-zinc-800"
             }`}
           >
             {/* Desktop Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full 2xl:w-auto pb-1 2xl:pb-0 scrollbar-none [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:[mask-image:none]">
               {APARTADOS_CONFIG.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = selectedApartado === tab.id;
                 return (
                   <button
                     key={tab.id}
+                    type="button"
+                    aria-current={isActive ? "page" : undefined}
                     onClick={() => onSelectApartado(tab.id)}
                     className={`inline-flex items-center gap-2 px-3.5 py-2  text-xs uppercase tracking-wider font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                       isActive
@@ -302,8 +304,8 @@ export default function CatalogToolbar({
             </div>
 
             {/* Search Input & Hamburger Filter Trigger */}
-            <div className="flex items-center gap-2.5 w-full md:w-auto">
-              <div ref={searchContainerRef} className="relative flex-1 md:w-80">
+            <div className="flex items-center gap-2.5 w-full 2xl:w-auto">
+              <div ref={searchContainerRef} className="relative flex-1 2xl:w-80 2xl:flex-none">
                 <Search
                   className={`absolute left-3.5 top-1/2 -translate-y-1/2 size-4 pointer-events-none ${
                     isLight ? "text-zinc-400" : "text-zinc-500"

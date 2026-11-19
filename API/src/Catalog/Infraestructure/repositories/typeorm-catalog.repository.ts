@@ -5,6 +5,7 @@ import { generatePublicCode } from '../../../Common/utils/public-code.js';
 import { escapeLike, toDate } from '../../../Common/utils/sql.js';
 import {
   CatalogItem,
+  type CatalogCoverFraming,
   type CatalogMinimumRequirements,
 } from '../../Domain/Entities/catalog-item.entity.js';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
@@ -31,6 +32,7 @@ interface CatalogRawRow {
   version: string | null;
   badge: string | null;
   coverUrl: string | null;
+  coverFraming?: CatalogCoverFraming | null;
   bannerUrl?: string | null;
   downloadUrl: string | null;
   developer: string | null;
@@ -53,6 +55,7 @@ const RETURNING_COLUMNS = [
   'version',
   'badge',
   'cover_url AS "coverUrl"',
+  'cover_framing AS "coverFraming"',
   'banner_url AS "bannerUrl"',
   'download_url AS "downloadUrl"',
   'developer',
@@ -89,6 +92,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       version: row.version,
       badge: row.badge,
       coverUrl: row.coverUrl,
+      coverFraming: row.coverFraming ?? null,
       bannerUrl: row.bannerUrl ?? null,
       downloadUrl: row.downloadUrl,
       developer: row.developer,
@@ -137,6 +141,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       'item.version AS "version"',
       'item.badge AS "badge"',
       `CASE WHEN substring(item.cover_url from 1 for 11) = 'data:image/' THEN '${CATALOG_MEDIA_PLACEHOLDER}' ELSE item.cover_url END AS "coverUrl"`,
+      'item.cover_framing AS "coverFraming"',
       ...(summary
         ? []
         : [
@@ -217,6 +222,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       version: item.version ?? undefined,
       badge: item.badge ?? null,
       coverUrl: item.coverUrl ?? null,
+      coverFraming: item.coverFraming ?? null,
       bannerUrl: item.bannerUrl ?? null,
       brand: item.brand ?? null,
       console: item.console ?? null,

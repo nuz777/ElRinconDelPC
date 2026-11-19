@@ -181,6 +181,15 @@ export class AuthService {
     };
   }
 
+  /** Emite un token nuevo (renovación deslizante de la sesión) para un usuario autenticado. */
+  async refresh(userId: string): Promise<AuthResult> {
+    const user = await this.authRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Sesión inválida. Inicie sesión nuevamente.');
+    }
+    return this.buildResponse(user);
+  }
+
   private async buildResponse(user: User): Promise<AuthResult> {
     const role = (user.role ?? Role.USER) as Role;
     const payload: JwtPayload = {

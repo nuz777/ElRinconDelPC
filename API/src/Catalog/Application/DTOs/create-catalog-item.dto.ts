@@ -2,12 +2,15 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
+  IsNumber,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
   Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
@@ -45,6 +48,26 @@ export class CatalogMinimumRequirementsDto {
   @IsNotEmpty({ message: 'La tarjeta gráfica es obligatoria' })
   @MaxLength(150)
   gpu!: string;
+}
+
+export class CatalogCoverFramingDto {
+  @ApiProperty({ example: 50, description: 'Posición horizontal del encuadre (0-100 %)' })
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  x!: number;
+
+  @ApiProperty({ example: 50, description: 'Posición vertical del encuadre (0-100 %)' })
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  y!: number;
+
+  @ApiProperty({ example: 1, description: 'Zoom de la portada (1 = tamaño original, máx. 3)' })
+  @IsNumber()
+  @Min(1)
+  @Max(3)
+  scale!: number;
 }
 
 export class CreateCatalogItemDto {
@@ -129,6 +152,16 @@ export class CreateCatalogItemDto {
     message: 'coverUrl debe ser una URL válida, una ruta relativa o una imagen en base64',
   })
   coverUrl?: string;
+
+  @ApiPropertyOptional({
+    type: CatalogCoverFramingDto,
+    nullable: true,
+    description: 'Encuadre de la portada en la card (posición y zoom)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CatalogCoverFramingDto)
+  coverFraming?: CatalogCoverFramingDto | null;
 
   @ApiPropertyOptional({
     example: 'https://cdn.example.com/banners/elden-ring.webp',

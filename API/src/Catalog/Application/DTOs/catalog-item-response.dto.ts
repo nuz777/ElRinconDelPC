@@ -26,6 +26,9 @@ export class CatalogItemResponseDto {
   @ApiPropertyOptional({ nullable: true, type: String })
   coverUrl!: string | null;
 
+  @ApiPropertyOptional({ nullable: true, description: 'Encuadre de la portada { x, y, scale }' })
+  coverFraming!: { x: number; y: number; scale: number } | null;
+
   @ApiPropertyOptional({ nullable: true, type: String })
   bannerUrl!: string | null;
 

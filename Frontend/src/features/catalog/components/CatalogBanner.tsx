@@ -4,6 +4,8 @@ interface CatalogBannerProps {
   isLight: boolean;
   isAdmin: boolean;
   hasActiveGenreFilter: boolean;
+  /** Texto del botón de subir según el apartado actual (ej. "Subir a +18"). */
+  addLabel?: string;
   onOpenAdd: () => void;
   onOpenBulkJson: () => void;
   onOpenFilterDrawer: () => void;
@@ -14,6 +16,7 @@ export default function CatalogBanner({
   isLight,
   isAdmin,
   hasActiveGenreFilter,
+  addLabel = "Agregar Item",
   onOpenAdd,
   onOpenBulkJson,
   onOpenFilterDrawer,
@@ -28,7 +31,7 @@ export default function CatalogBanner({
             : "bg-gradient-to-b from-zinc-900/90 to-zinc-950 border-zinc-800"
         }`}
       >
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <h1
               className={`text-3xl sm:text-5xl font-extrabold uppercase tracking-wide drop-shadow-sm ${
@@ -47,10 +50,11 @@ export default function CatalogBanner({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:justify-end lg:flex-nowrap shrink-0">
             {isAdmin && (
               <>
                 <button
+                  type="button"
                   onClick={onOpenAdd}
                   className={`inline-flex items-center gap-2 px-5 py-3  font-bold text-xs sm:text-sm uppercase tracking-wider transition-transform shadow-md cursor-pointer hover:scale-105 active:scale-95 ${
                     isLight
@@ -59,21 +63,24 @@ export default function CatalogBanner({
                   }`}
                 >
                   <Plus className="size-4" />
-                  <span>Agregar Item</span>
+                  <span>{addLabel}</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={onOpenBulkJson}
                   className="inline-flex items-center gap-2 px-4 py-3  font-bold text-xs sm:text-sm uppercase tracking-wider transition-transform shadow-md cursor-pointer hover:scale-105 active:scale-95 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30"
                   title="Cargar masivamente juegos o elementos desde un archivo JSON"
                 >
                   <FileJson className="size-4" />
-                  <span>Carga Masiva (JSON)</span>
+                  <span className="hidden sm:inline">Carga Masiva (JSON)</span>
+                  <span className="sm:hidden">JSON</span>
                 </button>
               </>
             )}
 
             <button
+              type="button"
               onClick={onOpenFilterDrawer}
               className={`inline-flex items-center gap-2 px-5 py-3  border font-medium text-xs sm:text-sm uppercase tracking-wider transition-colors cursor-pointer ${
                 isLight
@@ -93,6 +100,7 @@ export default function CatalogBanner({
             </button>
 
             <button
+              type="button"
               onClick={onToggleTheme}
               title="Cambiar tema (claro / oscuro)"
               className={`p-3  border transition-colors cursor-pointer flex items-center justify-center ${
