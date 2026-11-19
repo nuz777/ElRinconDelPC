@@ -1,5 +1,8 @@
 import { API_BASE_URL } from "../config/env";
 
+/** Se emite cuando una petición autenticada recibe 401: la sesión ya no es válida. */
+export const UNAUTHORIZED_EVENT = "sotano-unauthorized";
+
 export class ApiError extends Error {
   public readonly status: number;
 
@@ -64,6 +67,21 @@ export async function requestJson<T>(
   const rawJson: unknown = await res.json().catch(() => null);
 
   if (!res.ok) {
+    const sentAuth =
+      headers && typeof headers === "object" && !Array.isArray(headers) && !(headers instanceof Headers)
+        ? "Authorization" in headers
+        : false;
+    if (res.status === 401 && sentAuth && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
+    if (res.status >= 500 || res.status === 0) {
+      throw new ApiError(
+        res.status === 502 || res.status === 503
+          ? "El servidor está despertando. Espera unos segundos y vuelve a intentarlo."
+          : extractErrorMessage(rawJson, fallbackError),
+        res.status,
+      );
+    }
     throw new ApiError(extractErrorMessage(rawJson, fallbackError), res.status);
   }
 

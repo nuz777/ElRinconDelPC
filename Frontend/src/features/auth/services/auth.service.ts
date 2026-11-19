@@ -50,7 +50,15 @@ export interface MessageResponse {
 
 const USER_STORAGE_KEY = "sotano_user";
 const TOKEN_STORAGE_KEY = "sotano_token";
+const REFRESHED_AT_KEY = "sotano_token_refreshed_at";
 export const AUTH_STATE_EVENT = "sotano-auth-change";
+/** Se emite cuando la API rechaza la sesión (token vencido o revocado). */
+export const SESSION_EXPIRED_EVENT = "sotano-session-expired";
+
+/** Renovar el token como mucho cada 12 h: la sesión de 30 días se desliza mientras haya actividad. */
+const REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000;
+/** Respuestas que significan "sesión inválida". Cualquier otra (5xx, red, API dormida) conserva la sesión. */
+const SESSION_REJECTED_STATUS = new Set([401, 403]);
 
 function notifyAuthChange(): void {
   if (typeof window !== "undefined") {
@@ -68,12 +76,36 @@ function getCookie(name: string): string | null {
   return null;
 }
 
+const RETURN_PATH_KEY = "sotano_return_to";
+
 export const authService = {
+  /** Guarda la ruta actual para volver a ella después de iniciar sesión. */
+  rememberReturnPath(path: string): void {
+    if (!path || path.startsWith("/login") || path.startsWith("/register")) return;
+    try {
+      sessionStorage.setItem(RETURN_PATH_KEY, path);
+    } catch {
+      // almacenamiento bloqueado
+    }
+  },
+
+  /** Devuelve (y olvida) la ruta guardada, o el catálogo por defecto. */
+  takeReturnPath(fallback = "/catalogo"): string {
+    try {
+      const path = sessionStorage.getItem(RETURN_PATH_KEY);
+      sessionStorage.removeItem(RETURN_PATH_KEY);
+      return path && path.startsWith("/") && !path.startsWith("//") ? path : fallback;
+    } catch {
+      return fallback;
+    }
+  },
+
   saveSession(user: AuthUser, token?: string): void {
     try {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
       if (token) {
         localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        localStorage.setItem(REFRESHED_AT_KEY, String(Date.now()));
       }
       notifyAuthChange();
     } catch {
@@ -111,6 +143,7 @@ export const authService = {
     try {
       localStorage.removeItem(USER_STORAGE_KEY);
       localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(REFRESHED_AT_KEY);
     } catch {
       // Ignorar errores de almacenamiento
     }
@@ -204,28 +237,35 @@ export const authService = {
     return data;
   },
 
-  async checkSession(): Promise<CheckSessionResponse> {
+  authHeaders(): Record<string, string> {
     const token = this.getStoredToken();
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  },
 
+  /**
+   * Verifica la sesión con la API.
+   * Solo cierra sesión si la API responde 401/403; ante caídas de red o errores 5xx
+   * (p. ej. Render despertando) mantiene la sesión guardada para no desloguear al usuario.
+   */
+  async checkSession(): Promise<CheckSessionResponse> {
+    const stored = this.getStoredUser();
     let res: Response;
     try {
       res = await fetch(`${API_BASE_URL}/auth/check`, {
         method: "GET",
-        headers,
+        headers: this.authHeaders(),
         credentials: "include",
       });
     } catch {
-      const stored = this.getStoredUser();
       return { authenticated: Boolean(stored), user: stored };
     }
 
-    if (!res.ok) {
-      this.logout();
+    if (SESSION_REJECTED_STATUS.has(res.status)) {
+      this.expireSession();
       return { authenticated: false, user: null };
+    }
+    if (!res.ok) {
+      return { authenticated: Boolean(stored), user: stored };
     }
 
     const rawBody: unknown = await res.json().catch(() => null);
@@ -235,8 +275,49 @@ export const authService = {
       return { authenticated: false, user: null };
     }
 
-    this.saveSession(data.user, token ?? undefined);
+    this.saveSession(data.user);
+    void this.refreshIfStale();
     return { authenticated: true, user: data.user };
+  },
+
+  /** Pide un token nuevo si el actual se emitió hace más de 12 h. */
+  async refreshIfStale(force = false): Promise<void> {
+    if (!this.hasSessionHint()) return;
+    let last = 0;
+    try {
+      last = Number(localStorage.getItem(REFRESHED_AT_KEY) ?? 0);
+    } catch {
+      // almacenamiento bloqueado: se intenta igual
+    }
+    if (!force && Date.now() - last < REFRESH_INTERVAL_MS) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...this.authHeaders() },
+        credentials: "include",
+      });
+      if (SESSION_REJECTED_STATUS.has(res.status)) {
+        this.expireSession();
+        return;
+      }
+      if (!res.ok) return;
+      const data = unwrapApiData<AuthResponse & { token?: string }>(
+        await res.json().catch(() => null),
+      );
+      if (data?.user) this.saveSession(data.user, data.token);
+    } catch {
+      // Sin red: se reintenta en la próxima visita o al volver a la pestaña
+    }
+  },
+
+  /** La API rechazó la sesión: limpia y avisa a la UI para mostrar el popup. */
+  expireSession(): void {
+    const hadSession = this.hasSessionHint();
+    this.logout();
+    if (hadSession && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
   },
 
   extractErrorMessage,

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../context/useAuth";
+import { authService } from "../services/auth.service";
 
 /**
  * PublicRoute: Solo para usuarios NO autenticados.
@@ -20,7 +21,8 @@ export function PublicRoute({
   // Si ya está autenticado, redirigir al catálogo sin mostrar el formulario
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      setNavLocation(redirectTo);
+      // Vuelve a la página donde estaba antes de iniciar sesión (o al catálogo)
+      setNavLocation(authService.takeReturnPath(redirectTo), { replace: true });
     }
   }, [isLoading, isAuthenticated, setNavLocation, redirectTo]);
 

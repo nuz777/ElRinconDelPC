@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/useAuth";
 import { authService } from "../services/auth.service";
+import { dialog } from "../../../shared/ui/dialog";
 
 interface AuthProps {
   initialMode?: "login" | "register";
@@ -23,7 +24,7 @@ type AuthMode = "login" | "register" | "forgot";
 type ForgotStep = "request" | "verify";
 
 export default function Auth({ initialMode }: AuthProps) {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const isRegisterRoute = initialMode === "register" || location.includes("register");
   const [mode, setMode] = useState<AuthMode>(isRegisterRoute ? "register" : "login");
   const [forgotStep, setForgotStep] = useState<ForgotStep>("request");
@@ -85,7 +86,12 @@ export default function Auth({ initialMode }: AuthProps) {
       }
 
       await checkSession();
-      setLocation("/catalogo");
+      // PublicRoute redirige a la página previa al detectar la sesión
+      dialog.toast(
+        "success",
+        mode === "login" ? "Sesión iniciada" : "Cuenta creada",
+        "Tu sesión se mantiene activa 30 días.",
+      );
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error

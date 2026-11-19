@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../context/useAuth";
+import { authService } from "../services/auth.service";
 
 /**
  * ProtectedRoute: Solo para usuarios autenticados.
@@ -19,6 +20,7 @@ export function ProtectedRoute({
   // Si no está autenticado, redirigir a login
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
+      authService.rememberReturnPath(window.location.pathname);
       setNavLocation(redirectTo);
     }
   }, [isLoading, isAuthenticated, setNavLocation, redirectTo]);
