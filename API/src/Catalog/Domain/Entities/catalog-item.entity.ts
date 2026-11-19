@@ -10,6 +10,13 @@ export interface CatalogMinimumRequirements {
   gpu: string;
 }
 
+/** Encuadre de la portada: posición (0-100 %) y zoom (1 = sin zoom). */
+export interface CatalogCoverFraming {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 export interface CatalogItemProps {
   id: string;
   section: CatalogSection;
@@ -19,6 +26,7 @@ export interface CatalogItemProps {
   version?: string | null;
   badge?: string | null;
   coverUrl?: string | null;
+  coverFraming?: CatalogCoverFraming | null;
   bannerUrl?: string | null;
   downloadUrl?: string | null;
   developer?: string | null;
@@ -49,6 +57,7 @@ export class CatalogItem {
   public version: string;
   public badge: string | null;
   public coverUrl: string | null;
+  public coverFraming: CatalogCoverFraming | null;
   public bannerUrl: string | null;
   public downloadUrl: string | null;
   public developer: string | null;
@@ -70,6 +79,7 @@ export class CatalogItem {
     this.version = props.version ?? DEFAULT_CATALOG_VERSION;
     this.badge = props.badge ?? null;
     this.coverUrl = props.coverUrl ?? null;
+    this.coverFraming = props.coverFraming ?? null;
     this.bannerUrl = props.bannerUrl ?? null;
     this.downloadUrl = props.downloadUrl ?? null;
     this.developer = props.developer ?? null;
