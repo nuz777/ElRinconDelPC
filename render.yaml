@@ -13,6 +13,8 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: ENCRYPTION_SECRET_KEY
+        sync: false
       - key: FRONTEND_URL
         sync: false
 

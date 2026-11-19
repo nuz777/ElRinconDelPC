@@ -12,6 +12,7 @@ import {
   Trash2,
   FileJson,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 import {
   DEFAULT_COVER_FRAMING,
@@ -26,7 +27,12 @@ import {
   findRomConsole,
 } from "../domain/romPlatforms";
 import { useTheme } from "../../../shared/context/useTheme";
+import { useAuth } from "../../auth/context/useAuth";
 import { authService } from "../../auth/services/auth.service";
+import { ApiError } from "../../../shared/api/httpClient";
+import { aiCopilotService, type AiCopilotConfigResponse } from "../api/aiCopilot.service";
+import { mapApartadoToSection } from "../api/catalog.service";
+import AdminAiKeyBox from "./AdminAiKeyBox";
 import BulkJsonImportModal from "./BulkJsonImportModal";
 import CoverFramingEditor from "./CoverFramingEditor";
 import { cleanDescription } from "../../../shared/utils/cleanDescription";
@@ -451,6 +457,8 @@ function AddItemModalInner({
   const isLight = theme === "light";
   const s = useFieldStyles(isLight);
   const reduceMotion = useReducedMotion();
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = isAuthenticated && user?.role === "admin";
   const isEditMode = Boolean(itemToEdit);
   const [isBulkJsonOpen, setIsBulkJsonOpen] = useState(false);
 
@@ -527,6 +535,13 @@ function AddItemModalInner({
   const [isDirty, setIsDirty] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // Copiloto IA (solo administradores)
+  const [aiConfig, setAiConfig] = useState<AiCopilotConfigResponse | null>(null);
+  const [isLoadingAiConfig, setIsLoadingAiConfig] = useState<boolean>(isAdmin);
+  const [isAiKeyBoxOpen, setIsAiKeyBoxOpen] = useState(false);
+  const [aiKeyError, setAiKeyError] = useState<string | null>(null);
+  const [isAutocompleting, setIsAutocompleting] = useState(false);
+
   // Cualquier cambio en el formulario lo marca como "con cambios sin guardar"
   const markDirty = <T,>(setter: (v: T) => void) => (v: T) => {
     setIsDirty(true);
@@ -536,6 +551,27 @@ function AddItemModalInner({
   useEffect(() => {
     titleInputRef.current?.focus({ preventScroll: true });
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    aiCopilotService
+      .getConfig()
+      .then((cfg) => {
+        if (!cancelled) setAiConfig(cfg);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiConfig({ hasKey: false, provider: "gemini", maskedKey: null });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingAiConfig(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
 
   const isRom = apartado === "roms";
   const isAdult = apartado === "adultos";
@@ -570,6 +606,75 @@ function AddItemModalInner({
       setEmulator(loadedItem.emulator || "");
     }
     dialog.toast("success", "Datos cargados desde el JSON", "Revisa el formulario y agrega la portada.");
+  };
+
+  const handleAiAutocomplete = async () => {
+    if (!isAdmin || isAutocompleting) return;
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      titleInputRef.current?.focus();
+      void dialog.warning(
+        "Escribe un título primero",
+        "Ingresa el nombre del juego o programa para autocompletarlo con IA.",
+      );
+      return;
+    }
+
+    if (!aiConfig?.hasKey) {
+      setAiKeyError("Configura tu API Key antes de usar el Copiloto IA.");
+      setIsAiKeyBoxOpen(true);
+      return;
+    }
+
+    setIsAutocompleting(true);
+    setAiKeyError(null);
+
+    try {
+      const metadata = await aiCopilotService.autocomplete(
+        trimmedTitle,
+        mapApartadoToSection(apartado),
+      );
+
+      setIsDirty(true);
+      setGenre(metadata.genre);
+      setTag(metadata.tag);
+      setSize(metadata.size);
+      setVersion(metadata.version);
+      setDeveloper(metadata.developer);
+      setShortDesc(cleanDescription(metadata.description));
+
+      if (!isAdult) {
+        setMinOs(metadata.minOs);
+        setMinCpu(metadata.minCpu);
+        setMinRam(metadata.minRam);
+        setMinStorage(metadata.minStorage);
+        setMinGpu(metadata.minGpu);
+      }
+
+      dialog.toast(
+        "success",
+        "Ficha generada con IA",
+        "Campos completados. Tus imágenes y enlace de descarga siguen intactos.",
+      );
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 429)) {
+        setAiKeyError("Tu API Key falló o sin cuota, actualízala aquí");
+        setIsAiKeyBoxOpen(true);
+        return;
+      }
+      if (err instanceof ApiError && err.status === 400 && /API Key/i.test(err.message)) {
+        setAiKeyError(err.message);
+        setIsAiKeyBoxOpen(true);
+        return;
+      }
+      void dialog.error(
+        "No se pudo autocompletar",
+        err instanceof Error ? err.message : "Error inesperado al consultar la IA.",
+      );
+    } finally {
+      setIsAutocompleting(false);
+    }
   };
 
   /** Precarga el emulador y los requisitos sugeridos para la consola elegida. */
@@ -814,7 +919,7 @@ function AddItemModalInner({
     }
   };
 
-  const isBusy = isSubmitting || isProcessingCover || isProcessingBanner;
+  const isBusy = isSubmitting || isProcessingCover || isProcessingBanner || isAutocompleting;
 
   return (
     <motion.div
@@ -893,6 +998,23 @@ function AddItemModalInner({
         </div>
 
         <form id="item-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 py-5 space-y-5">
+          {isAdmin && (
+            <AdminAiKeyBox
+              isLight={isLight}
+              config={aiConfig}
+              isLoadingConfig={isLoadingAiConfig}
+              isEditorOpen={isAiKeyBoxOpen}
+              onOpenEditor={() => setIsAiKeyBoxOpen(true)}
+              onCloseEditor={() => setIsAiKeyBoxOpen(false)}
+              errorMessage={aiKeyError}
+              onClearError={() => setAiKeyError(null)}
+              onConfigUpdated={(next) => {
+                setAiConfig(next);
+                setAiKeyError(null);
+              }}
+            />
+          )}
+
           {/* Apartado principal */}
           <Section
             isLight={isLight}
@@ -981,20 +1103,53 @@ function AddItemModalInner({
 
           {/* Información */}
           <Section isLight={isLight} title="Información" description="Lo que verá la gente en la card y en la ficha.">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="block">
+            <div className="space-y-4">
+              <div>
                 <span className={s.label}>Título *</span>
-                <input
-                  ref={titleInputRef}
-                  type="text"
-                  required
-                  maxLength={150}
-                  value={title}
-                  onChange={(e) => markDirty(setTitle)(e.target.value)}
-                  placeholder="Ej: Dark Souls Remastered"
-                  className={s.input}
-                />
-              </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    required
+                    maxLength={150}
+                    value={title}
+                    onChange={(e) => markDirty(setTitle)(e.target.value)}
+                    placeholder="Ej: Dark Souls Remastered"
+                    aria-label="Título *"
+                    className={`${s.input} flex-1`}
+                  />
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      disabled={isAutocompleting || !title.trim()}
+                      onClick={() => void handleAiAutocomplete()}
+                      title={
+                        !title.trim()
+                          ? "Escribe el título del juego primero"
+                          : "Autocompletar ficha técnica con IA"
+                      }
+                      className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wider font-bold border shrink-0 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isLight
+                          ? "bg-amber-500 text-zinc-950 border-amber-600/30 hover:bg-amber-400"
+                          : "bg-amber-500/15 text-amber-400 border-amber-500/40 hover:bg-amber-500/25"
+                      }`}
+                    >
+                      {isAutocompleting ? (
+                        <>
+                          <RefreshCw className="size-3.5 animate-spin" />
+                          <span>Generando ficha técnica...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="size-3.5" />
+                          <span>Autocompletar con IA</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <label className="block">
                 <span className={s.label}>Género / Categoría *</span>
                 <select value={genre} onChange={(e) => markDirty(setGenre)(e.target.value)} className={s.input}>
