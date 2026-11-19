@@ -38,6 +38,19 @@ function DiscordIcon({ className = "size-5" }: { className?: string }) {
   );
 }
 
+function WhatsAppIcon({ className = "size-5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.454.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.611-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.085 2.875 1.253 3.286.149.372 2.135 5.886 2.329 6.248.049.098.079.198.099.298.02.099.02.198.02.297 0 .373-.149.943-.616 1.342-.482.413-1.064 1.176-1.182 1.418-.07.148-.225.224-.424.1-.198-.1-.742-.373-1.359-.723-.57-.32-1.206-.668-1.38-.833-.173-.164-.272-.223-.471-.074-.198.149-.446.373-.693.547-.248.174-.52.149-.818.074-.298-.074-.617-.373-.79-1.113-.272-.74-.396-1.31-.209-1.81.149-.422.523-1.03.692-1.257.169-.227.222-.371.116-.522-.105-.149-.25-.174-.524.074-.273.248-1.004.823-1.187 1.023-.172.198-.272.372-.165.52.099.149.322.25.522.248.209 0 .666-.346.99-.548.572-.347 1.527-.923 1.849-.996.322-.074.644-.074.976-.074.198 0 .693.248.975.472.282.224.497.69.497 1.117 0 .346-.002.52-.025.547-.024.024-.125.248-.373.373-.248.123-.497.248-.794.198-.474-.074-1.27-.42-1.77-.997z" />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [showMusicMsg, setShowMusicMsg] = useState(false);
   const [selectedGame, setSelectedGame] = useState<CatalogItem | null>(null);
@@ -355,6 +368,7 @@ export default function Home() {
               <p className="text-zinc-300 mb-8 text-sm">
                 Envía tus peticiones de nuevos juegos, mods o reporta enlaces caídos.
               </p>
+              <div className="flex items-center gap-3">
               <a
                 href="https://discord.gg/MnDpU7hNV"
                 target="_blank"
@@ -364,6 +378,16 @@ export default function Home() {
                 <DiscordIcon className="size-5" />
                 Servidor de Discord
               </a>
+              <a
+                href="https://whatsapp.com/channel/0029VbA0chM8qIzvBEMFcF3z"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2.5 h-12 px-6 bg-[#25D366] hover:bg-[#1DB954] text-white font-semibold text-sm uppercase tracking-wider  border border-[#4ADE80]/40 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#25D366]/30 cursor-pointer"
+              >
+                <WhatsAppIcon className="size-5" />
+                Canal de WhatsApp
+              </a>
+            </div>
             </div>
           </Reveal>
         </section>
