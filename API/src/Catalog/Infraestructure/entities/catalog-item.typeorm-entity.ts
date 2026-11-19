@@ -45,6 +45,9 @@ export class CatalogItemTypeormEntity {
   @Column({ name: 'banner_url', type: 'text', nullable: true })
   bannerUrl!: string | null;
 
+  @Column({ name: 'banner_framing', type: 'jsonb', nullable: true })
+  bannerFraming!: CatalogCoverFraming | null;
+
   @Column({ name: 'download_url', type: 'text', nullable: true })
   downloadUrl!: string | null;
 

@@ -518,6 +518,9 @@ function AddItemModalInner({
   const [deviceBannerFileSize, setDeviceBannerFileSize] = useState("");
   const [urlBanner, setUrlBanner] = useState(itemToEdit?.bannerImg || "");
   const [isProcessingBanner, setIsProcessingBanner] = useState(false);
+  const [bannerFraming, setBannerFraming] = useState<CoverFraming>(
+    normalizeFraming(itemToEdit?.bannerFraming ?? DEFAULT_COVER_FRAMING),
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -541,6 +544,8 @@ function AddItemModalInner({
 
   const coverPreview =
     coverMode === "device" ? deviceCover || (urlCover.trim() || null) : urlCover.trim() || deviceCover;
+  const bannerPreview =
+    bannerMode === "device" ? deviceBanner || (urlBanner.trim() || null) : urlBanner.trim() || deviceBanner;
 
   const handleLoadSingleItemIntoForm = (loadedItem: CatalogItem) => {
     setIsDirty(true);
@@ -656,6 +661,8 @@ function AddItemModalInner({
     setDeviceBannerFileName(result.name);
     setDeviceBannerFileSize(result.size);
     setBannerMode("device");
+    // Imagen nueva: el encuadre anterior ya no aplica
+    setBannerFraming({ ...DEFAULT_COVER_FRAMING });
   };
 
   const requestClose = async () => {
@@ -741,6 +748,7 @@ function AddItemModalInner({
       img: finalCover,
       coverFraming: finalFraming,
       bannerImg: finalBanner,
+      bannerFraming: !finalBanner || isDefaultFraming(bannerFraming) ? null : normalizeFraming(bannerFraming),
       shortDesc: cleanedDesc,
       fullDesc: cleanedDesc,
       features: isRom
@@ -1083,7 +1091,7 @@ function AddItemModalInner({
           <Section
             isLight={isLight}
             title="Banner de cabecera (16:9, opcional)"
-            description="Imagen panorámica de fondo en la parte superior de la ficha."
+            description="Imagen panorámica de fondo en la parte superior de la ficha. Después de subirla puedes moverla y ajustar el zoom."
             aside={<SourceToggle mode={bannerMode} onChange={setBannerMode} isLight={isLight} label="Origen del banner" />}
           >
             <ImageSourceField
@@ -1108,6 +1116,22 @@ function AddItemModalInner({
               urlPlaceholder="https://.../banner.jpg"
               fallback="/img/SN-tools.jpg"
             />
+
+            {bannerPreview && (
+              <CoverFramingEditor
+                variant="banner"
+                src={bannerPreview}
+                framing={bannerFraming}
+                onChange={(f) => {
+                  setIsDirty(true);
+                  setBannerFraming(f);
+                }}
+                isLight={isLight}
+                apartado={apartado}
+                title={title}
+                version={version}
+              />
+            )}
           </Section>
 
           {/* Descarga */}

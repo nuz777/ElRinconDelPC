@@ -290,3 +290,244 @@ html {
     }
   }
 }
+
+/* ---------- Scrollbar acorde al diseño: fina, recta y en tonos zinc ---------- */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 transparent;
+  }
+  html.light * {
+    scrollbar-color: #a1a1aa transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border: 1px solid #52525b;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #71717a;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  html.light ::-webkit-scrollbar-thumb {
+    background: #a1a1aa;
+    border-color: #d4d4d8;
+  }
+  html.light ::-webkit-scrollbar-thumb:hover {
+    background: #71717a;
+  }
+}
+
+/* ---------- Botón de descarga con brillo y partículas ---------- */
+@property --dl-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes dl-spin {
+  to {
+    --dl-angle: 360deg;
+  }
+}
+
+@keyframes dl-shine {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(320%) skewX(-20deg);
+  }
+}
+
+@keyframes dl-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(45deg);
+  }
+}
+
+@keyframes dl-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.6) rotate(90deg);
+  }
+}
+
+@keyframes dl-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+.dl-cta {
+  --dl-glow: 255 255 255;
+  position: relative;
+  isolation: isolate;
+  display: block;
+}
+
+/* Borde animado: un haz de luz que recorre el contorno */
+.dl-cta::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  background: conic-gradient(
+    from var(--dl-angle),
+    transparent 0deg,
+    rgb(var(--dl-glow) / 0.95) 50deg,
+    transparent 110deg,
+    transparent 180deg,
+    rgb(var(--dl-glow) / 0.6) 230deg,
+    transparent 290deg
+  );
+  animation: dl-spin 4s linear infinite;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+/* Halo difuso que se intensifica en hover */
+.dl-cta::after {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  z-index: -2;
+  background: radial-gradient(closest-side, rgb(var(--dl-glow) / 0.35), transparent);
+  filter: blur(16px);
+  opacity: 0.6;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+}
+
+.dl-cta:hover::before,
+.dl-cta:focus-within::before {
+  opacity: 1;
+  animation-duration: 1.6s;
+}
+
+.dl-cta:hover::after,
+.dl-cta:focus-within::after {
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.dl-cta-btn {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.3s ease;
+}
+
+.dl-cta:hover .dl-cta-btn {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgb(var(--dl-glow) / 0.5),
+    0 16px 46px -8px rgb(var(--dl-glow) / 0.65);
+}
+
+.dl-cta:active .dl-cta-btn {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Destello que cruza el botón */
+.dl-cta-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.65), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+  pointer-events: none;
+}
+
+.dl-cta:hover .dl-cta-btn::after {
+  animation: dl-shine 0.9s ease-out;
+}
+
+.dl-cta-icon {
+  animation: dl-bob 1.8s ease-in-out infinite;
+}
+
+/* Partículas de brillo alrededor */
+.dl-spark {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--s, 8px);
+  height: var(--s, 8px);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  background: rgb(var(--dl-glow));
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 6px rgb(var(--dl-glow))) drop-shadow(0 0 2px rgb(var(--dl-glow)));
+  animation: dl-twinkle var(--t, 2.6s) ease-in-out var(--d, 0s) infinite;
+}
+
+.dl-cta:hover .dl-spark {
+  animation: dl-burst 0.9s ease-out var(--hd, 0s) infinite;
+}
+
+.dl-cta[data-tone="adult"] {
+  --dl-glow: 251 113 133;
+}
+
+html.light .dl-cta:not([data-tone="adult"]) {
+  --dl-glow: 24 24 27;
+}
+
+.dl-cta[aria-disabled="true"]::before,
+.dl-cta[aria-disabled="true"]::after,
+.dl-cta[aria-disabled="true"] .dl-spark {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dl-cta::before,
+  .dl-cta-icon,
+  .dl-spark,
+  .dl-cta:hover .dl-spark,
+  .dl-cta:hover .dl-cta-btn::after {
+    animation: none !important;
+  }
+  .dl-spark {
+    display: none;
+  }
+}

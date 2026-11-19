@@ -28,6 +28,7 @@ export interface CreateCatalogItemPayload {
   coverUrl?: string;
   coverFraming?: CoverFraming | null;
   bannerUrl?: string;
+  bannerFraming?: CoverFraming | null;
   downloadUrl?: string;
   developer?: string;
   shortDescription: string;
@@ -49,6 +50,7 @@ export interface CatalogItemApiResponse {
   coverUrl: string | null;
   coverFraming?: CoverFraming | null;
   bannerUrl?: string | null;
+  bannerFraming?: CoverFraming | null;
   downloadUrl: string | null;
   developer: string | null;
   shortDescription: string;
@@ -155,6 +157,7 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
     img: resolveApiMediaUrl(api.coverUrl, "/img/indicado.webp") || "/img/indicado.webp",
     coverFraming: api.coverFraming ?? null,
     bannerImg: resolveApiMediaUrl(api.bannerUrl),
+    bannerFraming: api.bannerFraming ?? null,
     shortDesc: cleanDescription(api.shortDescription),
     fullDesc: cleanDescription(api.shortDescription),
     features: isRom

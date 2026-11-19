@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useEffect, useState, type ReactNode } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   X,
-  Download,
   HardDrive,
   Cpu,
-  Layers,
   Calendar,
-  CheckCircle2,
   Shield,
   Sparkles,
   ArrowLeft,
@@ -15,6 +12,16 @@ import {
   Check,
   Trash2,
   Pencil,
+  Tag,
+  User,
+  MemoryStick,
+  MonitorCog,
+  Database,
+  Gamepad2,
+  BookOpen,
+  ListChecks,
+  Wrench,
+  ChevronRight,
 } from "lucide-react";
 import type { Apartado, CatalogItem } from "../domain/catalog.types";
 import { useTheme } from "../../../shared/context/useTheme";
@@ -23,7 +30,9 @@ import { NativeBannerAd } from "../../ads/NativeBannerAd";
 import GameModsSection from "../../games/components/GameModsSection";
 import { buildItemPath } from "../utils/catalogUrl";
 import FramedCover from "./FramedCover";
-import { isDialogOpen } from "../../../shared/ui/dialog";
+import DownloadCta from "./DownloadCta";
+import { APARTADO_NOUN } from "../domain/catalogViews";
+import { dialog, isDialogOpen } from "../../../shared/ui/dialog";
 
 interface FullscreenDetailModalProps {
   item: CatalogItem | null;
@@ -33,17 +42,61 @@ interface FullscreenDetailModalProps {
   onEdit?: (item: CatalogItem) => void;
   disableEscape?: boolean;
   onNavigateRoot?: () => void;
-  onNavigateApartado?: (
-    apartado: Apartado,
-    brand?: string | null,
-    consoleName?: string | null
-  ) => void;
+  onNavigateApartado?: (apartado: Apartado, brand?: string | null, consoleName?: string | null) => void;
   onNavigateGenre?: (
     genre: string,
     apartado: Apartado,
     brand?: string | null,
-    consoleName?: string | null
+    consoleName?: string | null,
   ) => void;
+}
+
+const APARTADO_LABEL: Record<Apartado, string> = {
+  juegos: "Juegos de PC",
+  mods: "Mods & Mejoras",
+  herramientas: "Herramientas de PC",
+  roms: "ROMs",
+  adultos: "+18 Para Adultos",
+};
+
+/** Tarjeta de sección de la ficha: mismo lenguaje visual del sitio (bordes rectos, zinc). */
+function Panel({
+  icon,
+  title,
+  isLight,
+  children,
+  id,
+}: {
+  icon: ReactNode;
+  title: string;
+  isLight: boolean;
+  children: ReactNode;
+  id?: string;
+}) {
+  return (
+    <section
+      id={id}
+      className={`p-5 sm:p-7 border transition-colors ${
+        isLight ? "bg-white/90 border-zinc-200" : "bg-zinc-950/70 border-zinc-800 backdrop-blur-sm"
+      }`}
+    >
+      <h2
+        className={`flex items-center gap-2.5 text-base sm:text-lg font-bold tracking-wide mb-4 ${
+          isLight ? "text-zinc-950" : "text-white"
+        }`}
+      >
+        <span
+          className={`grid place-items-center size-8 border ${
+            isLight ? "bg-zinc-100 border-zinc-200 text-zinc-700" : "bg-zinc-900 border-zinc-800 text-zinc-300"
+          }`}
+        >
+          {icon}
+        </span>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
 }
 
 export default function FullscreenDetailModal({
@@ -58,16 +111,13 @@ export default function FullscreenDetailModal({
   onNavigateGenre,
 }: FullscreenDetailModalProps) {
   const [copied, setCopied] = useState(false);
-  const [hydratedState, setHydratedState] = useState<{
-    id: string;
-    item: CatalogItem;
-  } | null>(null);
+  const [hydratedState, setHydratedState] = useState<{ id: string; item: CatalogItem } | null>(null);
   const { theme } = useTheme();
   const isLight = theme === "light";
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!baseItem) return;
-
     let cancelled = false;
     const loader = baseItem.publicCode
       ? catalogService.getItemByCode(baseItem.publicCode)
@@ -75,12 +125,10 @@ export default function FullscreenDetailModal({
 
     loader
       .then((fullItem) => {
-        if (!cancelled && fullItem) {
-          setHydratedState({ id: baseItem.id, item: fullItem });
-        }
+        if (!cancelled && fullItem) setHydratedState({ id: baseItem.id, item: fullItem });
       })
       .catch(() => {
-        // Mantener ficha base si falla hidratación
+        // Se mantiene la ficha base si falla la hidratación
       });
 
     return () => {
@@ -104,96 +152,120 @@ export default function FullscreenDetailModal({
 
   if (!baseItem) return null;
 
-  const item =
-    hydratedState && hydratedState.id === baseItem.id ? hydratedState.item : baseItem;
+  const item = hydratedState && hydratedState.id === baseItem.id ? hydratedState.item : baseItem;
+  const noun = APARTADO_NOUN[item.apartado];
+  const isAdult = item.apartado === "adultos";
+  const isRom = item.apartado === "roms";
+  const primaryLink = item.downloadLinks[0];
+  const backdrop = item.bannerImg || item.img;
 
-  const handleCopyLink = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      dialog.toast("success", "Enlace copiado", "Ya puedes pegarlo donde quieras.");
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      dialog.toast("error", "No se pudo copiar el enlace", "Cópialo desde la barra de direcciones.");
     }
   };
 
-  const getApartadoLabel = (ap: string) => {
-    if (ap === "juegos") return "Juegos de PC";
-    if (ap === "mods") return "Mods & Mejoras";
-    if (ap === "roms") return "ROMs";
-    if (ap === "adultos") return "+18 Para Adultos";
-    return "Herramientas de PC";
-  };
+  const muted = isLight ? "text-zinc-500" : "text-zinc-400";
+  const strong = isLight ? "text-zinc-950" : "text-white";
+  const body = isLight ? "text-zinc-700" : "text-zinc-300";
+
+  const stats: Array<{ icon: ReactNode; label: string; value: string }> = [
+    { icon: <HardDrive className="size-4" />, label: "Peso", value: item.size },
+    { icon: <Tag className="size-4" />, label: "Versión", value: item.version },
+    { icon: <Calendar className="size-4" />, label: "Año", value: item.releaseDate },
+    { icon: <User className="size-4" />, label: isRom ? "Consola" : "Creador", value: isRom ? item.console || "—" : item.developer },
+  ];
+
+  const requirementRows = item.requirements
+    ? [
+        ...(isRom ? [{ icon: <Gamepad2 className="size-4" />, label: "Emulador", value: item.emulator || "No especificado" }] : []),
+        { icon: <MonitorCog className="size-4" />, label: "Sistema", value: item.requirements.os },
+        { icon: <Cpu className="size-4" />, label: "Procesador", value: item.requirements.cpu },
+        { icon: <MemoryStick className="size-4" />, label: "Memoria RAM", value: item.requirements.ram },
+        { icon: <Sparkles className="size-4" />, label: "Gráfica", value: item.requirements.gpu },
+        { icon: <Database className="size-4" />, label: "Espacio", value: item.requirements.storage },
+      ]
+    : [];
+
+  const iconButton = `inline-flex items-center gap-1.5 px-3 py-1.5 border text-xs transition-colors cursor-pointer ${
+    isLight
+      ? "text-zinc-700 hover:text-black hover:bg-zinc-100 border-zinc-300 bg-white/70"
+      : "text-zinc-300 hover:text-white hover:bg-zinc-800/80 border-zinc-700 bg-zinc-950/60"
+  }`;
 
   return (
     <AnimatePresence>
       <motion.div
-        className={`fixed inset-0 z-[100] h-screen w-screen overflow-y-auto flex flex-col font-share select-text transition-colors duration-150 ${
-          isLight
-            ? "bg-zinc-100 text-zinc-900"
-            : "bg-zinc-950 text-zinc-100"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Ficha de ${item.title}`}
+        className={`fixed inset-0 z-[100] h-dvh w-screen overflow-y-auto overflow-x-hidden flex flex-col font-share select-text ${
+          isLight ? "bg-zinc-100 text-zinc-900" : "bg-zinc-950 text-zinc-100"
         }`}
-        initial={{ opacity: 0, scale: 0.98, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98, y: 15 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
+        // Solo opacidad: un transform en este contenedor rompería el fondo `fixed`
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeOut" }}
       >
-        {/* Top Floating Action Bar */}
+        {/* Fondo inmersivo: el banner difuminado ocupa toda la vista */}
+        <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden>
+          <img
+            src={backdrop}
+            alt=""
+            className={`w-full h-full object-cover scale-110 blur-3xl ${isLight ? "opacity-25" : "opacity-30"}`}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          <div
+            className={`absolute inset-0 ${
+              isLight ? "bg-gradient-to-b from-zinc-100/40 via-zinc-100/80 to-zinc-100" : "bg-gradient-to-b from-zinc-950/30 via-zinc-950/80 to-zinc-950"
+            }`}
+          />
+        </div>
+
+        {/* Barra superior */}
         <div
-          className={`sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 py-4 backdrop-blur-xl border-b transition-colors ${
-            isLight
-              ? "bg-white/90 border-zinc-200 shadow-sm"
-              : "bg-zinc-950/85 border-zinc-800"
+          className={`sticky top-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-8 py-3 backdrop-blur-xl border-b ${
+            isLight ? "bg-white/80 border-zinc-200" : "bg-zinc-950/70 border-zinc-800/80"
           }`}
         >
           <button
+            type="button"
             onClick={onClose}
-            className={`inline-flex items-center gap-2 text-xs sm:text-sm uppercase tracking-wider transition-colors cursor-pointer group ${
+            className={`inline-flex items-center gap-2 text-xs sm:text-sm uppercase tracking-wider transition-colors cursor-pointer group shrink-0 ${
               isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
             }`}
           >
             <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
-            <span>Volver al Catálogo</span>
+            <span className="hidden sm:inline">Volver al catálogo</span>
+            <span className="sm:hidden">Volver</span>
           </button>
 
-          <nav
-            aria-label="Ruta de navegación"
-            className={`hidden md:flex items-center gap-2 text-xs uppercase tracking-widest ${
-              isLight ? "text-zinc-500" : "text-zinc-500"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={onNavigateRoot}
-              className={`transition-colors cursor-pointer hover:underline ${
-                isLight ? "hover:text-black" : "hover:text-white"
-              }`}
-              title="Ir a la portada del catálogo"
-            >
+          <nav aria-label="Ruta de navegación" className={`hidden lg:flex items-center gap-1.5 text-xs min-w-0 ${muted}`}>
+            <button type="button" onClick={onNavigateRoot} className="hover:underline cursor-pointer shrink-0">
               El sótano
             </button>
-
-            <span>/</span>
-
+            <ChevronRight className="size-3.5 shrink-0" aria-hidden />
             <button
               type="button"
               onClick={() => onNavigateApartado?.(item.apartado, item.brand, item.console)}
-              className={`transition-colors cursor-pointer hover:underline font-medium ${
-                isLight ? "text-zinc-700 hover:text-black" : "text-zinc-400 hover:text-white"
-              }`}
-              title={`Ver todos los ${getApartadoLabel(item.apartado)}`}
+              className="hover:underline cursor-pointer shrink-0"
             >
-              {getApartadoLabel(item.apartado)}
+              {APARTADO_LABEL[item.apartado]}
             </button>
-
-            <span>/</span>
-
-            {item.apartado === "roms" && item.console ? (
+            <ChevronRight className="size-3.5 shrink-0" aria-hidden />
+            {isRom && item.console ? (
               <button
                 type="button"
                 onClick={() => onNavigateApartado?.("roms", item.brand, item.console)}
-                className={`transition-colors cursor-pointer hover:underline font-medium ${
-                  isLight ? "text-zinc-700 hover:text-black" : "text-zinc-400 hover:text-white"
-                }`}
-                title={`Ver catálogo de ${item.console}`}
+                className="hover:underline cursor-pointer shrink-0"
               >
                 {item.brand} / {item.console}
               </button>
@@ -201,123 +273,71 @@ export default function FullscreenDetailModal({
               <button
                 type="button"
                 onClick={() => onNavigateGenre?.(item.genre, item.apartado, item.brand, item.console)}
-                className={`transition-colors cursor-pointer hover:underline font-medium ${
-                  isLight ? "text-zinc-700 hover:text-black" : "text-zinc-400 hover:text-white"
-                }`}
-                title={`Filtrar por género: ${item.genre}`}
+                className="hover:underline cursor-pointer shrink-0"
               >
                 {item.genre}
               </button>
             )}
-
-            <span>/</span>
-
-            <span
-              className={`font-bold truncate max-w-xs ${isLight ? "text-black" : "text-white"}`}
-              title={item.title}
-            >
-              {item.title}
-            </span>
+            <ChevronRight className="size-3.5 shrink-0" aria-hidden />
+            <span className={`font-bold truncate ${strong}`}>{item.title}</span>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {isAdmin && onEdit && (
               <button
+                type="button"
                 onClick={() => onEdit(item)}
                 title="Editar este ítem"
-                className="px-3 py-1.5  border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+                className="px-3 py-1.5 border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
               >
                 <Pencil className="size-4" />
                 <span className="hidden sm:inline font-semibold">Editar</span>
               </button>
             )}
-
             {isAdmin && onDelete && (
               <button
+                type="button"
                 onClick={() => onDelete(item)}
                 title="Eliminar este ítem"
-                className="px-3 py-1.5  border border-red-600/40 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+                className="px-3 py-1.5 border border-red-600/40 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
               >
                 <Trash2 className="size-4" />
                 <span className="hidden sm:inline font-semibold">Eliminar</span>
               </button>
             )}
-
-            <button
-              onClick={handleCopyLink}
-              title="Copiar enlace"
-              className={`p-2  border transition-colors cursor-pointer text-xs flex items-center gap-1.5 ${
-                isLight
-                  ? "text-zinc-600 hover:text-black hover:bg-zinc-100 border-zinc-300"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/80 border-zinc-800"
-              }`}
-            >
-              {copied ? <Check className="size-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="size-4" />}
-              <span className="hidden sm:inline">{copied ? "¡Copiado!" : "Compartir"}</span>
+            <button type="button" onClick={() => void handleCopyLink()} title="Copiar enlace" className={iconButton}>
+              {copied ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
+              <span className="hidden sm:inline">{copied ? "Copiado" : "Compartir"}</span>
             </button>
-
-            <button
-              onClick={onClose}
-              className={`flex items-center gap-1.5 px-3 py-1.5  border transition-colors cursor-pointer ${
-                isLight
-                  ? "bg-zinc-200 hover:bg-zinc-300 text-zinc-800 border-zinc-300"
-                  : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border-zinc-700"
-              }`}
-              aria-label="Cerrar modal"
-            >
-              <X size={18} />
-              <span className="text-xs uppercase tracking-wider hidden sm:inline">Cerrar [ESC]</span>
+            <button type="button" onClick={onClose} aria-label="Cerrar ficha" className={iconButton}>
+              <X className="size-4" />
+              <span className="hidden md:inline uppercase tracking-wider">Esc</span>
             </button>
           </div>
         </div>
 
-        {/* Modal Main Content Container */}
-        <div className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-8 sm:py-12 space-y-12">
-          {/* Hero Section */}
-          <div
-            className={`relative  overflow-hidden border shadow-2xl transition-colors ${
-              isLight
-                ? "border-zinc-200 bg-white"
-                : "border-zinc-800 bg-zinc-950"
-            }`}
-          >
-            {/* Background Image Banner */}
-            <div className="relative h-72 sm:h-96 w-full overflow-hidden">
-              <img
-                src={item.bannerImg || item.img}
-                alt={`Banner de ${item.title}`}
-                className="w-full h-full object-cover object-center scale-105"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  if (!target.src.endsWith("/img/SN-tools.jpg")) {
-                    target.src = "/img/SN-tools.jpg";
-                  }
-                }}
-              />
-              <div
-                className={`absolute inset-0 bg-gradient-to-t ${
-                  isLight
-                    ? "from-white via-white/80 to-transparent"
-                    : "from-zinc-950 via-zinc-950/70 to-transparent"
-                }`}
-              />
-              <div
-                className={`absolute inset-0 bg-gradient-to-r ${
-                  isLight
-                    ? "from-white/90 via-transparent to-white/40"
-                    : "from-zinc-950/90 via-transparent to-zinc-950/50"
-                }`}
-              />
-            </div>
+        {/* Hero: banner + portada + datos + descarga, todo a la vista */}
+        <header className="relative z-10">
+          <div className="absolute inset-x-0 top-0 h-[22rem] sm:h-[28rem] overflow-hidden" aria-hidden>
+            <FramedCover
+              src={backdrop}
+              alt=""
+              framing={item.bannerImg ? item.bannerFraming : null}
+              loading="eager"
+            />
+            <div
+              className={`absolute inset-0 bg-gradient-to-t ${
+                isLight ? "from-zinc-100 via-zinc-100/70 to-zinc-100/10" : "from-zinc-950 via-zinc-950/70 to-zinc-950/10"
+              }`}
+            />
+          </div>
 
-            {/* Hero Details Overlay */}
-            <div className="relative -mt-28 sm:-mt-36 p-6 sm:p-10 z-10 flex flex-col md:flex-row gap-6 sm:gap-8 items-start">
-              {/* Portada Vertical (Cover Art Poster) */}
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-8 pt-40 sm:pt-56 pb-8">
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,15rem)_1fr] lg:grid-cols-[minmax(0,16rem)_1fr] gap-6 lg:gap-10 items-end">
+              {/* Portada */}
               <div
-                className={`shrink-0 w-36 sm:w-48 md:w-56 aspect-[3/4]  overflow-hidden border-2 shadow-2xl relative group self-center md:self-start transition-colors ${
-                  isLight
-                    ? "bg-white border-zinc-300 shadow-zinc-400/40"
-                    : "bg-zinc-900 border-zinc-700/80 shadow-black/80"
+                className={`relative group w-40 sm:w-52 md:w-full aspect-[3/4] overflow-hidden border-2 shadow-2xl mx-auto md:mx-0 ${
+                  isLight ? "bg-white border-white shadow-zinc-400/50" : "bg-zinc-900 border-zinc-700 shadow-black/70"
                 }`}
               >
                 <FramedCover
@@ -325,446 +345,198 @@ export default function FullscreenDetailModal({
                   alt={`Portada de ${item.title}`}
                   framing={item.coverFraming}
                   loading="eager"
-                  hoverClassName="transition-transform duration-300 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                  hoverClassName="transition-transform duration-500 group-hover:scale-105"
                 />
               </div>
 
-              {/* Info Column */}
-              <div className="flex-1 min-w-0 w-full">
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span
-                  className={`px-3 py-1  text-[11px] uppercase tracking-widest font-bold shadow-md ${
-                    isLight
-                      ? "bg-zinc-900 text-white"
-                      : "bg-white text-zinc-950"
-                  }`}
-                >
-                  {getApartadoLabel(item.apartado)}
-                </span>
-                <span
-                  className={`px-3 py-1  text-[11px] uppercase tracking-widest font-semibold border ${
-                    isLight
-                      ? "bg-zinc-100 border-zinc-300 text-zinc-700"
-                      : "bg-zinc-900 border-zinc-700 text-zinc-300"
-                  }`}
-                >
-                  {item.genre}
-                </span>
-                {item.apartado === "roms" && item.console && (
+              {/* Título y datos */}
+              <div className="min-w-0 text-center md:text-left">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3">
                   <span
-                    className={`px-3 py-1  text-[11px] uppercase tracking-widest font-semibold border ${
+                    className={`px-2.5 py-1 text-[11px] uppercase tracking-widest font-bold ${
+                      isAdult ? "bg-rose-600 text-white" : isLight ? "bg-zinc-900 text-white" : "bg-white text-zinc-950"
+                    }`}
+                  >
+                    {APARTADO_LABEL[item.apartado]}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateGenre?.(item.genre, item.apartado, item.brand, item.console)}
+                    className={`px-2.5 py-1 text-[11px] uppercase tracking-widest font-semibold border cursor-pointer transition-colors ${
                       isLight
-                        ? "bg-violet-50 border-violet-200 text-violet-700"
-                        : "bg-violet-950/60 border-violet-800 text-violet-300"
+                        ? "bg-white/80 border-zinc-300 text-zinc-700 hover:border-zinc-500"
+                        : "bg-zinc-900/80 border-zinc-700 text-zinc-300 hover:border-zinc-500"
                     }`}
                   >
-                    {item.brand} · {item.console}
-                  </span>
-                )}
-                <span
-                  className={`px-3 py-1  text-[11px] uppercase tracking-widest font-semibold flex items-center gap-1 ${
-                    isLight
-                      ? "bg-zinc-200 text-zinc-800"
-                      : "bg-zinc-800/80 text-zinc-300"
-                  }`}
-                >
-                  <Sparkles className="size-3" />
-                  {item.tag}
-                </span>
-              </div>
-
-              <h1
-                className={`text-3xl sm:text-5xl font-extrabold tracking-wide leading-tight mb-4 drop-shadow-sm ${
-                  isLight ? "text-zinc-950" : "text-white"
-                }`}
-              >
-                {item.title}
-              </h1>
-
-              <p
-                className={`text-sm sm:text-lg max-w-3xl leading-relaxed mb-6 font-normal ${
-                  isLight ? "text-zinc-600" : "text-zinc-300"
-                }`}
-              >
-                {item.shortDesc}
-              </p>
-
-              {/* Meta Grid */}
-              <div
-                className={`grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t ${
-                  isLight ? "border-zinc-200" : "border-zinc-800/80"
-                }`}
-              >
-                <div
-                  className={`p-3  border ${
-                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
-                  }`}
-                >
-                  <span className="text-[11px] text-zinc-500 uppercase tracking-wider block">Versión</span>
-                  <span className={`text-sm font-semibold ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
-                    {item.version}
-                  </span>
-                </div>
-
-                <div
-                  className={`p-3  border ${
-                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
-                  }`}
-                >
-                  <span className="text-[11px] text-zinc-500 uppercase tracking-wider block">Tamaño / Peso</span>
-                  <span
-                    className={`text-sm font-semibold flex items-center gap-1.5 ${
-                      isLight ? "text-zinc-800" : "text-zinc-200"
-                    }`}
-                  >
-                    <HardDrive className="size-3.5 text-zinc-400" />
-                    {item.size}
-                  </span>
-                </div>
-
-                <div
-                  className={`p-3  border ${
-                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
-                  }`}
-                >
-                  <span className="text-[11px] text-zinc-500 uppercase tracking-wider block">Lanzamiento</span>
-                  <span
-                    className={`text-sm font-semibold flex items-center gap-1.5 ${
-                      isLight ? "text-zinc-800" : "text-zinc-200"
-                    }`}
-                  >
-                    <Calendar className="size-3.5 text-zinc-400" />
-                    {item.releaseDate}
-                  </span>
-                </div>
-
-                <div
-                  className={`p-3  border ${
-                    isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800"
-                  }`}
-                >
-                  <span className="text-[11px] text-zinc-500 uppercase tracking-wider block">Desarrollador</span>
-                  <span className={`text-sm font-semibold truncate block ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
-                    {item.developer}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-          {/* Main 2-Column Content Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            {/* Left 2 Columns: Description, Features, Installation */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Full Description */}
-              <section
-                className={`p-6 sm:p-8  border shadow-xl space-y-4 transition-colors ${
-                  isLight
-                    ? "bg-white border-zinc-200"
-                    : "bg-zinc-950 border-zinc-800"
-                }`}
-              >
-                <h2
-                  className={`text-lg sm:text-xl font-bold uppercase tracking-wider flex items-center gap-2 ${
-                    isLight ? "text-zinc-950" : "text-white"
-                  }`}
-                >
-                  <Layers className="size-5 text-zinc-400" />
-                  Descripción General
-                </h2>
-                <div className={`w-12 h-0.5 ${isLight ? "bg-zinc-300" : "bg-zinc-700"}`} />
-                <p className={`text-sm sm:text-base leading-relaxed ${isLight ? "text-zinc-700" : "text-zinc-300"}`}>
-                  {item.fullDesc}
-                </p>
-              </section>
-
-              {/* Highlights / Features */}
-              {item.features && item.features.length > 0 && (
-                <section
-                  className={`p-6 sm:p-8  border shadow-xl space-y-4 transition-colors ${
-                    isLight
-                      ? "bg-white border-zinc-200"
-                      : "bg-zinc-950 border-zinc-800"
-                  }`}
-                >
-                  <h2
-                    className={`text-lg sm:text-xl font-bold uppercase tracking-wider flex items-center gap-2 ${
-                      isLight ? "text-zinc-950" : "text-white"
-                    }`}
-                  >
-                    <CheckCircle2 className="size-5 text-zinc-400" />
-                    Características Principales
-                  </h2>
-                  <div className={`w-12 h-0.5 ${isLight ? "bg-zinc-300" : "bg-zinc-700"}`} />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    {item.features.map((feat, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-start gap-2.5 p-3  border text-xs sm:text-sm ${
-                          isLight
-                            ? "bg-zinc-50 border-zinc-200 text-zinc-700"
-                            : "bg-zinc-900/50 border-zinc-800/80 text-zinc-300"
-                        }`}
-                      >
-                        <Check className={`size-4 shrink-0 mt-0.5 ${isLight ? "text-zinc-950" : "text-white"}`} />
-                        <span>{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Installation Steps */}
-              <section
-                className={`p-6 sm:p-8  border shadow-xl space-y-4 transition-colors ${
-                  isLight
-                    ? "bg-white border-zinc-200"
-                    : "bg-zinc-950 border-zinc-800"
-                }`}
-              >
-                <h2
-                  className={`text-lg sm:text-xl font-bold uppercase tracking-wider flex items-center gap-2 ${
-                    isLight ? "text-zinc-950" : "text-white"
-                  }`}
-                >
-                  <Cpu className="size-5 text-zinc-400" />
-                  Instrucciones de Instalación
-                </h2>
-                <div className={`w-12 h-0.5 ${isLight ? "bg-zinc-300" : "bg-zinc-700"}`} />
-                <ol className="space-y-3 pt-2">
-                  {item.installationSteps.map((step, idx) => (
-                    <li
-                      key={idx}
-                      className={`flex items-start gap-3.5 p-3.5  border ${
-                        isLight
-                          ? "bg-zinc-50 border-zinc-200"
-                          : "bg-zinc-900/60 border-zinc-800/80"
+                    {item.genre}
+                  </button>
+                  {item.tag && (
+                    <span
+                      className={`px-2.5 py-1 text-[11px] uppercase tracking-widest font-semibold inline-flex items-center gap-1 ${
+                        isLight ? "bg-amber-100 text-amber-800" : "bg-amber-500/15 text-amber-400"
                       }`}
                     >
+                      <Sparkles className="size-3" aria-hidden />
+                      {item.tag}
+                    </span>
+                  )}
+                </div>
+
+                <h1 className={`text-3xl sm:text-5xl font-extrabold tracking-wide leading-[1.05] text-balance ${strong}`}>
+                  {item.title}
+                </h1>
+
+                <p className={`mt-3 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto md:mx-0 line-clamp-3 ${body}`}>
+                  {item.shortDesc}
+                </p>
+
+                <dl className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {stats.map((s) => (
+                    <div
+                      key={s.label}
+                      className={`px-3 py-2.5 border text-left ${
+                        isLight ? "bg-white/80 border-zinc-200" : "bg-zinc-900/70 border-zinc-800 backdrop-blur-sm"
+                      }`}
+                    >
+                      <dt className={`flex items-center gap-1.5 text-[11px] ${muted}`}>
+                        {s.icon}
+                        {s.label}
+                      </dt>
+                      <dd className={`mt-0.5 text-sm font-semibold truncate ${strong}`} title={s.value}>
+                        {s.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+            </div>
+          </div>
+        </header>
+
+        {/* Contenido */}
+        <div className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 pb-16 grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6 lg:gap-10 items-start">
+          <div className="space-y-6 min-w-0">
+            <Panel isLight={isLight} icon={<BookOpen className="size-4" />} title={`Acerca de este ${noun}`}>
+              <p className={`text-sm sm:text-base leading-relaxed whitespace-pre-line ${body}`}>{item.fullDesc}</p>
+            </Panel>
+
+            {item.features && item.features.length > 0 && (
+              <Panel isLight={isLight} icon={<ListChecks className="size-4" />} title="Lo que incluye">
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {item.features.map((feat, index) => (
+                    <li
+                      key={index}
+                      className={`flex items-start gap-2.5 p-3 border text-sm ${
+                        isLight ? "bg-zinc-50 border-zinc-200 text-zinc-700" : "bg-zinc-900/50 border-zinc-800 text-zinc-300"
+                      }`}
+                    >
+                      <span className="grid place-items-center size-5 shrink-0 bg-emerald-500/15 text-emerald-500 mt-px">
+                        <Check className="size-3.5" aria-hidden />
+                      </span>
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+            )}
+
+            <Panel isLight={isLight} icon={<Wrench className="size-4" />} title="Cómo instalarlo">
+              <ol className="relative">
+                {item.installationSteps.map((step, idx) => {
+                  const last = idx === item.installationSteps.length - 1;
+                  return (
+                    <li key={idx} className="relative flex gap-4 pb-5 last:pb-0">
+                      {!last && (
+                        <span
+                          className={`absolute left-[13px] top-8 bottom-1 w-px ${isLight ? "bg-zinc-300" : "bg-zinc-700"}`}
+                          aria-hidden
+                        />
+                      )}
                       <span
-                        className={`flex items-center justify-center size-6  font-bold text-xs shrink-0 mt-0.5 ${
-                          isLight
-                            ? "bg-zinc-900 text-white"
-                            : "bg-white text-zinc-950"
+                        className={`relative grid place-items-center size-7 shrink-0 text-xs font-bold ${
+                          isLight ? "bg-zinc-900 text-white" : "bg-white text-zinc-950"
                         }`}
                       >
                         {idx + 1}
                       </span>
-                      <p className={`text-xs sm:text-sm leading-relaxed ${isLight ? "text-zinc-700" : "text-zinc-300"}`}>
-                        {step}
-                      </p>
+                      <p className={`pt-1 text-sm leading-relaxed ${body}`}>{step}</p>
                     </li>
-                  ))}
-                </ol>
-              </section>
+                  );
+                })}
+              </ol>
+            </Panel>
 
-              {/* Mods de la comunidad (solo juegos) */}
-              {item.apartado === "juegos" && (
-                <GameModsSection
-                  gameId={item.id}
-                  gamePath={buildItemPath(item)}
-                  isLight={isLight}
-                />
-              )}
-            </div>
-
-            {/* Right Column: Download Box & System Requirements */}
-            <div className="space-y-8">
-              {/* Primary Download Box */}
-              <section
-                className={`p-6 sm:p-8  border-2 shadow-2xl relative overflow-hidden transition-colors ${
-                  isLight
-                    ? "bg-white border-zinc-300"
-                    : "bg-zinc-950 border-zinc-700"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2
-                    className={`text-lg font-bold uppercase tracking-wider flex items-center gap-2 ${
-                      isLight ? "text-zinc-950" : "text-white"
-                    }`}
-                  >
-                    <Download className={`size-5 ${isLight ? "text-zinc-900" : "text-white"}`} />
-                    Zona de Descarga
-                  </h2>
-                  <span
-                    className={`text-xs font-semibold px-2.5 py-1  border ${
-                      isLight
-                        ? "bg-zinc-100 border-zinc-300 text-zinc-800"
-                        : "bg-zinc-800 border-zinc-700 text-zinc-300"
-                    }`}
-                  >
-                    {item.size}
-                  </span>
-                </div>
-
-                <p className={`text-xs mb-6 ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
-                  Descarga garantizada y libre de adware. Selecciona el servidor de tu preferencia:
-                </p>
-
-                <div className="space-y-3">
-                  {item.downloadLinks.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`w-full flex items-center justify-between p-4  transition-all cursor-pointer text-left group ${
-                        idx === 0
-                          ? isLight
-                            ? "bg-zinc-900 text-white hover:bg-black font-bold shadow-md"
-                            : "bg-white text-zinc-950 hover:bg-zinc-200 font-bold shadow-lg border border-white"
-                          : isLight
-                          ? "bg-zinc-50 hover:bg-zinc-100 text-zinc-800 border border-zinc-200"
-                          : "bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-800"
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="text-xs sm:text-sm font-semibold truncate flex items-center gap-1.5">
-                          {link.name}
-                        </div>
-                        <div
-                          className={`text-[11px] ${
-                            idx === 0
-                              ? isLight
-                                ? "text-zinc-300"
-                                : "text-zinc-700"
-                              : "text-zinc-500"
-                          }`}
-                        >
-                          {link.server}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {link.badge && (
-                          <span
-                            className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5  ${
-                              idx === 0
-                                ? isLight
-                                  ? "bg-white text-zinc-950"
-                                  : "bg-zinc-950 text-white"
-                                : isLight
-                                ? "bg-zinc-200 text-zinc-700"
-                                : "bg-zinc-800 text-zinc-300 border border-zinc-700"
-                            }`}
-                          >
-                            {link.badge}
-                          </span>
-                        )}
-                        <Download className="size-4 group-hover:translate-y-0.5 transition-transform" />
-                      </div>
-                    </a>
-                  ))}
-                </div>
-
-                {/* Safety Seal */}
-                <div
-                  className={`mt-6 pt-4 border-t flex items-center gap-2.5 text-xs ${
-                    isLight ? "border-zinc-200 text-zinc-500" : "border-zinc-800 text-zinc-400"
-                  }`}
-                >
-                  <Shield className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>Verificado contra malware · Sin contraseñas ocultas</span>
-                </div>
-              </section>
-
-              {/* Requirements Box (no aplica para juegos H / +18 Adultos) */}
-              {item.apartado !== "adultos" && item.requirements && (
-                <section
-                  className={`p-6 sm:p-8  border shadow-xl space-y-4 transition-colors ${
-                    isLight
-                      ? "bg-white border-zinc-200"
-                      : "bg-zinc-950 border-zinc-800"
-                  }`}
-                >
-                  <h2
-                    className={`text-base font-bold uppercase tracking-wider flex items-center gap-2 ${
-                      isLight ? "text-zinc-950" : "text-white"
-                    }`}
-                  >
-                    <Cpu className="size-4 text-zinc-400" />
-                    {item.apartado === "roms" ? "Requisitos para Emular" : "Requisitos del Sistema"}
-                  </h2>
-                  <div className={`w-12 h-0.5 ${isLight ? "bg-zinc-300" : "bg-zinc-700"}`} />
-
-                  <div className="space-y-3 pt-2 text-xs">
-                    {item.apartado === "roms" && (
-                      <div
-                        className={`p-3  border ${
-                          isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
-                        }`}
-                      >
-                        <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">
-                          Emulador recomendado
-                        </span>
-                        <span className={`font-semibold ${isLight ? "text-zinc-900" : "text-white"}`}>
-                          {item.emulator || "No especificado"}
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      className={`p-3  border ${
-                        isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
-                      }`}
-                    >
-                      <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">Sistema Operativo</span>
-                      <span className={`font-medium ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
-                        {item.requirements.os}
-                      </span>
-                    </div>
-
-                    <div
-                      className={`p-3  border ${
-                        isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
-                      }`}
-                    >
-                      <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">Procesador (CPU)</span>
-                      <span className={`font-medium ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
-                        {item.requirements.cpu}
-                      </span>
-                    </div>
-
-                    <div
-                      className={`p-3  border ${
-                        isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
-                      }`}
-                    >
-                      <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">Memoria RAM</span>
-                      <span className={`font-medium ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
-                        {item.requirements.ram}
-                      </span>
-                    </div>
-
-                    <div
-                      className={`p-3  border ${
-                        isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
-                      }`}
-                    >
-                      <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">Tarjeta Gráfica (GPU)</span>
-                      <span className={`font-medium ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
-                        {item.requirements.gpu}
-                      </span>
-                    </div>
-
-                    <div
-                      className={`p-3  border ${
-                        isLight ? "bg-zinc-50 border-zinc-200" : "bg-zinc-900/60 border-zinc-800/80"
-                      }`}
-                    >
-                      <span className="text-zinc-500 uppercase tracking-wider block text-[10px]">Memoria ROM (Almacenamiento)</span>
-                      <span className={`font-medium ${isLight ? "text-zinc-800" : "text-zinc-200"}`}>
-                        {item.requirements.storage}
-                      </span>
-                    </div>
-                  </div>
-                </section>
-              )}
-            </div>
+            {item.apartado === "juegos" && (
+              <GameModsSection gameId={item.id} gamePath={buildItemPath(item)} isLight={isLight} />
+            )}
           </div>
 
-          {/* Native Ad Banner dentro del detalle de descarga */}
+          {/* Columna lateral fija */}
+          <aside className="order-first lg:order-none space-y-6 lg:sticky lg:top-20">
+            <section
+              className={`p-5 sm:p-6 border transition-colors ${
+                isLight ? "bg-white/90 border-zinc-200" : "bg-zinc-950/70 border-zinc-800 backdrop-blur-sm"
+              }`}
+            >
+              <h2 className={`text-base font-bold tracking-wide ${strong}`}>Zona de descarga</h2>
+              <p className={`mt-1 mb-5 text-xs leading-relaxed ${muted}`}>
+                Descarga directa desde nuestro servidor. Si el enlace falla, avísanos en el chat.
+              </p>
+              <DownloadCta
+                href={primaryLink?.url ?? "#"}
+                apartado={item.apartado}
+                detail={`${item.size}, ${item.version}`}
+                isLight={isLight}
+                size="md"
+              />
+              <p className={`mt-3 flex items-center gap-1.5 text-[11px] ${muted}`}>
+                <Shield className="size-3.5 text-emerald-500 shrink-0" aria-hidden />
+                Revisado contra malware, sin contraseñas ocultas
+              </p>
+              {item.downloadLinks.slice(1).map((link, idx) => (
+                <a
+                  key={idx}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`mt-3 flex items-center justify-between p-3 border text-sm transition-colors ${
+                    isLight ? "bg-zinc-50 hover:bg-zinc-100 border-zinc-200" : "bg-zinc-900 hover:bg-zinc-800 border-zinc-800"
+                  }`}
+                >
+                  <span>{link.name}</span>
+                  <span className={`text-[11px] ${muted}`}>{link.server}</span>
+                </a>
+              ))}
+            </section>
+
+            {!isAdult && requirementRows.length > 0 && (
+              <section
+                id="requisitos"
+                className={`p-5 sm:p-6 border transition-colors ${
+                  isLight ? "bg-white/90 border-zinc-200" : "bg-zinc-950/70 border-zinc-800 backdrop-blur-sm"
+                }`}
+              >
+                <h2 className={`text-base font-bold tracking-wide mb-4 ${strong}`}>
+                  {isRom ? "Requisitos para emular" : "Requisitos mínimos"}
+                </h2>
+                <dl className={`divide-y ${isLight ? "divide-zinc-200" : "divide-zinc-800"}`}>
+                  {requirementRows.map((r) => (
+                    <div key={r.label} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <span className={`mt-0.5 shrink-0 ${muted}`}>{r.icon}</span>
+                      <div className="min-w-0">
+                        <dt className={`text-[11px] ${muted}`}>{r.label}</dt>
+                        <dd className={`text-sm font-medium break-words ${strong}`}>{r.value}</dd>
+                      </div>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
+          </aside>
+        </div>
+
+        <div className="relative z-10">
           <NativeBannerAd />
         </div>
       </motion.div>

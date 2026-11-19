@@ -174,6 +174,16 @@ export class CreateCatalogItemDto {
   })
   bannerUrl?: string;
 
+  @ApiPropertyOptional({
+    type: CatalogCoverFramingDto,
+    nullable: true,
+    description: 'Encuadre del banner de cabecera (posición y zoom)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CatalogCoverFramingDto)
+  bannerFraming?: CatalogCoverFramingDto | null;
+
   @ApiPropertyOptional({ example: 'https://gofile.io/d/abc123' })
   @IsOptional()
   @IsUrl(

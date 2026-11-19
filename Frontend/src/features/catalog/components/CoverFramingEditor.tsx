@@ -18,11 +18,13 @@ interface CoverFramingEditorProps {
   apartado: Apartado;
   title: string;
   version: string;
+  /** "cover" = card vertical 3:4; "banner" = cabecera panorámica de la ficha. */
+  variant?: "cover" | "banner";
 }
 
 /**
- * Editor del encuadre de la portada. La vista previa replica la card del catálogo
- * (3:4, degradado, insignia y versión) para que el admin vea exactamente cómo quedará.
+ * Editor del encuadre de una imagen. En modo "cover" la vista previa replica la card del
+ * catálogo (3:4, degradado, insignia y versión); en modo "banner" replica la cabecera de la ficha.
  */
 export default function CoverFramingEditor({
   src,
@@ -32,7 +34,9 @@ export default function CoverFramingEditor({
   apartado,
   title,
   version,
+  variant = "cover",
 }: CoverFramingEditorProps) {
+  const isBanner = variant === "banner";
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; start: CoverFraming } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -114,23 +118,23 @@ export default function CoverFramingEditor({
 
   return (
     <div
-      className={`grid grid-cols-1 sm:grid-cols-[minmax(0,180px)_1fr] gap-4 sm:gap-5 p-3 sm:p-4 border ${
+      className={`grid grid-cols-1 ${isBanner ? "" : "sm:grid-cols-[minmax(0,180px)_1fr]"} gap-4 sm:gap-5 p-3 sm:p-4 border ${
         isLight ? "bg-white border-zinc-200" : "bg-zinc-950/60 border-zinc-800"
       }`}
     >
-      {/* Vista previa con forma de card */}
-      <div className="mx-auto w-full max-w-[180px]">
+      {/* Vista previa con forma de card o de cabecera */}
+      <div className={`mx-auto w-full ${isBanner ? "" : "max-w-[180px]"}`}>
         <div
           ref={frameRef}
           role="application"
           tabIndex={0}
-          aria-label="Encuadre de la portada. Arrastra o usa las flechas para mover, rueda o + y - para el zoom, 0 para centrar."
+          aria-label={`Encuadre ${isBanner ? "del banner" : "de la portada"}. Arrastra o usa las flechas para mover, rueda o + y - para el zoom, 0 para centrar.`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           onKeyDown={onKeyDown}
-          className={`relative aspect-[3/4] w-full overflow-hidden border touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+          className={`relative ${isBanner ? "aspect-[3/1]" : "aspect-[3/4]"} w-full overflow-hidden border touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
             isDragging ? "cursor-grabbing" : "cursor-grab"
           } ${
             isLight
@@ -138,7 +142,30 @@ export default function CoverFramingEditor({
               : "bg-zinc-900 border-zinc-700 focus-visible:ring-zinc-200 focus-visible:ring-offset-zinc-950"
           }`}
         >
-          <FramedCover src={src} alt="Vista previa de la portada" framing={f} loading="eager" />
+          <FramedCover
+            src={src}
+            alt={isBanner ? "Vista previa del banner" : "Vista previa de la portada"}
+            framing={f}
+            loading="eager"
+          />
+          {isBanner ? (
+            <>
+              {/* Mismo degradado que la cabecera de la ficha: la parte de abajo queda tapada */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-t pointer-events-none ${
+                  isLight ? "from-zinc-100 via-zinc-100/60 to-transparent" : "from-zinc-950 via-zinc-950/60 to-transparent"
+                }`}
+              />
+              <span
+                className={`absolute bottom-2 left-3 max-w-[80%] truncate text-sm sm:text-base font-extrabold tracking-wide pointer-events-none ${
+                  isLight ? "text-zinc-950" : "text-white"
+                }`}
+              >
+                {title.trim() || "Título del juego"}
+              </span>
+            </>
+          ) : (
+            <>
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-70 pointer-events-none" />
           <span
             className={`absolute top-2 left-2 px-1.5 py-0.5 text-[9px] uppercase font-bold tracking-wider border pointer-events-none ${
@@ -152,6 +179,8 @@ export default function CoverFramingEditor({
           <span className="absolute bottom-1.5 left-2 max-w-[85%] truncate text-[10px] font-mono text-zinc-300 bg-black/85 px-1.5 py-0.5 pointer-events-none">
             {version || "v1.0"}
           </span>
+            </>
+          )}
           {/* Guías de tercios mientras se arrastra */}
           {isDragging && (
             <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3" aria-hidden>
@@ -162,7 +191,7 @@ export default function CoverFramingEditor({
           )}
         </div>
         <p className={`mt-1.5 text-[11px] text-center truncate ${muted}`} title={title}>
-          {title.trim() || "Así se verá la card"}
+          {isBanner ? "Así se verá la cabecera de la ficha (la parte de abajo queda bajo el degradado)" : title.trim() || "Así se verá la card"}
         </p>
       </div>
 

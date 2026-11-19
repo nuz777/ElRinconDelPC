@@ -39,6 +39,8 @@ export interface CatalogItem {
   /** Encuadre de la portada (null = centrada, sin zoom). */
   coverFraming?: CoverFraming | null;
   bannerImg?: string; // Banner horizontal de cabecera
+  /** Encuadre del banner de cabecera (null = centrado, sin zoom). */
+  bannerFraming?: CoverFraming | null;
   shortDesc: string;
   fullDesc: string;
   features: string[];
