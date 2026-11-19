@@ -5,7 +5,7 @@ import {
 } from "../../../shared/api/httpClient";
 import { cleanDescription } from "../../../shared/utils/cleanDescription";
 import { authService } from "../../auth/services/auth.service";
-import type { Apartado, CatalogItem } from "../domain/catalog.types";
+import type { Apartado, CatalogItem, CoverFraming } from "../domain/catalog.types";
 import { NO_STABLE_EMULATOR } from "../domain/romPlatforms";
 
 export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS" | "ROMS" | "ADULTOS";
@@ -26,6 +26,7 @@ export interface CreateCatalogItemPayload {
   version?: string;
   badge?: string;
   coverUrl?: string;
+  coverFraming?: CoverFraming | null;
   bannerUrl?: string;
   downloadUrl?: string;
   developer?: string;
@@ -46,6 +47,7 @@ export interface CatalogItemApiResponse {
   version: string;
   badge: string | null;
   coverUrl: string | null;
+  coverFraming?: CoverFraming | null;
   bannerUrl?: string | null;
   downloadUrl: string | null;
   developer: string | null;
@@ -151,6 +153,7 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
     releaseDate: api.createdAt ? new Date(api.createdAt).getFullYear().toString() : "2026",
     developer: api.developer || "Comunidad El Sótano",
     img: resolveApiMediaUrl(api.coverUrl, "/img/indicado.webp") || "/img/indicado.webp",
+    coverFraming: api.coverFraming ?? null,
     bannerImg: resolveApiMediaUrl(api.bannerUrl),
     shortDesc: cleanDescription(api.shortDescription),
     fullDesc: cleanDescription(api.shortDescription),

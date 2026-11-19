@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { useTheme } from "../../../shared/context/useTheme";
 import { modsService } from "../api/mods.service";
 import { catalogService } from "../../catalog/api/catalog.service";
+import { dialog } from "../../../shared/ui/dialog";
 import { buildItemPath, extractPublicCode } from "../../catalog/utils/catalogUrl";
 
 export default function UploadModPage() {
@@ -113,6 +114,7 @@ export default function UploadModPage() {
         },
       });
       setSuccess("Mod publicado correctamente. Está pendiente de revisión por un administrador.");
+      void dialog.success("Mod enviado", "Un administrador lo revisará antes de que aparezca en la ficha del juego.", { timer: 3500 });
       setForm({
         title: "",
         description: "",
@@ -129,9 +131,9 @@ export default function UploadModPage() {
         },
       });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error inesperado al publicar el mod.",
-      );
+      const msg = err instanceof Error ? err.message : "Error inesperado al publicar el mod.";
+      setError(msg);
+      void dialog.error("No se pudo enviar el mod", msg);
     } finally {
       setLoading(false);
     }

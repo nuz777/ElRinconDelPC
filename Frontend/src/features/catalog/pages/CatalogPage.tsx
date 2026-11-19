@@ -17,7 +17,7 @@ import FullscreenDetailModal from "../components/FullscreenDetailModal";
 import ItemFormModal from "../components/ItemFormModal";
 import BulkJsonImportModal from "../components/BulkJsonImportModal";
 import AgeGateModal from "../components/AgeGateModal";
-import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import { dialog } from "../../../shared/ui/dialog";
 
 export default function CatalogPage() {
   const { theme, toggleTheme } = useTheme();
@@ -38,8 +38,6 @@ export default function CatalogPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBulkJsonModalOpen, setIsBulkJsonModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<CatalogItem | null>(null);
-  const [itemToDelete, setItemToDelete] = useState<CatalogItem | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const [fetchedItem, setFetchedItem] = useState<CatalogItem | null>(null);
   const [localItem, setLocalItem] = useState<CatalogItem | null>(null);
@@ -93,6 +91,8 @@ export default function CatalogPage() {
   };
 
   const handleOpenEdit = async (item: CatalogItem) => {
+    // Las cards traen un resumen: se pide el ítem completo (banner, requisitos) antes de editar
+    const stopLoading = dialog.loading("Abriendo editor", `Cargando "${item.title}"...`);
     try {
       const fullItem = item.publicCode
         ? await catalogService.getItemByCode(item.publicCode)
@@ -100,27 +100,53 @@ export default function CatalogPage() {
       setItemToEdit(fullItem ?? item);
     } catch {
       setItemToEdit(item);
+      dialog.toast("warning", "Se abrió con datos parciales", "No se pudo cargar el detalle completo desde la API.");
+    } finally {
+      stopLoading();
     }
     setIsAddModalOpen(true);
   };
 
   const handleDeleteItem = async (item: CatalogItem) => {
     if (!isAdmin) return;
+    const confirmed = await dialog.confirm({
+      title: "¿Eliminar elemento?",
+      text: "Esta acción no se puede deshacer. Se borrará del catálogo y de la base de datos:",
+      highlight: item.title,
+      confirmText: "Sí, eliminar",
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    const stopLoading = dialog.loading("Eliminando...", item.title);
     try {
-      setIsDeleting(true);
       await data.deleteItem(item);
-      if (selectedItem?.id === item.id) {
-        closeItem();
-      }
-      setItemToDelete(null);
+      if (selectedItem?.id === item.id) closeItem();
+      stopLoading();
+      void dialog.success("Elemento eliminado", undefined, { highlight: item.title, timer: 2200 });
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Hubo un error al eliminar el ítem del servidor.";
-      alert(msg);
-    } finally {
-      setIsDeleting(false);
+      stopLoading();
+      const msg = err instanceof Error ? err.message : "Hubo un error al eliminar el ítem del servidor.";
+      void dialog.error("No se pudo eliminar", msg);
     }
   };
+
+  // Apartado en el que está el admin: se usa como apartado principal al subir algo nuevo
+  const view = filter.view;
+  const UPLOAD_LABEL: Record<string, string> = {
+    juegos: "Subir juego",
+    mods: "Subir mod",
+    herramientas: "Subir herramienta",
+    roms: "Subir ROM",
+    adultos: "Subir a +18",
+  };
+  const uploadLabel = UPLOAD_LABEL[view.apartado] ?? "Agregar Item";
+  const uploadDefaults =
+    view.apartado === "roms"
+      ? { apartado: "roms" as const, brand: view.brand, console: view.console }
+      : view.apartado === "todos"
+        ? { apartado: undefined, brand: undefined, console: undefined }
+        : { apartado: view.apartado, brand: undefined, console: undefined };
 
   const isRomView = filter.view.apartado === "roms";
 
@@ -137,6 +163,7 @@ export default function CatalogPage() {
           isLight={isLight}
           isAdmin={isAdmin}
           hasActiveGenreFilter={filter.selectedGenre !== "todos"}
+          addLabel={uploadLabel}
           onOpenAdd={() => {
             setItemToEdit(null);
             setIsAddModalOpen(true);
@@ -271,7 +298,7 @@ export default function CatalogPage() {
                         : "bg-white text-zinc-950 hover:bg-zinc-200"
                     }`}
                   >
-                    Agregar este elemento
+                    {uploadLabel}
                   </button>
                 )}
               </div>
@@ -315,7 +342,7 @@ export default function CatalogPage() {
                     isAdmin={isAdmin}
                     onSelect={openItem}
                     onEdit={(target) => void handleOpenEdit(target)}
-                    onDelete={(target) => setItemToDelete(target)}
+                    onDelete={(target) => void handleDeleteItem(target)}
                   />
                 ))}
               </div>
@@ -364,7 +391,7 @@ export default function CatalogPage() {
                       isAdmin={isAdmin}
                       onSelect={openItem}
                       onEdit={(target) => void handleOpenEdit(target)}
-                      onDelete={(target) => setItemToDelete(target)}
+                      onDelete={(target) => void handleDeleteItem(target)}
                     />
                   ))}
                 </div>
@@ -451,8 +478,8 @@ export default function CatalogPage() {
         item={filter.showAgeGate ? null : selectedItem}
         onClose={closeItem}
         isAdmin={isAdmin}
-        disableEscape={isAddModalOpen || Boolean(itemToDelete) || filter.showAgeGate}
-        onDelete={(item) => setItemToDelete(item)}
+        disableEscape={isAddModalOpen || isBulkJsonModalOpen || filter.showAgeGate}
+        onDelete={(item) => void handleDeleteItem(item)}
         onEdit={(item) => void handleOpenEdit(item)}
         onNavigateRoot={filter.navigateFromBreadcrumbRoot}
         onNavigateApartado={filter.navigateFromBreadcrumbApartado}
@@ -486,6 +513,9 @@ export default function CatalogPage() {
           }}
           onBulkImported={() => data.reload()}
           itemToEdit={itemToEdit}
+          defaultApartado={uploadDefaults.apartado}
+          defaultRomBrand={uploadDefaults.brand}
+          defaultRomConsole={uploadDefaults.console}
         />
       )}
 
@@ -497,17 +527,6 @@ export default function CatalogPage() {
         />
       )}
 
-      {isAdmin && (
-        <DeleteConfirmModal
-          item={itemToDelete}
-          isDeleting={isDeleting}
-          isLight={isLight}
-          onConfirm={() => {
-            if (itemToDelete) void handleDeleteItem(itemToDelete);
-          }}
-          onCancel={() => setItemToDelete(null)}
-        />
-      )}
 
       <Footer />
     </div>

@@ -19,6 +19,7 @@ import { useTheme } from "../../../shared/context/useTheme";
 import { parseCatalogJson, type ParsedItemResult } from "../utils/catalogJsonParser";
 import { catalogService } from "../api/catalog.service";
 import type { CatalogItem } from "../domain/catalog.types";
+import { dialog } from "../../../shared/ui/dialog";
 
 interface BulkJsonImportModalProps {
   isOpen: boolean;
@@ -69,7 +70,10 @@ export default function BulkJsonImportModal({
 
   const handleFileSelect = (file: File) => {
     if (!file.name.endsWith(".json") && file.type !== "application/json") {
-      alert("Por favor selecciona un archivo con extensión .json");
+      void dialog.warning(
+        "Ese archivo no es JSON",
+        `"${file.name}" no tiene extensión .json. Elige un archivo .json o pega el texto en la otra pestaña.`,
+      );
       return;
     }
     setFileName(file.name);
@@ -80,7 +84,7 @@ export default function BulkJsonImportModal({
       processJsonContent(content);
     };
     reader.onerror = () => {
-      alert("Error al leer el archivo JSON.");
+      void dialog.error("No se pudo leer el archivo", "Prueba de nuevo o pega el contenido como texto.");
     };
     reader.readAsText(file);
   };
@@ -137,15 +141,32 @@ export default function BulkJsonImportModal({
     setIsImporting(false);
     setImportProgress(null);
 
+    if (errors.length > 0) {
+      setImportError(`Se importaron ${createdItems.length} elementos, pero fallaron ${errors.length}:\n` + errors.join("\n"));
+    }
+
     if (createdItems.length > 0) {
       setImportSuccessCount(createdItems.length);
+      if (errors.length === 0) {
+        void dialog.success(
+          createdItems.length === 1 ? "1 elemento importado" : `${createdItems.length} elementos importados`,
+          "Ya están en el catálogo. Recuerda asignarles portada y enlace de descarga con el botón Editar.",
+          { timer: 4000 },
+        );
+      } else {
+        void dialog.warning(
+          "Importación incompleta",
+          `Se importaron ${createdItems.length} de ${validItems.length}. Revisa en el modal cuáles fallaron.`,
+        );
+      }
       if (onItemsImported) {
         onItemsImported(createdItems);
       }
-    }
-
-    if (errors.length > 0) {
-      setImportError(`Se importaron ${createdItems.length} elementos, pero fallaron ${errors.length}:\n` + errors.join("\n"));
+    } else if (errors.length > 0) {
+      void dialog.error(
+        "No se importó ningún elemento",
+        errors.slice(0, 3).join("\n") + (errors.length > 3 ? `\n…y ${errors.length - 3} más.` : ""),
+      );
     }
   };
 

@@ -22,6 +22,8 @@ import { catalogService } from "../api/catalog.service";
 import { NativeBannerAd } from "../../ads/NativeBannerAd";
 import GameModsSection from "../../games/components/GameModsSection";
 import { buildItemPath } from "../utils/catalogUrl";
+import FramedCover from "./FramedCover";
+import { isDialogOpen } from "../../../shared/ui/dialog";
 
 interface FullscreenDetailModalProps {
   item: CatalogItem | null;
@@ -88,7 +90,7 @@ export default function FullscreenDetailModal({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !disableEscape) onClose();
+      if (e.key === "Escape" && !disableEscape && !isDialogOpen()) onClose();
     };
     if (baseItem) {
       document.body.style.overflow = "hidden";
@@ -318,16 +320,12 @@ export default function FullscreenDetailModal({
                     : "bg-zinc-900 border-zinc-700/80 shadow-black/80"
                 }`}
               >
-                <img
+                <FramedCover
                   src={item.img}
                   alt={`Portada de ${item.title}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    if (!target.src.endsWith("/img/indicado.webp")) {
-                      target.src = "/img/indicado.webp";
-                    }
-                  }}
+                  framing={item.coverFraming}
+                  loading="eager"
+                  hoverClassName="transition-transform duration-300 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                 />
               </div>
 
