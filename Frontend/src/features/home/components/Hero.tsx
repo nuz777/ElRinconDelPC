@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { ROUTES } from "../../../app/routes";
 import { catalogService } from "../../catalog/api/catalog.service";
 import type { CatalogItem } from "../../catalog/domain/catalog.types";
+import { useAuth } from "../../auth/context/useAuth";
 
 function DiscordIcon({ className = "size-5" }: { className?: string }) {
   return (
@@ -49,6 +50,8 @@ interface HeroProps {
 }
 
 export default function Hero({ onSelectGame }: HeroProps) {
+  const { isAuthenticated, user } = useAuth();
+  const firstName = (user?.name || user?.username || "").trim().split(/\s+/)[0];
   const [recentGames, setRecentGames] = useState<CatalogItem[] | null>(() => {
     const cached = catalogService.getCachedRecentPage("JUEGOS", 12);
     return cached ? cached.items.slice(0, 4) : null;
@@ -101,18 +104,40 @@ export default function Hero({ onSelectGame }: HeroProps) {
             Todo para tu PC, juegos, mods, herramientas y mucho más!
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center lg:justify-start gap-3.5 opacity-0 animate-[fadeUp_1s_ease_0.8s_forwards]">
-            <Link
-              href={ROUTES.LOGIN}
-              className="px-6 py-2.5 font-share font-bold text-xs sm:text-sm uppercase tracking-wider bg-white text-zinc-950 border border-white hover:bg-zinc-200 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/10 cursor-pointer inline-flex items-center justify-center no-underline"
-            >
-              Iniciar Sesión
-            </Link>
-            <Link
-              href={ROUTES.REGISTER}
-              className="px-6 py-2.5 font-share font-bold text-xs sm:text-sm uppercase tracking-wider bg-zinc-950/85 text-white border border-zinc-500 hover:bg-zinc-900 hover:border-zinc-300 hover:scale-105 active:scale-95 transition-all backdrop-blur-md shadow-lg cursor-pointer inline-flex items-center justify-center no-underline"
-            >
-              Crear Cuenta
-            </Link>
+            {isAuthenticated ? (
+              <>
+                {/* Con sesión iniciada no tiene sentido ofrecer login: se lleva directo al catálogo */}
+                <Link
+                  href={ROUTES.CATALOG}
+                  className="px-6 py-2.5 font-share font-bold text-xs sm:text-sm uppercase tracking-wider bg-white text-zinc-950 border border-white hover:bg-zinc-200 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/10 cursor-pointer inline-flex items-center justify-center gap-2 no-underline"
+                >
+                  {firstName ? `Hola ${firstName}, ir al catálogo` : "Ir al catálogo"}
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
+                <Link
+                  href={ROUTES.GAMES}
+                  className="px-6 py-2.5 font-share font-bold text-xs sm:text-sm uppercase tracking-wider bg-zinc-950/85 text-white border border-zinc-500 hover:bg-zinc-900 hover:border-zinc-300 hover:scale-105 active:scale-95 transition-all backdrop-blur-md shadow-lg cursor-pointer inline-flex items-center justify-center gap-2 no-underline"
+                >
+                  <Gamepad2 className="size-4" aria-hidden />
+                  Juegos de PC
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={ROUTES.LOGIN}
+                  className="px-6 py-2.5 font-share font-bold text-xs sm:text-sm uppercase tracking-wider bg-white text-zinc-950 border border-white hover:bg-zinc-200 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/10 cursor-pointer inline-flex items-center justify-center no-underline"
+                >
+                  Iniciar Sesión
+                </Link>
+                <Link
+                  href={ROUTES.REGISTER}
+                  className="px-6 py-2.5 font-share font-bold text-xs sm:text-sm uppercase tracking-wider bg-zinc-950/85 text-white border border-zinc-500 hover:bg-zinc-900 hover:border-zinc-300 hover:scale-105 active:scale-95 transition-all backdrop-blur-md shadow-lg cursor-pointer inline-flex items-center justify-center no-underline"
+                >
+                  Crear Cuenta
+                </Link>
+              </>
+            )}
             <a
               href="https://discord.gg/MnDpU7hNV"
               target="_blank"
@@ -132,6 +157,7 @@ export default function Hero({ onSelectGame }: HeroProps) {
               Canal de WhatsApp
             </a>
           </div>
+          {!isAuthenticated && (
           <p className="font-share text-xs sm:text-sm text-zinc-200 mt-5 opacity-0 animate-[fadeUp_1s_ease_1s_forwards] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
             ¿Vienes solo a echar un vistazo?,{" "}
             <Link
@@ -142,6 +168,7 @@ export default function Hero({ onSelectGame }: HeroProps) {
               mira nuestro catálogo
             </Link>
           </p>
+          )}
         </div>
 
         {/* Columna derecha: los 4 juegos más recientes precargados al lado de los botones */}

@@ -22,6 +22,7 @@ const buildRow = (
   badge: 'Nuevo',
   coverUrl: CATALOG_MEDIA_PLACEHOLDER,
   coverFraming: null,
+  bannerFraming: null,
   bannerUrl: CATALOG_MEDIA_PLACEHOLDER,
   downloadUrl: 'https://example.com/elden-ring',
   developer: 'FromSoftware',

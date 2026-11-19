@@ -34,6 +34,7 @@ interface CatalogRawRow {
   coverUrl: string | null;
   coverFraming?: CatalogCoverFraming | null;
   bannerUrl?: string | null;
+  bannerFraming?: CatalogCoverFraming | null;
   downloadUrl: string | null;
   developer: string | null;
   shortDescription: string;
@@ -57,6 +58,7 @@ const RETURNING_COLUMNS = [
   'cover_url AS "coverUrl"',
   'cover_framing AS "coverFraming"',
   'banner_url AS "bannerUrl"',
+  'banner_framing AS "bannerFraming"',
   'download_url AS "downloadUrl"',
   'developer',
   'short_description AS "shortDescription"',
@@ -94,6 +96,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       coverUrl: row.coverUrl,
       coverFraming: row.coverFraming ?? null,
       bannerUrl: row.bannerUrl ?? null,
+      bannerFraming: row.bannerFraming ?? null,
       downloadUrl: row.downloadUrl,
       developer: row.developer,
       shortDescription: row.shortDescription,
@@ -146,6 +149,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
         ? []
         : [
             `CASE WHEN substring(item.banner_url from 1 for 11) = 'data:image/' THEN '${CATALOG_MEDIA_PLACEHOLDER}' ELSE item.banner_url END AS "bannerUrl"`,
+            'item.banner_framing AS "bannerFraming"',
             'item.minimum_requirements AS "minimumRequirements"',
           ]),
       'item.download_url AS "downloadUrl"',
@@ -224,6 +228,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       coverUrl: item.coverUrl ?? null,
       coverFraming: item.coverFraming ?? null,
       bannerUrl: item.bannerUrl ?? null,
+      bannerFraming: item.bannerFraming ?? null,
       brand: item.brand ?? null,
       console: item.console ?? null,
       emulator: item.emulator ?? null,

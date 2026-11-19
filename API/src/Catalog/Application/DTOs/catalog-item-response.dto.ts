@@ -32,6 +32,9 @@ export class CatalogItemResponseDto {
   @ApiPropertyOptional({ nullable: true, type: String })
   bannerUrl!: string | null;
 
+  @ApiPropertyOptional({ nullable: true, description: 'Encuadre del banner { x, y, scale }' })
+  bannerFraming!: { x: number; y: number; scale: number } | null;
+
   @ApiPropertyOptional({ nullable: true, type: String })
   downloadUrl!: string | null;
 

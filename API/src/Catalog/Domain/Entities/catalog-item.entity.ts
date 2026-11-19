@@ -28,6 +28,8 @@ export interface CatalogItemProps {
   coverUrl?: string | null;
   coverFraming?: CatalogCoverFraming | null;
   bannerUrl?: string | null;
+  /** Encuadre del banner de cabecera (misma forma que el de la portada). */
+  bannerFraming?: CatalogCoverFraming | null;
   downloadUrl?: string | null;
   developer?: string | null;
   shortDescription: string;
@@ -59,6 +61,7 @@ export class CatalogItem {
   public coverUrl: string | null;
   public coverFraming: CatalogCoverFraming | null;
   public bannerUrl: string | null;
+  public bannerFraming: CatalogCoverFraming | null;
   public downloadUrl: string | null;
   public developer: string | null;
   public shortDescription: string;
@@ -81,6 +84,7 @@ export class CatalogItem {
     this.coverUrl = props.coverUrl ?? null;
     this.coverFraming = props.coverFraming ?? null;
     this.bannerUrl = props.bannerUrl ?? null;
+    this.bannerFraming = props.bannerFraming ?? null;
     this.downloadUrl = props.downloadUrl ?? null;
     this.developer = props.developer ?? null;
     this.shortDescription = props.shortDescription;

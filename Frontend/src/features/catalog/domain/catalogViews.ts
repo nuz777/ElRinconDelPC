@@ -22,3 +22,12 @@ export const APARTADO_BADGE: Record<Apartado, string> = {
   roms: "ROM",
   adultos: "+18",
 };
+
+/** Nombre del tipo de elemento según el apartado, para "Descargar {tipo}". */
+export const APARTADO_NOUN: Record<Apartado, string> = {
+  juegos: "juego",
+  mods: "mod",
+  herramientas: "herramienta",
+  roms: "ROM",
+  adultos: "juego",
+};
