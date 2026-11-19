@@ -114,6 +114,7 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
 
   // La sesión se muestra en todas las rutas: antes solo aparecía en /catalogo y parecía que se cerraba
   const inCatalog = isCatalogPath(location);
+  const inProfile = location === ROUTES.PROFILE;
   const displayName = user?.name || user?.username || user?.email || "Mi cuenta";
   const isAdmin = user?.role === "admin";
   const avatarSrc = user?.picture;
@@ -131,6 +132,13 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
       title={user?.email ?? displayName}
       aria-label="Ir a mi perfil"
     >
+      <span
+        className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 shrink-0"
+        title="Activo"
+      >
+        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+        <span className="hidden sm:inline">Activo</span>
+      </span>
       {avatarSrc ? (
         <img
           src={avatarSrc}
@@ -232,7 +240,7 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
               - En cualquier otra ruta (o catálogo sin sesión): link a Catálogo + botones "Iniciar sesión" y "Crear cuenta". */}
           {isAuthenticated ? (
             <div className="flex items-center gap-3 text-xs sm:text-sm font-share tracking-wider min-w-0">
-              {!inCatalog && (
+              {!inCatalog && !inProfile && (
                 <Link
                   href="/catalogo"
                   onClick={() => window.scrollTo({ top: 0 })}

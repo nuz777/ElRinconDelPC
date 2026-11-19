@@ -183,7 +183,13 @@ export default function ProfilePage() {
                 </span>
               </motion.div>
               <div className="text-center min-w-0 w-full">
-                <p className="font-bold truncate">{displayName}</p>
+                <div className="flex items-center justify-center gap-2 mb-0.5 min-w-0">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 shrink-0">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+                    Activo
+                  </span>
+                  <p className="font-bold truncate min-w-0">{displayName}</p>
+                </div>
                 <p className={`text-xs truncate ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>{email}</p>
                 {user?.role === "admin" && (
                   <span className="inline-block mt-1 text-[10px] uppercase tracking-wider px-1.5 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/25">
