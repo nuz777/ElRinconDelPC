@@ -41,6 +41,7 @@ export function buildCatalogPayload(item: CatalogItem): CreateCatalogItemPayload
     coverFraming: item.coverFraming ?? null,
     bannerUrl: item.bannerImg,
     bannerFraming: item.bannerFraming ?? null,
+    downloadHosts: item.downloadHosts?.length ? item.downloadHosts : null,
     // La API solo acepta URLs http(s): sin enlace se omite (antes se mandaba "#" y la API rechazaba el ítem)
     downloadUrl: /^https?:\/\//i.test(item.downloadLinks[0]?.url ?? "") ? item.downloadLinks[0].url : undefined,
     developer: item.developer,

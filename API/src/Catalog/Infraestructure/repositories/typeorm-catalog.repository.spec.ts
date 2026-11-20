@@ -23,6 +23,7 @@ const buildRow = (
   coverUrl: CATALOG_MEDIA_PLACEHOLDER,
   coverFraming: null,
   bannerFraming: null,
+  downloadHosts: null,
   bannerUrl: CATALOG_MEDIA_PLACEHOLDER,
   downloadUrl: 'https://example.com/elden-ring',
   developer: 'FromSoftware',

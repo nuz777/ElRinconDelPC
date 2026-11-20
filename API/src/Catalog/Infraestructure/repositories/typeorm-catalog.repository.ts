@@ -1,3 +1,4 @@
+import type { CatalogDownloadHost } from '../../Domain/Entities/download-host.js';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -35,6 +36,7 @@ interface CatalogRawRow {
   coverFraming?: CatalogCoverFraming | null;
   bannerUrl?: string | null;
   bannerFraming?: CatalogCoverFraming | null;
+  downloadHosts?: CatalogDownloadHost[] | null;
   downloadUrl: string | null;
   developer: string | null;
   shortDescription: string;
@@ -59,6 +61,7 @@ const RETURNING_COLUMNS = [
   'cover_framing AS "coverFraming"',
   'banner_url AS "bannerUrl"',
   'banner_framing AS "bannerFraming"',
+  'download_hosts AS "downloadHosts"',
   'download_url AS "downloadUrl"',
   'developer',
   'short_description AS "shortDescription"',
@@ -97,6 +100,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       coverFraming: row.coverFraming ?? null,
       bannerUrl: row.bannerUrl ?? null,
       bannerFraming: row.bannerFraming ?? null,
+      downloadHosts: row.downloadHosts ?? null,
       downloadUrl: row.downloadUrl,
       developer: row.developer,
       shortDescription: row.shortDescription,
@@ -150,6 +154,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
         : [
             `CASE WHEN substring(item.banner_url from 1 for 11) = 'data:image/' THEN '${CATALOG_MEDIA_PLACEHOLDER}' ELSE item.banner_url END AS "bannerUrl"`,
             'item.banner_framing AS "bannerFraming"',
+            'item.download_hosts AS "downloadHosts"',
             'item.minimum_requirements AS "minimumRequirements"',
           ]),
       'item.download_url AS "downloadUrl"',
@@ -229,6 +234,7 @@ export class TypeormCatalogRepository implements CatalogRepository {
       coverFraming: item.coverFraming ?? null,
       bannerUrl: item.bannerUrl ?? null,
       bannerFraming: item.bannerFraming ?? null,
+      downloadHosts: item.downloadHosts?.length ? item.downloadHosts : null,
       brand: item.brand ?? null,
       console: item.console ?? null,
       emulator: item.emulator ?? null,

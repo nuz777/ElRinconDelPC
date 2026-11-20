@@ -1,3 +1,4 @@
+import type { CatalogDownloadHost } from './download-host.js';
 import type { CatalogSection } from './catalog-section.enum.js';
 
 export const DEFAULT_CATALOG_VERSION = 'v1.0';
@@ -30,6 +31,8 @@ export interface CatalogItemProps {
   bannerUrl?: string | null;
   /** Encuadre del banner de cabecera (misma forma que el de la portada). */
   bannerFraming?: CatalogCoverFraming | null;
+  /** Sitio de alojamiento de cada parte del archivo (en orden). */
+  downloadHosts?: CatalogDownloadHost[] | null;
   downloadUrl?: string | null;
   developer?: string | null;
   shortDescription: string;
@@ -62,6 +65,7 @@ export class CatalogItem {
   public coverFraming: CatalogCoverFraming | null;
   public bannerUrl: string | null;
   public bannerFraming: CatalogCoverFraming | null;
+  public downloadHosts: CatalogDownloadHost[] | null;
   public downloadUrl: string | null;
   public developer: string | null;
   public shortDescription: string;
@@ -85,6 +89,7 @@ export class CatalogItem {
     this.coverFraming = props.coverFraming ?? null;
     this.bannerUrl = props.bannerUrl ?? null;
     this.bannerFraming = props.bannerFraming ?? null;
+    this.downloadHosts = props.downloadHosts?.length ? props.downloadHosts : null;
     this.downloadUrl = props.downloadUrl ?? null;
     this.developer = props.developer ?? null;
     this.shortDescription = props.shortDescription;

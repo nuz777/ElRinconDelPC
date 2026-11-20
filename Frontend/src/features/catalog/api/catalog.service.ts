@@ -6,6 +6,7 @@ import {
 import { cleanDescription } from "../../../shared/utils/cleanDescription";
 import { authService } from "../../auth/services/auth.service";
 import type { Apartado, CatalogItem, CoverFraming } from "../domain/catalog.types";
+import { normalizeDownloadHosts, type DownloadHostId } from "../domain/downloadHosts";
 import { NO_STABLE_EMULATOR } from "../domain/romPlatforms";
 
 export type CatalogSectionApi = "JUEGOS" | "MODS" | "HERRAMIENTAS" | "ROMS" | "ADULTOS";
@@ -29,6 +30,7 @@ export interface CreateCatalogItemPayload {
   coverFraming?: CoverFraming | null;
   bannerUrl?: string;
   bannerFraming?: CoverFraming | null;
+  downloadHosts?: DownloadHostId[] | null;
   downloadUrl?: string;
   developer?: string;
   shortDescription: string;
@@ -51,6 +53,7 @@ export interface CatalogItemApiResponse {
   coverFraming?: CoverFraming | null;
   bannerUrl?: string | null;
   bannerFraming?: CoverFraming | null;
+  downloadHosts?: unknown;
   downloadUrl: string | null;
   developer: string | null;
   shortDescription: string;
@@ -158,6 +161,7 @@ export function mapApiItemToCatalogItem(api: CatalogItemApiResponse): CatalogIte
     coverFraming: api.coverFraming ?? null,
     bannerImg: resolveApiMediaUrl(api.bannerUrl),
     bannerFraming: api.bannerFraming ?? null,
+    downloadHosts: normalizeDownloadHosts(api.downloadHosts),
     shortDesc: cleanDescription(api.shortDescription),
     fullDesc: cleanDescription(api.shortDescription),
     features: isRom

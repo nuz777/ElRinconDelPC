@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  CATALOG_DOWNLOAD_HOSTS,
+  MAX_DOWNLOAD_PARTS,
+  type CatalogDownloadHost,
+} from '../../Domain/Entities/download-host.js';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
   IsEnum,
   IsNumber,
   IsNotEmpty,
@@ -183,6 +191,19 @@ export class CreateCatalogItemDto {
   @ValidateNested()
   @Type(() => CatalogCoverFramingDto)
   bannerFraming?: CatalogCoverFramingDto | null;
+
+  @ApiPropertyOptional({
+    type: [String],
+    enum: CATALOG_DOWNLOAD_HOSTS,
+    nullable: true,
+    example: ['mediafire', 'mediafire'],
+    description: 'Sitio de alojamiento de cada parte, en orden (1 elemento = 1 parte)',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_DOWNLOAD_PARTS)
+  @IsIn(CATALOG_DOWNLOAD_HOSTS, { each: true, message: 'Medio de descarga no válido' })
+  downloadHosts?: CatalogDownloadHost[] | null;
 
   @ApiPropertyOptional({ example: 'https://gofile.io/d/abc123' })
   @IsOptional()

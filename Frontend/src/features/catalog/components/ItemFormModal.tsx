@@ -35,6 +35,8 @@ import { mapApartadoToSection } from "../api/catalog.service";
 import AdminAiKeyBox from "./AdminAiKeyBox";
 import BulkJsonImportModal from "./BulkJsonImportModal";
 import CoverFramingEditor from "./CoverFramingEditor";
+import DownloadHostPicker from "./DownloadHostPicker";
+import type { DownloadHostId } from "../domain/downloadHosts";
 import { cleanDescription } from "../../../shared/utils/cleanDescription";
 import { dialog, isDialogOpen } from "../../../shared/ui/dialog";
 import { isDefaultFraming, normalizeFraming } from "../utils/coverFraming";
@@ -491,6 +493,7 @@ function AddItemModalInner({
   const [downloadUrl, setDownloadUrl] = useState(
     initialDownloadLink && initialDownloadLink !== "#" ? initialDownloadLink : "",
   );
+  const [downloadHosts, setDownloadHosts] = useState<DownloadHostId[]>(itemToEdit?.downloadHosts ?? []);
 
   // Solo ROMs
   const [romBrand, setRomBrand] = useState(initialRom.brand);
@@ -854,6 +857,7 @@ function AddItemModalInner({
       coverFraming: finalFraming,
       bannerImg: finalBanner,
       bannerFraming: !finalBanner || isDefaultFraming(bannerFraming) ? null : normalizeFraming(bannerFraming),
+      downloadHosts: downloadHosts.length ? downloadHosts : null,
       shortDesc: cleanedDesc,
       fullDesc: cleanedDesc,
       features: isRom
@@ -1312,6 +1316,21 @@ function AddItemModalInner({
                   className={s.input}
                 />
               </label>
+            </div>
+
+            <div className={`mt-5 pt-5 border-t ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
+              <h4 className={`text-sm font-bold tracking-wide mb-1 ${isLight ? "text-zinc-900" : "text-white"}`}>Medio de descarga</h4>
+              <p className={`text-[11px] mb-4 ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
+                Se muestra debajo del botón de descarga con el logo y el color del sitio.
+              </p>
+              <DownloadHostPicker
+                value={downloadHosts}
+                onChange={(hosts) => {
+                  setIsDirty(true);
+                  setDownloadHosts(hosts);
+                }}
+                isLight={isLight}
+              />
             </div>
           </Section>
 
