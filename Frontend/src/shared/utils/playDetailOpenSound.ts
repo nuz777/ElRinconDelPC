@@ -12,6 +12,7 @@ export function playDetailOpenSound(): void {
     if (!openAudio) {
       openAudio = new Audio("/sounds/ps4-trophy.mp3");
       openAudio.preload = "auto";
+      openAudio.volume = 0.7;
     }
     openAudio.currentTime = 0;
     void openAudio.play().catch(() => {
@@ -28,6 +29,7 @@ export function playDetailBackSound(): void {
     if (!backAudio) {
       backAudio = new Audio("/sounds/ps4-menu-back.mp3");
       backAudio.preload = "auto";
+      backAudio.volume = 0.7;
     }
     backAudio.currentTime = 0;
     void backAudio.play().catch(() => {
@@ -44,6 +46,7 @@ export function playProfileSelectSound(): void {
     if (!profileSelectAudio) {
       profileSelectAudio = new Audio("/sounds/ps4-report-menu-appear.mp3");
       profileSelectAudio.preload = "auto";
+      profileSelectAudio.volume = 0.7;
     }
     profileSelectAudio.currentTime = 0;
     void profileSelectAudio.play().catch(() => {
@@ -60,6 +63,7 @@ export function playProfileSaveSound(): void {
     if (!profileSaveAudio) {
       profileSaveAudio = new Audio("/sounds/ps4-archivment-get.mp3");
       profileSaveAudio.preload = "auto";
+      profileSaveAudio.volume = 0.7;
     }
     profileSaveAudio.currentTime = 0;
     void profileSaveAudio.play().catch(() => {
@@ -76,6 +80,7 @@ export function playProfileSettingsOpenSound(): void {
     if (!profileSettingsOpenAudio) {
       profileSettingsOpenAudio = new Audio("/sounds/playstation-message-sound.mp3");
       profileSettingsOpenAudio.preload = "auto";
+      profileSettingsOpenAudio.volume = 0.7;
     }
     profileSettingsOpenAudio.currentTime = 0;
     void profileSettingsOpenAudio.play().catch(() => {
@@ -92,6 +97,7 @@ export function playCategorySelectSound(): void {
     if (!categorySelectAudio) {
       categorySelectAudio = new Audio("/sounds/ps5-selection-button.mp3");
       categorySelectAudio.preload = "auto";
+      categorySelectAudio.volume = 0.7;
     }
     categorySelectAudio.currentTime = 0;
     void categorySelectAudio.play().catch(() => {
@@ -108,6 +114,7 @@ export function playChatHelloThereSound(): void {
     if (!chatHelloThereAudio) {
       chatHelloThereAudio = new Audio("/sounds/hello-there-obi-wan.mp3");
       chatHelloThereAudio.preload = "auto";
+      chatHelloThereAudio.volume = 0.7;
     }
     chatHelloThereAudio.currentTime = 0;
     void chatHelloThereAudio.play().catch(() => {

@@ -69,6 +69,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       if (audioCtxRef.current?.state === "suspended") {
         void audioCtxRef.current.resume();
       }
+      audio.volume = 0.7;
       void audio.play();
       setIsPlaying(true);
     } else {
