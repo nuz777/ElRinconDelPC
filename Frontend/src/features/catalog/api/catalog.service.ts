@@ -404,4 +404,54 @@ export const catalogService = {
       throw err;
     }
   },
+
+  async getFavoriteIds(): Promise<string[]> {
+    const data = await requestJson<{ ids?: string[] }>("/catalog/favorites/ids", {
+      headers: getAuthHeaders(),
+      fallbackError: "No se pudieron obtener tus favoritos.",
+    });
+    return Array.isArray(data?.ids) ? data.ids : [];
+  },
+
+  async getFavoriteItems(filters: CatalogFilterParams = {}): Promise<CatalogPageResult> {
+    const params = new URLSearchParams();
+    if (filters.page) params.set("page", String(filters.page));
+    params.set("limit", String(filters.limit ?? 24));
+    if (filters.view) params.set("view", filters.view);
+
+    const data = await requestJson<PaginatedCatalogResponse>(
+      `/catalog/favorites/me${params.toString() ? `?${params.toString()}` : ""}`,
+      {
+        headers: getAuthHeaders(),
+        fallbackError: "No se pudo obtener tu biblioteca de favoritos.",
+      },
+    );
+
+    const rawItems = data?.items ?? [];
+    const limit = data?.limit ?? filters.limit ?? 24;
+    const total = data?.total ?? rawItems.length;
+    return {
+      items: rawItems.map(mapApiItemToCatalogItem),
+      total,
+      page: data?.page ?? filters.page ?? 1,
+      limit,
+      totalPages: data?.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+    };
+  },
+
+  async addFavorite(itemId: string): Promise<void> {
+    await requestJson(`/catalog/${encodeURIComponent(itemId)}/favorite`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      fallbackError: "No se pudo agregar a favoritos.",
+    });
+  },
+
+  async removeFavorite(itemId: string): Promise<void> {
+    await requestJson(`/catalog/${encodeURIComponent(itemId)}/favorite`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+      fallbackError: "No se pudo quitar de favoritos.",
+    });
+  },
 };

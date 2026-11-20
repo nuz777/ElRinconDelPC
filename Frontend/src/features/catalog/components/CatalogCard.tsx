@@ -1,4 +1,4 @@
-import { Download, HardDrive, Pencil, Trash2 } from "lucide-react";
+import { Download, HardDrive, Heart, Pencil, Trash2 } from "lucide-react";
 import { APARTADO_BADGE } from "../domain/catalogViews";
 import type { CatalogItem } from "../domain/catalog.types";
 import FramedCover from "./FramedCover";
@@ -8,18 +8,24 @@ interface CatalogCardProps {
   item: CatalogItem;
   isLight: boolean;
   isAdmin?: boolean;
+  isFavorite?: boolean;
+  favoriteDisabled?: boolean;
   onSelect: (item: CatalogItem) => void;
   onEdit?: (item: CatalogItem) => void;
   onDelete?: (item: CatalogItem) => void;
+  onToggleFavorite?: (item: CatalogItem) => void;
 }
 
 export default function CatalogCard({
   item,
   isLight,
   isAdmin = false,
+  isFavorite = false,
+  favoriteDisabled = false,
   onSelect,
   onEdit,
   onDelete,
+  onToggleFavorite,
 }: CatalogCardProps) {
   const handleOpen = () => {
     playDetailOpenSound();
@@ -77,9 +83,30 @@ export default function CatalogCard({
             </span>
           </div>
 
-          {isAdmin && (
+          {(isAdmin || onToggleFavorite) && (
             <div className="flex items-center gap-1 sm:gap-1.5 z-10">
-              {onEdit && (
+              {onToggleFavorite && (
+                <button
+                  type="button"
+                  disabled={favoriteDisabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(item);
+                  }}
+                  title={isFavorite ? "Quitar de biblioteca" : "Agregar a biblioteca"}
+                  aria-label={isFavorite ? `Quitar ${item.title} de favoritos` : `Agregar ${item.title} a favoritos`}
+                  className={`p-1 sm:p-1.5 shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isFavorite
+                      ? "bg-rose-600/95 hover:bg-rose-600 text-white"
+                      : isLight
+                        ? "bg-white/90 hover:bg-white text-zinc-700 border border-zinc-300"
+                        : "bg-zinc-950/80 hover:bg-zinc-900 text-zinc-200 border border-zinc-700"
+                  }`}
+                >
+                  <Heart className={`size-3 sm:size-3.5 ${isFavorite ? "fill-current" : ""}`} />
+                </button>
+              )}
+              {isAdmin && onEdit && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -93,7 +120,7 @@ export default function CatalogCard({
                   <Pencil className="size-3 sm:size-3.5" />
                 </button>
               )}
-              {onDelete && (
+              {isAdmin && onDelete && (
                 <button
                   type="button"
                   onClick={(e) => {

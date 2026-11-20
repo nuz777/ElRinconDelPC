@@ -22,6 +22,7 @@ import {
   ListChecks,
   Wrench,
   ChevronRight,
+  Heart,
 } from "lucide-react";
 import type { Apartado, CatalogItem } from "../domain/catalog.types";
 import { useTheme } from "../../../shared/context/useTheme";
@@ -40,8 +41,11 @@ interface FullscreenDetailModalProps {
   item: CatalogItem | null;
   onClose: () => void;
   isAdmin?: boolean;
+  isFavorite?: boolean;
+  favoriteDisabled?: boolean;
   onDelete?: (item: CatalogItem) => void;
   onEdit?: (item: CatalogItem) => void;
+  onToggleFavorite?: (item: CatalogItem) => void;
   disableEscape?: boolean;
   onNavigateRoot?: () => void;
   onNavigateApartado?: (apartado: Apartado, brand?: string | null, consoleName?: string | null) => void;
@@ -105,8 +109,11 @@ export default function FullscreenDetailModal({
   item: baseItem,
   onClose,
   isAdmin,
+  isFavorite = false,
+  favoriteDisabled = false,
   onDelete,
   onEdit,
+  onToggleFavorite,
   disableEscape,
   onNavigateRoot,
   onNavigateApartado,
@@ -330,6 +337,18 @@ export default function FullscreenDetailModal({
               >
                 <Trash2 className="size-4" />
                 <span className="hidden sm:inline font-semibold">Eliminar</span>
+              </button>
+            )}
+            {onToggleFavorite && (
+              <button
+                type="button"
+                disabled={favoriteDisabled}
+                onClick={() => onToggleFavorite(item)}
+                title={isFavorite ? "Quitar de biblioteca" : "Agregar a biblioteca"}
+                className={`${iconButton} ${isFavorite ? "text-rose-500 border-rose-500/40" : ""} disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Heart className={`size-4 ${isFavorite ? "fill-current" : ""}`} />
+                <span className="hidden sm:inline">{isFavorite ? "Guardado" : "Guardar"}</span>
               </button>
             )}
             <button type="button" onClick={() => void handleCopyLink()} title="Copiar enlace" className={iconButton}>

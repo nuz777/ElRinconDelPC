@@ -160,6 +160,86 @@ export class CatalogController {
     return this.catalogService.getItemByPublicCode(code);
   }
 
+  @Get('favorites/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar favoritos del usuario autenticado' })
+  async findMyFavorites(
+    @Req() req: { user?: { id?: string; sub?: string } },
+    @Query() filters: FilterCatalogDto,
+    @Res({ passthrough: true }) res?: Response,
+  ): Promise<PaginatedResult<CatalogItem>> {
+    const userId = req?.user?.id ?? req?.user?.sub;
+    if (!userId) {
+      throw new BadRequestException('Usuario no autenticado');
+    }
+    const { view, page, limit } = filters;
+    const result = await this.catalogService.getFavoriteCatalog(userId, {
+      page,
+      limit,
+      summary: view === 'summary',
+    });
+    const origin = resolveApiOrigin(req as unknown as Request);
+    for (const item of result.items) {
+      const version = item.updatedAt?.getTime?.() ?? Date.now();
+      if (item.coverUrl === CATALOG_MEDIA_PLACEHOLDER) {
+        item.coverUrl = `${origin}/catalog/${item.id}/media/cover?v=${version}`;
+      }
+      if (item.bannerUrl === CATALOG_MEDIA_PLACEHOLDER) {
+        item.bannerUrl = `${origin}/catalog/${item.id}/media/banner?v=${version}`;
+      }
+    }
+    // avoid unused var lint in some configs
+    void res;
+    return result;
+  }
+
+  @Get('favorites/ids')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar IDs de favoritos del usuario autenticado' })
+  async findMyFavoriteIds(
+    @Req() req: { user?: { id?: string; sub?: string } },
+  ): Promise<{ ids: string[] }> {
+    const userId = req?.user?.id ?? req?.user?.sub;
+    if (!userId) {
+      throw new BadRequestException('Usuario no autenticado');
+    }
+    return { ids: await this.catalogService.listFavoriteIds(userId) };
+  }
+
+  @Post(':id/favorite')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Agregar ítem a favoritos del usuario autenticado' })
+  @ApiParam(ID_PARAM)
+  addFavorite(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: { user?: { id?: string; sub?: string } },
+  ): Promise<{ favorited: boolean; itemId: string }> {
+    const userId = req?.user?.id ?? req?.user?.sub;
+    if (!userId) {
+      throw new BadRequestException('Usuario no autenticado');
+    }
+    return this.catalogService.addFavorite(userId, id);
+  }
+
+  @Delete(':id/favorite')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Quitar ítem de favoritos del usuario autenticado' })
+  @ApiParam(ID_PARAM)
+  removeFavorite(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: { user?: { id?: string; sub?: string } },
+  ): Promise<{ favorited: boolean; itemId: string }> {
+    const userId = req?.user?.id ?? req?.user?.sub;
+    if (!userId) {
+      throw new BadRequestException('Usuario no autenticado');
+    }
+    return this.catalogService.removeFavorite(userId, id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener el detalle de un ítem del catálogo' })
   @ApiParam(ID_PARAM)

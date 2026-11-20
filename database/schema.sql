@@ -201,3 +201,14 @@ CREATE TRIGGER trg_admin_ai_configs_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Tabla: user_favorite_catalog_items (biblioteca/favoritos por usuario)
+CREATE TABLE IF NOT EXISTS user_favorite_catalog_items (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    catalog_item_id UUID NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, catalog_item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user_created_at
+    ON user_favorite_catalog_items(user_id, created_at DESC);
+

@@ -1,4 +1,4 @@
-import { FileJson, Moon, Plus, Settings, SlidersHorizontal, Sun, UserCircle } from "lucide-react";
+import { Bookmark, FileJson, Moon, Plus, Settings, SlidersHorizontal, Sun, UserCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
@@ -170,22 +170,37 @@ export default function CatalogBanner({
                       <span>{isLight ? "Modo oscuro" : "Modo claro"}</span>
                     </button>
                     {isAuthenticated && (
-                      <Link
-                        href={ROUTES.PROFILE}
-                        role="menuitem"
-                        onClick={() => {
-                          playProfileSettingsOpenSound();
-                          setSettingsOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider transition-colors border-t ${
-                          isLight
-                            ? "hover:bg-zinc-50 border-zinc-200"
-                            : "hover:bg-zinc-800/60 border-zinc-800"
-                        }`}
-                      >
-                        <UserCircle size={16} />
-                        <span>Editar perfil</span>
-                      </Link>
+                      <>
+                        <Link
+                          href={ROUTES.LIBRARY}
+                          role="menuitem"
+                          onClick={() => setSettingsOpen(false)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider transition-colors border-t ${
+                            isLight
+                              ? "hover:bg-zinc-50 border-zinc-200"
+                              : "hover:bg-zinc-800/60 border-zinc-800"
+                          }`}
+                        >
+                          <Bookmark size={16} />
+                          <span>Mi biblioteca</span>
+                        </Link>
+                        <Link
+                          href={ROUTES.PROFILE}
+                          role="menuitem"
+                          onClick={() => {
+                            playProfileSettingsOpenSound();
+                            setSettingsOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider transition-colors border-t ${
+                            isLight
+                              ? "hover:bg-zinc-50 border-zinc-200"
+                              : "hover:bg-zinc-800/60 border-zinc-800"
+                          }`}
+                        >
+                          <UserCircle size={16} />
+                          <span>Editar perfil</span>
+                        </Link>
+                      </>
                     )}
                   </motion.div>
                 )}

@@ -210,6 +210,37 @@ export class CatalogService {
     return { message: 'Ítem eliminado correctamente', id };
   }
 
+  async listFavoriteIds(userId: string): Promise<string[]> {
+    return this.catalogRepository.listFavoriteIds(userId);
+  }
+
+  async getFavoriteCatalog(
+    userId: string,
+    filters: { page?: number; limit?: number; summary?: boolean },
+  ): Promise<PaginatedResult<CatalogItem>> {
+    return this.catalogRepository.findFavorites(userId, {
+      page: filters.page ?? 1,
+      limit: filters.limit ?? 24,
+      summary: filters.summary,
+    });
+  }
+
+  async addFavorite(userId: string, itemId: string): Promise<{ favorited: boolean; itemId: string }> {
+    await this.getItemById(itemId);
+    await this.catalogRepository.addFavorite(userId, itemId);
+    return { favorited: true, itemId };
+  }
+
+  async removeFavorite(userId: string, itemId: string): Promise<{ favorited: boolean; itemId: string }> {
+    await this.getItemById(itemId);
+    await this.catalogRepository.removeFavorite(userId, itemId);
+    return { favorited: false, itemId };
+  }
+
+  async isFavorite(userId: string, itemId: string): Promise<boolean> {
+    return this.catalogRepository.isFavorite(userId, itemId);
+  }
+
   /** Sincroniza el ítem recién creado en catalog_items hacia su tabla específica (games, mods o tools) con el mismo UUID. */
   private async syncCreateToSpecificTable(
     saved: CatalogItem,

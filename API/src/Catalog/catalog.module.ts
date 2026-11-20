@@ -6,12 +6,16 @@ import { ToolsModule } from '../Tools/tools.module.js';
 import { CatalogService } from './Application/Services/catalog.service.js';
 import { CATALOG_REPOSITORY } from './Domain/interfaces/catalog.repository.interface.js';
 import { CatalogItemTypeormEntity } from './Infraestructure/entities/catalog-item.typeorm-entity.js';
+import { UserFavoriteCatalogItemTypeormEntity } from './Infraestructure/entities/user-favorite-catalog-item.typeorm-entity.js';
 import { TypeormCatalogRepository } from './Infraestructure/repositories/typeorm-catalog.repository.js';
 import { CatalogController } from './Presentation/catalog.controller.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CatalogItemTypeormEntity]),
+    TypeOrmModule.forFeature([
+      CatalogItemTypeormEntity,
+      UserFavoriteCatalogItemTypeormEntity,
+    ]),
     forwardRef(() => GamesModule),
     forwardRef(() => ModsModule),
     forwardRef(() => ToolsModule),

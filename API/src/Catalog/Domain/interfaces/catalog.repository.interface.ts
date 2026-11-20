@@ -38,6 +38,12 @@ export type CreateCatalogItemData = Omit<
 /** El código público es fijo: se genera al crear y nunca se modifica. */
 export type UpdateCatalogItemData = Partial<Omit<CreateCatalogItemData, 'publicCode'>>;
 
+export interface FavoriteListFilters {
+  page: number;
+  limit: number;
+  summary?: boolean;
+}
+
 export interface CatalogRepository {
   findAll(filters: CatalogFilters): Promise<PaginatedResult<CatalogItem>>;
   findById(id: string): Promise<CatalogItem | null>;
@@ -46,6 +52,11 @@ export interface CatalogRepository {
   create(item: CreateCatalogItemData): Promise<CatalogItem>;
   update(id: string, item: UpdateCatalogItemData): Promise<CatalogItem | null>;
   delete(id: string): Promise<boolean>;
+  listFavoriteIds(userId: string): Promise<string[]>;
+  findFavorites(userId: string, filters: FavoriteListFilters): Promise<PaginatedResult<CatalogItem>>;
+  isFavorite(userId: string, itemId: string): Promise<boolean>;
+  addFavorite(userId: string, itemId: string): Promise<void>;
+  removeFavorite(userId: string, itemId: string): Promise<void>;
 }
 
 /** Token de inyección para vincular la interfaz con su implementación concreta. */

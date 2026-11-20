@@ -15,6 +15,7 @@ import { ROUTES } from "./routes";
 
 const HomePage = lazy(() => import("../features/home/pages/HomePage"));
 const CatalogPage = lazy(() => import("../features/catalog/pages/CatalogPage"));
+const LibraryPage = lazy(() => import("../features/catalog/pages/LibraryPage"));
 const AuthPage = lazy(() => import("../features/auth/pages/AuthPage"));
 const UploadModPage = lazy(() => import("../features/games/pages/UploadModPage"));
 const ProfilePage = lazy(() => import("../features/auth/pages/ProfilePage"));
@@ -144,6 +145,12 @@ function AppInner() {
                 <Route path={ROUTES.PROFILE}>
                   <ProtectedRoute>
                     <ProfilePage />
+                  </ProtectedRoute>
+                </Route>
+
+                <Route path={ROUTES.LIBRARY}>
+                  <ProtectedRoute>
+                    <LibraryPage />
                   </ProtectedRoute>
                 </Route>
 

@@ -16,10 +16,12 @@ import type {
   CatalogMediaRecord,
   CatalogRepository,
   CreateCatalogItemData,
+  FavoriteListFilters,
   PaginatedResult,
   UpdateCatalogItemData,
 } from '../../Domain/interfaces/catalog.repository.interface.js';
 import { CatalogItemTypeormEntity } from '../entities/catalog-item.typeorm-entity.js';
+import { UserFavoriteCatalogItemTypeormEntity } from '../entities/user-favorite-catalog-item.typeorm-entity.js';
 
 const MAX_PUBLIC_CODE_ATTEMPTS = 10;
 export const CATALOG_MEDIA_PLACEHOLDER = '__MEDIA__';
@@ -85,6 +87,8 @@ export class TypeormCatalogRepository implements CatalogRepository {
   constructor(
     @InjectRepository(CatalogItemTypeormEntity)
     private readonly repository: Repository<CatalogItemTypeormEntity>,
+    @InjectRepository(UserFavoriteCatalogItemTypeormEntity)
+    private readonly favoritesRepository: Repository<UserFavoriteCatalogItemTypeormEntity>,
   ) {}
 
   private toDomain(row: CatalogItemTypeormEntity | CatalogRawRow): CatalogItem {
@@ -308,5 +312,94 @@ export class TypeormCatalogRepository implements CatalogRepository {
   async delete(id: string): Promise<boolean> {
     const result = await this.repository.delete({ id });
     return (result.affected ?? 0) > 0;
+  }
+
+  async listFavoriteIds(userId: string): Promise<string[]> {
+    const rows = await this.favoritesRepository
+      .createQueryBuilder('fav')
+      .select('fav.catalogItemId', 'catalogItemId')
+      .where('fav.userId = :userId', { userId })
+      .orderBy('fav.createdAt', 'DESC')
+      .getRawMany<{ catalogItemId: string }>();
+    return rows.map((r) => r.catalogItemId);
+  }
+
+  async findFavorites(
+    userId: string,
+    filters: FavoriteListFilters,
+  ): Promise<PaginatedResult<CatalogItem>> {
+    const { page, limit, summary } = filters;
+    const base = this.favoritesRepository
+      .createQueryBuilder('fav')
+      .innerJoin(CatalogItemTypeormEntity, 'item', 'item.id = fav.catalogItemId')
+      .where('fav.userId = :userId', { userId });
+
+    const selectColumns = [
+      'item.id AS "id"',
+      'item.section AS "section"',
+      'item.title AS "title"',
+      'item.genre AS "genre"',
+      'item.size AS "size"',
+      'item.version AS "version"',
+      'item.badge AS "badge"',
+      `CASE WHEN substring(item.cover_url from 1 for 11) = 'data:image/' THEN '${CATALOG_MEDIA_PLACEHOLDER}' ELSE item.cover_url END AS "coverUrl"`,
+      'item.cover_framing AS "coverFraming"',
+      ...(summary
+        ? []
+        : [
+            `CASE WHEN substring(item.banner_url from 1 for 11) = 'data:image/' THEN '${CATALOG_MEDIA_PLACEHOLDER}' ELSE item.banner_url END AS "bannerUrl"`,
+            'item.banner_framing AS "bannerFraming"',
+            'item.download_hosts AS "downloadHosts"',
+            'item.minimum_requirements AS "minimumRequirements"',
+          ]),
+      'item.download_url AS "downloadUrl"',
+      'item.developer AS "developer"',
+      'item.short_description AS "shortDescription"',
+      'item.public_code AS "publicCode"',
+      'item.brand AS "brand"',
+      'item.console AS "console"',
+      'item.emulator AS "emulator"',
+      'item.created_at AS "createdAt"',
+      'item.updated_at AS "updatedAt"',
+    ];
+
+    const rowsQuery = base
+      .clone()
+      .select(selectColumns)
+      .orderBy('fav.createdAt', 'DESC')
+      .addOrderBy('item.createdAt', 'DESC')
+      .offset((page - 1) * limit)
+      .limit(limit);
+
+    const [rows, total] = await Promise.all([
+      rowsQuery.getRawMany<CatalogRawRow>(),
+      base.clone().getCount(),
+    ]);
+
+    return {
+      items: rows.map((row) => this.toDomain(row)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async isFavorite(userId: string, itemId: string): Promise<boolean> {
+    return this.favoritesRepository.exists({ where: { userId, catalogItemId: itemId } });
+  }
+
+  async addFavorite(userId: string, itemId: string): Promise<void> {
+    await this.favoritesRepository
+      .createQueryBuilder()
+      .insert()
+      .into(UserFavoriteCatalogItemTypeormEntity)
+      .values({ userId, catalogItemId: itemId })
+      .orIgnore()
+      .execute();
+  }
+
+  async removeFavorite(userId: string, itemId: string): Promise<void> {
+    await this.favoritesRepository.delete({ userId, catalogItemId: itemId });
   }
 }

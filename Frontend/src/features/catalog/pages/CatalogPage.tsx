@@ -18,6 +18,7 @@ import ItemFormModal from "../components/ItemFormModal";
 import BulkJsonImportModal from "../components/BulkJsonImportModal";
 import AgeGateModal from "../components/AgeGateModal";
 import { dialog } from "../../../shared/ui/dialog";
+import { playProfileSaveSound } from "../../../shared/utils/playDetailOpenSound";
 
 export default function CatalogPage() {
   const { theme, toggleTheme } = useTheme();
@@ -41,6 +42,8 @@ export default function CatalogPage() {
 
   const [fetchedItem, setFetchedItem] = useState<CatalogItem | null>(null);
   const [localItem, setLocalItem] = useState<CatalogItem | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -48,6 +51,60 @@ export default function CatalogPage() {
       localStorage.removeItem("sotano_custom_catalog_items");
     }
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setFavoriteIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    catalogService
+      .getFavoriteIds()
+      .then((ids) => {
+        if (!cancelled) setFavoriteIds(new Set(ids));
+      })
+      .catch(() => {
+        if (!cancelled) setFavoriteIds(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  const handleToggleFavorite = async (item: CatalogItem) => {
+    if (!isAuthenticated) {
+      dialog.toast("error", "Inicia sesión", "Necesitas iniciar sesión para guardar favoritos.");
+      return;
+    }
+    if (favoriteBusyId) return;
+    setFavoriteBusyId(item.id);
+    const wasFavorite = favoriteIds.has(item.id);
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (wasFavorite) next.delete(item.id);
+      else next.add(item.id);
+      return next;
+    });
+    try {
+      if (wasFavorite) {
+        await catalogService.removeFavorite(item.id);
+      } else {
+        await catalogService.addFavorite(item.id);
+        playProfileSaveSound();
+        dialog.toast("success", "Guardado en biblioteca", "Se agregó a tus favoritos.");
+      }
+    } catch (err) {
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (wasFavorite) next.add(item.id);
+        else next.delete(item.id);
+        return next;
+      });
+      dialog.toast("error", "Favoritos", err instanceof Error ? err.message : "No se pudo actualizar el favorito.");
+    } finally {
+      setFavoriteBusyId(null);
+    }
+  };
 
   const detailCode = filter.detailRoute ? filter.routeCode : null;
   const itemFromList = detailCode
@@ -340,6 +397,9 @@ export default function CatalogPage() {
                     item={item}
                     isLight={isLight}
                     isAdmin={isAdmin}
+                    isFavorite={favoriteIds.has(item.id)}
+                    favoriteDisabled={favoriteBusyId === item.id}
+                    onToggleFavorite={isAuthenticated ? (target) => void handleToggleFavorite(target) : undefined}
                     onSelect={openItem}
                     onEdit={(target) => void handleOpenEdit(target)}
                     onDelete={(target) => void handleDeleteItem(target)}
@@ -389,6 +449,9 @@ export default function CatalogPage() {
                       item={item}
                       isLight={isLight}
                       isAdmin={isAdmin}
+                      isFavorite={favoriteIds.has(item.id)}
+                      favoriteDisabled={favoriteBusyId === item.id}
+                      onToggleFavorite={isAuthenticated ? (target) => void handleToggleFavorite(target) : undefined}
                       onSelect={openItem}
                       onEdit={(target) => void handleOpenEdit(target)}
                       onDelete={(target) => void handleDeleteItem(target)}
@@ -478,6 +541,9 @@ export default function CatalogPage() {
         item={filter.showAgeGate ? null : selectedItem}
         onClose={closeItem}
         isAdmin={isAdmin}
+        isFavorite={selectedItem ? favoriteIds.has(selectedItem.id) : false}
+        favoriteDisabled={selectedItem ? favoriteBusyId === selectedItem.id : false}
+        onToggleFavorite={isAuthenticated ? (item) => void handleToggleFavorite(item) : undefined}
         disableEscape={isAddModalOpen || isBulkJsonModalOpen || filter.showAgeGate}
         onDelete={(item) => void handleDeleteItem(item)}
         onEdit={(item) => void handleOpenEdit(item)}

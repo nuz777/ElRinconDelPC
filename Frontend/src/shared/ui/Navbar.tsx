@@ -156,6 +156,7 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
   // La sesión se muestra en todas las rutas: antes solo aparecía en /catalogo y parecía que se cerraba
   const inCatalog = isCatalogPath(location);
   const inProfile = location === ROUTES.PROFILE;
+  const inLibrary = location === ROUTES.LIBRARY;
   const displayName = user?.name || user?.username || user?.email || "Mi cuenta";
   const isAdmin = user?.role === "admin";
   const avatarSrc = user?.picture;
@@ -289,15 +290,28 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
               - En cualquier otra ruta (o catálogo sin sesión): link a Catálogo + botones "Iniciar sesión" y "Crear cuenta". */}
           {isAuthenticated ? (
             <div className="flex items-center gap-3 text-xs sm:text-sm font-share tracking-wider min-w-0">
-              {!inCatalog && !inProfile && (
+              {!inCatalog && !inProfile && !inLibrary && (
                 <Link
-                  href="/catalogo"
+                  href={ROUTES.CATALOG}
                   onClick={() => window.scrollTo({ top: 0 })}
                   className={`hidden md:inline text-xs lg:text-sm uppercase tracking-wider transition-colors ${
                     isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
                   }`}
                 >
                   Catálogo
+                </Link>
+              )}
+              {!inLibrary && (
+                <Link
+                  href={ROUTES.LIBRARY}
+                  onClick={() => window.scrollTo({ top: 0 })}
+                  className={`hidden md:inline text-xs lg:text-sm uppercase tracking-wider transition-colors ${
+                    location === ROUTES.LIBRARY
+                      ? isLight ? "text-zinc-950 font-bold" : "text-white font-semibold"
+                      : isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Biblioteca
                 </Link>
               )}
               {userChip}

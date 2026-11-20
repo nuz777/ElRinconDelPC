@@ -32,6 +32,11 @@ describe('CatalogService (Unit)', () => {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      listFavoriteIds: vi.fn(),
+      findFavorites: vi.fn(),
+      isFavorite: vi.fn(),
+      addFavorite: vi.fn(),
+      removeFavorite: vi.fn(),
     };
     service = new CatalogService(repository);
   });

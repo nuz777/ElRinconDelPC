@@ -8,6 +8,7 @@ export const ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   PROFILE: "/perfil",
+  LIBRARY: "/biblioteca",
 } as const;
 
 const CATALOG_PREFIXES = [

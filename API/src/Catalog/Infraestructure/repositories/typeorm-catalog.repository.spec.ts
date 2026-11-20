@@ -3,6 +3,7 @@ import type { Repository } from 'typeorm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CatalogSection } from '../../Domain/Entities/catalog-section.enum.js';
 import type { CatalogItemTypeormEntity } from '../entities/catalog-item.typeorm-entity.js';
+import type { UserFavoriteCatalogItemTypeormEntity } from '../entities/user-favorite-catalog-item.typeorm-entity.js';
 import {
   CATALOG_MEDIA_PLACEHOLDER,
   TypeormCatalogRepository,
@@ -47,6 +48,7 @@ const buildRow = (
 describe('TypeormCatalogRepository (Unit)', () => {
   let repo: TypeormCatalogRepository;
   let ormRepo: Repository<CatalogItemTypeormEntity>;
+  let favoritesRepo: Repository<UserFavoriteCatalogItemTypeormEntity>;
   let qb: {
     andWhere: ReturnType<typeof vi.fn>;
     clone: ReturnType<typeof vi.fn>;
@@ -94,7 +96,14 @@ describe('TypeormCatalogRepository (Unit)', () => {
       delete: vi.fn(),
     } as unknown as Repository<CatalogItemTypeormEntity>;
 
-    repo = new TypeormCatalogRepository(ormRepo);
+    favoritesRepo = {
+      createQueryBuilder: vi.fn(),
+      exist: vi.fn(),
+      exists: vi.fn(),
+      delete: vi.fn(),
+    } as unknown as Repository<UserFavoriteCatalogItemTypeormEntity>;
+
+    repo = new TypeormCatalogRepository(ormRepo, favoritesRepo);
   });
 
   describe('findAll', () => {
