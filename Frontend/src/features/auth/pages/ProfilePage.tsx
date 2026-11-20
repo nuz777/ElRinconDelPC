@@ -11,6 +11,79 @@ import { DEFAULT_PROFILE_AVATAR, PROFILE_AVATARS } from "../../../shared/config/
 import { useAuth } from "../context/useAuth";
 import { authService } from "../services/auth.service";
 
+function PresetAvatarOption({
+  avatar,
+  index,
+  selected,
+  isLight,
+  onSelect,
+}: {
+  avatar: { id: string; src: string; label: string };
+  index: number;
+  selected: boolean;
+  isLight: boolean;
+  onSelect: () => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onSelect}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: 0.08 + index * 0.03 }}
+      whileHover={{ scale: 1.05, y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      className={`relative aspect-square border-2 overflow-hidden transition-colors duration-200 focus:outline-none ${
+        selected
+          ? "border-emerald-500 ring-2 ring-emerald-500/30"
+          : isLight
+            ? "border-zinc-200 hover:border-zinc-400"
+            : "border-zinc-700 hover:border-zinc-500"
+      }`}
+      title={avatar.label}
+      aria-pressed={selected}
+    >
+      {!loaded && (
+        <span
+          className={`absolute inset-0 flex items-center justify-center ${isLight ? "bg-zinc-100" : "bg-zinc-800"}`}
+          aria-hidden="true"
+        >
+          <svg className="size-5 animate-spin text-zinc-400" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path className="opacity-90" fill="currentColor" d="M12 2a10 10 0 00-10 10h3.2A6.8 6.8 0 0112 5.2V2z" />
+          </svg>
+        </span>
+      )}
+      <img
+        src={avatar.src}
+        alt={avatar.label}
+        className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+      />
+      {selected && (
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center"
+        >
+          <motion.span
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 18 }}
+            className="bg-emerald-500 text-white p-1"
+          >
+            <Check className="size-4" />
+          </motion.span>
+        </motion.span>
+      )}
+    </motion.button>
+  );
+}
+
 export default function ProfilePage() {
   const { theme } = useTheme();
   const isLight = theme === "light";
@@ -19,6 +92,7 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [picture, setPicture] = useState<string>(DEFAULT_PROFILE_AVATAR);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [mainAvatarLoaded, setMainAvatarLoaded] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -30,6 +104,10 @@ export default function ProfilePage() {
     setName(user.name ?? user.username ?? "");
     setPicture(user.picture ?? DEFAULT_PROFILE_AVATAR);
   }, [user]);
+
+  useEffect(() => {
+    setMainAvatarLoaded(false);
+  }, [picture]);
 
   const displayName = user?.name || user?.username || user?.email || "Usuario";
   const email = user?.email ?? "";
@@ -164,6 +242,19 @@ export default function ProfilePage() {
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 260, damping: 20 }}
               >
+                {picture && !mainAvatarLoaded && (
+                  <div
+                    className={`absolute inset-0 z-[1] flex items-center justify-center border-2 ${
+                      isLight ? "bg-zinc-100/80 border-zinc-200" : "bg-zinc-800/70 border-zinc-700"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <svg className="size-7 animate-spin text-zinc-400" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-90" fill="currentColor" d="M12 2a10 10 0 00-10 10h3.2A6.8 6.8 0 0112 5.2V2z" />
+                    </svg>
+                  </div>
+                )}
                 <motion.img
                   key={picture || "empty"}
                   src={picture || undefined}
@@ -171,7 +262,13 @@ export default function ProfilePage() {
                   initial={{ opacity: 0.7, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.25 }}
-                  className={`size-28 sm:size-32 object-cover border-2 ${isLight ? "border-zinc-200" : "border-zinc-700"} ${!picture ? "hidden" : ""}`}
+                  onLoad={() => setMainAvatarLoaded(true)}
+                  onError={() => setMainAvatarLoaded(true)}
+                  className={`size-28 sm:size-32 object-cover border-2 ${
+                    isLight ? "border-zinc-200" : "border-zinc-700"
+                  } ${!picture ? "hidden" : ""} transition-opacity duration-300 ${
+                    mainAvatarLoaded ? "opacity-100" : "opacity-0"
+                  }`}
                 />
                 {!picture && (
                   <div className={`size-28 sm:size-32 flex items-center justify-center text-3xl font-bold border-2 ${isLight ? "bg-zinc-100 border-zinc-200 text-zinc-700" : "bg-zinc-800 border-zinc-700 text-zinc-200"}`}>
@@ -235,48 +332,16 @@ export default function ProfilePage() {
                   Elige una imagen predefinida para tu avatar.
                 </p>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                  {PROFILE_AVATARS.map((avatar, index) => {
-                    const selected = picture === avatar.src;
-                    return (
-                      <motion.button
-                        key={avatar.id}
-                        type="button"
-                        onClick={() => setPicture(avatar.src)}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25, delay: 0.08 + index * 0.03 }}
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.97 }}
-                        className={`relative aspect-square border-2 overflow-hidden transition-colors duration-200 focus:outline-none ${
-                          selected
-                            ? "border-emerald-500 ring-2 ring-emerald-500/30"
-                            : isLight
-                              ? "border-zinc-200 hover:border-zinc-400"
-                              : "border-zinc-700 hover:border-zinc-500"
-                        }`}
-                        title={avatar.label}
-                        aria-pressed={selected}
-                      >
-                        <img src={avatar.src} alt={avatar.label} className="w-full h-full object-cover" loading="lazy" />
-                        {selected && (
-                          <motion.span
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center"
-                          >
-                            <motion.span
-                              initial={{ scale: 0.5, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ type: "spring", stiffness: 400, damping: 18 }}
-                              className="bg-emerald-500 text-white p-1"
-                            >
-                              <Check className="size-4" />
-                            </motion.span>
-                          </motion.span>
-                        )}
-                      </motion.button>
-                    );
-                  })}
+                  {PROFILE_AVATARS.map((avatar, index) => (
+                    <PresetAvatarOption
+                      key={avatar.id}
+                      avatar={avatar}
+                      index={index}
+                      selected={picture === avatar.src}
+                      isLight={isLight}
+                      onSelect={() => setPicture(avatar.src)}
+                    />
+                  ))}
                 </div>
               </div>
 

@@ -22,6 +22,46 @@ interface HeaderProps {
   onNavSectionClick?: (sectionId: string) => void;
 }
 
+function AvatarImage({ src, alt, isLight }: { src?: string | null; alt: string; isLight: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+  }, [src]);
+
+  if (!src) {
+    return (
+      <span
+        className={`size-7 sm:size-8 inline-flex items-center justify-center border shrink-0 transition-transform duration-200 group-hover:scale-105 ${
+          isLight ? "bg-zinc-100 border-zinc-300 text-zinc-700" : "bg-zinc-800 border-zinc-700 text-zinc-200"
+        }`}
+      >
+        <UserCircle className="size-4" aria-hidden />
+      </span>
+    );
+  }
+
+  return (
+    <span className="relative size-7 sm:size-8 shrink-0 overflow-hidden border border-zinc-500/40 transition-transform duration-200 group-hover:scale-105">
+      {!loaded && (
+        <span className="absolute inset-0 flex items-center justify-center bg-zinc-800/70" aria-hidden="true">
+          <svg className="size-3.5 animate-spin text-zinc-300" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path className="opacity-90" fill="currentColor" d="M12 2a10 10 0 00-10 10h3.2A6.8 6.8 0 0112 5.2V2z" />
+          </svg>
+        </span>
+      )}
+      <img
+        src={src}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+        className={`size-full object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
+      />
+    </span>
+  );
+}
+
 export default function Header({ onNavSectionClick }: HeaderProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -139,21 +179,7 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
         <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
         <span className="hidden sm:inline">Activo</span>
       </span>
-      {avatarSrc ? (
-        <img
-          src={avatarSrc}
-          alt={displayName}
-          className="size-7 sm:size-8 object-cover border border-zinc-500/40 shrink-0 transition-transform duration-200 group-hover:scale-105"
-        />
-      ) : (
-        <span
-          className={`size-7 sm:size-8 inline-flex items-center justify-center border shrink-0 transition-transform duration-200 group-hover:scale-105 ${
-            isLight ? "bg-zinc-100 border-zinc-300 text-zinc-700" : "bg-zinc-800 border-zinc-700 text-zinc-200"
-          }`}
-        >
-          <UserCircle className="size-4" aria-hidden />
-        </span>
-      )}
+      <AvatarImage src={avatarSrc} alt={displayName} isLight={isLight} />
       <span className="font-bold uppercase max-w-[110px] sm:max-w-[140px] lg:max-w-[200px] truncate transition-colors duration-200">
         {displayName}
       </span>
