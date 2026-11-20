@@ -324,6 +324,7 @@ export default function FullscreenDetailModal({
               alt=""
               framing={item.bannerImg ? item.bannerFraming : null}
               loading="eager"
+              showLoader={false}
             />
             <div
               className={`absolute inset-0 bg-gradient-to-t ${

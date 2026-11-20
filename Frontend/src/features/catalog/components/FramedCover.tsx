@@ -13,6 +13,10 @@ interface FramedCoverProps {
   hoverClassName?: string;
   loading?: "lazy" | "eager";
   draggable?: boolean;
+  /** Muestra el indicador SVG de carga integrado mientras la imagen no está lista. */
+  showLoader?: boolean;
+  onLoad?: () => void;
+  onError?: () => void;
 }
 
 /**
@@ -28,6 +32,9 @@ export default function FramedCover({
   hoverClassName = "",
   loading = "lazy",
   draggable = false,
+  showLoader = true,
+  onLoad,
+  onError,
 }: FramedCoverProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -37,12 +44,13 @@ export default function FramedCover({
     const img = imgRef.current;
     if (img && img.complete && img.naturalWidth > 0) {
       setIsLoaded(true);
+      onLoad?.();
     }
   }, [src]);
 
   return (
     <div className={`absolute inset-0 overflow-hidden ${hoverClassName}`}>
-      {!isLoaded && (
+      {showLoader && !isLoaded && (
         <div
           className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-800"
           aria-hidden="true"
@@ -93,7 +101,10 @@ export default function FramedCover({
           isLoaded ? "opacity-100" : "opacity-0"
         } ${className}`}
         style={coverFramingStyle(framing)}
-        onLoad={() => setIsLoaded(true)}
+        onLoad={() => {
+          setIsLoaded(true);
+          onLoad?.();
+        }}
         onError={(e) => {
           const target = e.currentTarget;
           if (!target.src.endsWith(FALLBACK_COVER)) {
@@ -101,6 +112,7 @@ export default function FramedCover({
             target.src = FALLBACK_COVER;
           } else {
             setIsLoaded(true);
+            onError?.();
           }
         }}
       />
