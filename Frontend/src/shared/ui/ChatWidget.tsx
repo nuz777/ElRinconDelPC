@@ -143,8 +143,9 @@ export default function ChatWidget() {
     setBotText("");
     setShowOptions(false);
 
+    playChatHelloThereSound();
+
     if (!text) {
-      playChatHelloThereSound();
       setShowOptions(true);
       return;
     }
@@ -161,7 +162,6 @@ export default function ChatWidget() {
         intervalRef.current = null;
         setBotText(text);
         setShowOptions(true);
-        playChatHelloThereSound();
       } else {
         setBotText(text.slice(0, idx + 1));
       }
@@ -210,7 +210,6 @@ export default function ChatWidget() {
       setBotText("");
       setShowTyping(false);
       setShowOptions(false);
-      playChatHelloThereSound();
       setOpen(true);
     }
   };
