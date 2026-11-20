@@ -1,17 +1,39 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "wouter";
-import { Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { ChevronDown, ChevronUp, LayoutGrid, Library, PanelLeftOpen } from "lucide-react";
 import Navbar from "../../../shared/ui/Navbar";
-import Footer from "../../../shared/ui/Footer";
 import { useTheme } from "../../../shared/context/useTheme";
 import { useAuth } from "../../auth/context/useAuth";
-import { ROUTES } from "../../../app/routes";
 import type { CatalogItem } from "../domain/catalog.types";
 import { catalogService } from "../api/catalog.service";
-import CatalogCard from "../components/CatalogCard";
 import FullscreenDetailModal from "../components/FullscreenDetailModal";
+import LibrarySidebar from "../components/library/LibrarySidebar";
+import LibraryHomeView from "../components/library/LibraryHomeView";
+import LibraryDetailView from "../components/library/LibraryDetailView";
+import {
+  computeLibraryStats,
+  filterLibraryItems,
+  type LibrarySectionFilter,
+  type LibrarySortMode,
+} from "../utils/libraryHelpers";
 import { dialog } from "../../../shared/ui/dialog";
-import { playProfileSaveSound } from "../../../shared/utils/playDetailOpenSound";
+
+const SIDEBAR_STORAGE_KEY = "sotano_library_sidebar_width";
+const DEFAULT_SIDEBAR_WIDTH = 296;
+const MIN_SIDEBAR_WIDTH = 220;
+const MAX_SIDEBAR_WIDTH = 520;
+
+function readSavedSidebarWidth(): number {
+  if (typeof window === "undefined") return DEFAULT_SIDEBAR_WIDTH;
+  try {
+    const raw = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY));
+    if (Number.isFinite(raw) && raw >= MIN_SIDEBAR_WIDTH && raw <= MAX_SIDEBAR_WIDTH) {
+      return raw;
+    }
+  } catch {
+    // noop
+  }
+  return DEFAULT_SIDEBAR_WIDTH;
+}
 
 export default function LibraryPage() {
   const { theme } = useTheme();
@@ -19,244 +41,419 @@ export default function LibraryPage() {
   const { user } = useAuth();
 
   const [items, setItems] = useState<CatalogItem[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [hydratedById, setHydratedById] = useState<Record<string, CatalogItem>>({});
+  const [hydratingId, setHydratingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sectionFilter, setSectionFilter] = useState<LibrarySectionFilter>("todos");
+  const [sortMode, setSortMode] = useState<LibrarySortMode>("recent");
+  const [mobileListOpen, setMobileListOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => readSavedSidebarWidth());
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
   const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
+  const [fullscreenItem, setFullscreenItem] = useState<CatalogItem | null>(null);
 
   const displayName = user?.name || user?.username || user?.email || "Mi perfil";
   const avatarSrc = user?.picture;
 
-  const loadFavorites = useCallback(async (targetPage: number) => {
+  const fetchAllFavorites = useCallback(async (): Promise<CatalogItem[]> => {
+    const firstPage = await catalogService.getFavoriteItems({
+      page: 1,
+      limit: 100,
+      view: "summary",
+    });
+    let collected = [...firstPage.items];
+
+    if (firstPage.totalPages > 1) {
+      const restPages = await Promise.all(
+        Array.from({ length: firstPage.totalPages - 1 }, (_, i) =>
+          catalogService.getFavoriteItems({
+            page: i + 2,
+            limit: 100,
+            view: "summary",
+          }),
+        ),
+      );
+      for (const p of restPages) {
+        collected = collected.concat(p.items);
+      }
+    }
+
+    return collected;
+  }, []);
+
+  const loadAllFavorites = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [pageData, ids] = await Promise.all([
-        catalogService.getFavoriteItems({ page: targetPage, limit: 24, view: "summary" }),
-        catalogService.getFavoriteIds(),
-      ]);
-      setItems(pageData.items);
-      setPage(pageData.page);
-      setTotalPages(pageData.totalPages);
-      setFavoriteIds(new Set(ids));
+      setItems(await fetchAllFavorites());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo cargar tu biblioteca.");
+      setError(
+        err instanceof Error ? err.message : "No se pudo cargar tu biblioteca.",
+      );
       setItems([]);
-      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchAllFavorites]);
 
   useEffect(() => {
-    void loadFavorites(1);
-  }, [loadFavorites]);
+    let cancelled = false;
+    fetchAllFavorites()
+      .then((collected) => {
+        if (!cancelled) {
+          setError(null);
+          setItems(collected);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "No se pudo cargar tu biblioteca.",
+          );
+          setItems([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAllFavorites]);
 
-  const handleToggleFavorite = async (item: CatalogItem) => {
+  const hydrateItem = useCallback(
+    async (item: CatalogItem) => {
+      if (hydratedById[item.id]) return;
+      setHydratingId(item.id);
+      try {
+        const fullItem = item.publicCode
+          ? await catalogService.getItemByCode(item.publicCode)
+          : await catalogService.getItemById(item.id);
+        if (fullItem) {
+          setHydratedById((prev) => ({ ...prev, [item.id]: fullItem }));
+        }
+      } catch {
+        // Conserva el resumen si la hidratación falla
+      } finally {
+        setHydratingId((current) => (current === item.id ? null : current));
+      }
+    },
+    [hydratedById],
+  );
+
+  const handleSelectItem = useCallback(
+    (item: CatalogItem) => {
+      setSelectedId(item.id);
+      setMobileListOpen(false);
+      void hydrateItem(item);
+    },
+    [hydrateItem],
+  );
+
+  const handleRemoveFavorite = async (item: CatalogItem) => {
     if (favoriteBusyId) return;
     setFavoriteBusyId(item.id);
-    const isFavorite = favoriteIds.has(item.id);
     try {
-      if (isFavorite) {
-        await catalogService.removeFavorite(item.id);
-        setFavoriteIds((prev) => {
-          const next = new Set(prev);
-          next.delete(item.id);
-          return next;
-        });
-        setItems((prev) => prev.filter((it) => it.id !== item.id));
-        if (selectedItem?.id === item.id) setSelectedItem(null);
-      } else {
-        await catalogService.addFavorite(item.id);
-        setFavoriteIds((prev) => new Set(prev).add(item.id));
-        playProfileSaveSound();
-        dialog.toast("success", "Guardado en biblioteca", "Se agregó a tus favoritos.");
+      await catalogService.removeFavorite(item.id);
+      setItems((prev) => prev.filter((it) => it.id !== item.id));
+      if (selectedId === item.id) {
+        setSelectedId(null);
       }
+      if (fullscreenItem?.id === item.id) {
+        setFullscreenItem(null);
+      }
+      dialog.toast("info", "Quitado de biblioteca", `"${item.title}" se eliminó de tu colección.`);
     } catch (err) {
-      dialog.toast("error", "Favoritos", err instanceof Error ? err.message : "No se pudo actualizar el favorito.");
+      dialog.toast(
+        "error",
+        "Biblioteca",
+        err instanceof Error ? err.message : "No se pudo quitar de tu biblioteca.",
+      );
     } finally {
       setFavoriteBusyId(null);
     }
   };
 
+  const stats = useMemo(() => computeLibraryStats(items), [items]);
+  const filteredItems = useMemo(
+    () =>
+      filterLibraryItems(items, {
+        search: searchQuery,
+        section: sectionFilter,
+        sort: sortMode,
+      }),
+    [items, searchQuery, sectionFilter, sortMode],
+  );
+
+  const selectedSummary = useMemo(
+    () => (selectedId ? items.find((it) => it.id === selectedId) ?? null : null),
+    [items, selectedId],
+  );
+  const selectedItem = selectedSummary
+    ? hydratedById[selectedSummary.id] ?? selectedSummary
+    : null;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidth));
+    } catch {
+      // noop
+    }
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const drag = resizeDragRef.current;
+      if (!drag) return;
+      const delta = e.clientX - drag.startX;
+      const clamped = Math.min(
+        MAX_SIDEBAR_WIDTH,
+        Math.max(MIN_SIDEBAR_WIDTH, Math.round(drag.startWidth + delta)),
+      );
+      setSidebarWidth(clamped);
+    };
+
+    const stopResizing = () => {
+      resizeDragRef.current = null;
+      setIsResizing(false);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResizing);
+    window.addEventListener("pointercancel", stopResizing);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResizing);
+      window.removeEventListener("pointercancel", stopResizing);
+    };
+  }, [isResizing]);
+
+  const startResizing = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    resizeDragRef.current = { startX: e.clientX, startWidth: sidebarWidth };
+    setIsResizing(true);
+  };
+
+  const hasActiveFilter = Boolean(searchQuery.trim()) || sectionFilter !== "todos";
+
   return (
     <div
-      className={`min-h-screen flex flex-col font-share transition-colors duration-150 ${
-        isLight ? "bg-[#f4f4f5] text-zinc-900" : "bg-zinc-950 text-zinc-100"
-      }`}
+      className={`min-h-dvh lg:h-dvh flex flex-col font-share transition-colors duration-150 ${
+        isResizing ? "select-none cursor-col-resize" : ""
+      } ${isLight ? "bg-[#f4f4f5] text-zinc-900" : "bg-[#13161c] text-zinc-100"}`}
     >
       <Navbar />
 
-      <main className="flex-1 pt-24 md:pt-32 pb-24">
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10">
+      {/* Shell Split-Pane estilo Steam debajo del Navbar fijo (h-16) */}
+      <div className="flex-1 pt-16 flex flex-col lg:flex-row lg:min-h-0">
+        {/* Barra toggle en móvil/tablet (< lg) */}
+        <div
+          className={`lg:hidden border-b px-4 py-2.5 flex items-center justify-between gap-3 ${
+            isLight ? "bg-white border-zinc-200" : "bg-[#0d0f13] border-zinc-800"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileListOpen((prev) => !prev)}
+            className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold cursor-pointer"
+          >
+            <Library className="size-4 text-emerald-400" />
+            <span>
+              {selectedItem ? selectedItem.title : `Mi Biblioteca (${stats.total})`}
+            </span>
+            {mobileListOpen ? (
+              <ChevronUp className="size-4" />
+            ) : (
+              <ChevronDown className="size-4" />
+            )}
+          </button>
+
+          {selectedItem && (
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="text-[11px] uppercase tracking-wider font-semibold text-emerald-400 cursor-pointer"
+            >
+              Inicio
+            </button>
+          )}
+        </div>
+
+        {/* Sidebar izquierdo (redimensionable y colapsable en desktop, desplegable en móvil) */}
+        <div
+          style={{ "--sidebar-w": `${sidebarWidth}px` } as CSSProperties}
+          className={`${
+            mobileListOpen ? "block max-h-[60vh] border-b border-zinc-800" : "hidden"
+          } ${
+            isSidebarCollapsed ? "lg:hidden" : "lg:block lg:w-[var(--sidebar-w)]"
+          } lg:h-full shrink-0 overflow-hidden`}
+        >
+          <LibrarySidebar
+            items={filteredItems}
+            allItemsCount={items.length}
+            byApartado={stats.byApartado}
+            selectedId={selectedId}
+            searchQuery={searchQuery}
+            sectionFilter={sectionFilter}
+            sortMode={sortMode}
+            isLight={isLight}
+            onSelectHome={() => {
+              setSelectedId(null);
+              setMobileListOpen(false);
+            }}
+            onSelectItem={handleSelectItem}
+            onSearchChange={setSearchQuery}
+            onSectionChange={setSectionFilter}
+            onSortChange={setSortMode}
+            onCollapseDesktop={() => setIsSidebarCollapsed(true)}
+          />
+        </div>
+
+        {/* Divisor arrastrable para agrandar / achicar el sidebar en desktop */}
+        {!isSidebarCollapsed && (
           <div
-            className={`border p-6 sm:p-8 ${
-              isLight ? "bg-white border-zinc-200" : "bg-zinc-950/70 border-zinc-800"
+            role="separator"
+            tabIndex={0}
+            aria-orientation="vertical"
+            aria-label="Redimensionar menú lateral de biblioteca"
+            aria-valuemin={MIN_SIDEBAR_WIDTH}
+            aria-valuemax={MAX_SIDEBAR_WIDTH}
+            aria-valuenow={sidebarWidth}
+            title="Arrastra para agrandar o achicar (doble clic para restablecer)"
+            onPointerDown={startResizing}
+            onDoubleClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setSidebarWidth((w) => Math.max(MIN_SIDEBAR_WIDTH, w - 16));
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setSidebarWidth((w) => Math.min(MAX_SIDEBAR_WIDTH, w + 16));
+              }
+            }}
+            className={`hidden lg:flex w-1.5 h-full shrink-0 items-center justify-center cursor-col-resize transition-colors group outline-none ${
+              isResizing
+                ? "bg-emerald-500/70"
+                : isLight
+                  ? "bg-transparent hover:bg-zinc-300/80"
+                  : "bg-transparent hover:bg-emerald-500/40"
             }`}
           >
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-              <div className="size-20 sm:size-24 border overflow-hidden bg-zinc-900 shrink-0">
-                {avatarSrc ? (
-                  <img src={avatarSrc} alt={displayName} className="size-full object-cover" />
-                ) : (
-                  <div className="size-full grid place-items-center text-zinc-400 text-2xl font-bold">
-                    {displayName.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className={`text-xs uppercase tracking-widest ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
-                  Biblioteca personal
-                </p>
-                <h1 className={`text-2xl sm:text-4xl font-extrabold tracking-wide mt-1 ${isLight ? "text-zinc-950" : "text-white"}`}>
-                  {displayName}
-                </h1>
-                <p className={`text-sm mt-2 ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
-                  {user?.email || "Tus favoritos guardados del catálogo"}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Link
-                  href={ROUTES.CATALOG}
-                  className={`px-4 py-2 border text-xs uppercase tracking-wider font-semibold ${
-                    isLight ? "bg-zinc-100 border-zinc-300 text-zinc-800 hover:bg-zinc-200" : "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-                  }`}
-                >
-                  Ir al catálogo
-                </Link>
-                <Link
-                  href={ROUTES.PROFILE}
-                  className={`px-4 py-2 border text-xs uppercase tracking-wider font-semibold ${
-                    isLight ? "bg-zinc-900 border-zinc-900 text-white hover:bg-black" : "bg-white border-white text-zinc-950 hover:bg-zinc-200"
-                  }`}
-                >
-                  Editar perfil
-                </Link>
-              </div>
-            </div>
+            <span
+              aria-hidden
+              className={`w-0.5 h-10 transition-opacity ${
+                isResizing
+                  ? "bg-emerald-300 opacity-100"
+                  : isLight
+                    ? "bg-zinc-500 opacity-0 group-hover:opacity-100"
+                    : "bg-emerald-400 opacity-0 group-hover:opacity-100"
+              }`}
+            />
           </div>
-        </section>
+        )}
 
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Bookmark className="size-5" />
-              <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-wider">Favoritos</h2>
-              <span className={`text-xs px-2 py-0.5 border ${isLight ? "border-zinc-300 text-zinc-600" : "border-zinc-700 text-zinc-400"}`}>
-                {items.length}
-              </span>
-            </div>
+        {/* Riel compacto cuando el menú lateral está colapsado en desktop */}
+        {isSidebarCollapsed && (
+          <div
+            className={`hidden lg:flex flex-col items-center gap-2 py-3 w-11 h-full shrink-0 border-r ${
+              isLight
+                ? "bg-white border-zinc-200 text-zinc-700"
+                : "bg-[#0d0f13] border-zinc-800/90 text-zinc-300"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(false)}
+              title="Mostrar menú lateral de biblioteca"
+              aria-label="Mostrar menú lateral de biblioteca"
+              className={`p-2 border transition-colors cursor-pointer ${
+                isLight
+                  ? "border-zinc-300 hover:bg-zinc-100 text-zinc-800"
+                  : "border-zinc-800 hover:bg-zinc-800 text-emerald-400"
+              }`}
+            >
+              <PanelLeftOpen className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              title="Ir a Inicio de Biblioteca"
+              aria-label="Ir a Inicio de Biblioteca"
+              className={`p-2 border transition-colors cursor-pointer ${
+                selectedId === null
+                  ? isLight
+                    ? "bg-zinc-900 border-zinc-900 text-white"
+                    : "bg-zinc-800 border-zinc-600 text-emerald-300"
+                  : isLight
+                    ? "border-zinc-200 hover:bg-zinc-100 text-zinc-600"
+                    : "border-zinc-800 hover:bg-zinc-800 text-zinc-400"
+              }`}
+            >
+              <LayoutGrid className="size-4" />
+            </button>
           </div>
+        )}
 
-          {error ? (
-            <div className={`p-8 border border-dashed text-center ${isLight ? "bg-white border-red-300" : "bg-zinc-950/50 border-red-900/50"}`}>
-              <p className="text-sm text-red-500 font-semibold mb-4">{error}</p>
-              <button
-                type="button"
-                onClick={() => void loadFavorites(page)}
-                className={`px-5 py-2.5 border text-xs uppercase tracking-wider cursor-pointer ${
-                  isLight ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-950 border-white"
-                }`}
-              >
-                Reintentar
-              </button>
-            </div>
-          ) : isLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-              {Array.from({ length: 8 }).map((_, idx) => (
-                <div key={idx} className={`border overflow-hidden animate-pulse ${isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800"}`}>
-                  <div className={`aspect-[3/4] ${isLight ? "bg-zinc-200" : "bg-zinc-800"}`} />
-                  <div className="p-4 space-y-3">
-                    <div className={`h-3 w-1/3 ${isLight ? "bg-zinc-200" : "bg-zinc-800"}`} />
-                    <div className={`h-4 w-3/4 ${isLight ? "bg-zinc-200" : "bg-zinc-800"}`} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <div className={`p-10 border border-dashed text-center ${isLight ? "bg-white border-zinc-300" : "bg-zinc-950/50 border-zinc-800"}`}>
-              <Bookmark className={`size-10 mx-auto mb-3 ${isLight ? "text-zinc-400" : "text-zinc-600"}`} />
-              <h3 className="text-lg font-bold uppercase tracking-wider mb-2">Aún no tienes favoritos</h3>
-              <p className={`text-sm mb-5 ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
-                Marca ítems del catálogo con el corazón para verlos aquí.
-              </p>
-              <Link
-                href={ROUTES.CATALOG}
-                className={`inline-flex px-5 py-2.5 border text-xs uppercase tracking-wider font-semibold ${
-                  isLight ? "bg-zinc-900 border-zinc-900 text-white hover:bg-black" : "bg-white border-white text-zinc-950 hover:bg-zinc-200"
-                }`}
-              >
-                Explorar catálogo
-              </Link>
-            </div>
+        {/* Panel derecho principal con scroll independiente */}
+        <main className="flex-1 lg:h-full lg:overflow-y-auto">
+          {selectedItem ? (
+            <LibraryDetailView
+              key={selectedItem.id}
+              item={selectedItem}
+              isHydrating={hydratingId === selectedItem.id}
+              favoriteBusy={favoriteBusyId === selectedItem.id}
+              isLight={isLight}
+              onBackToHome={() => setSelectedId(null)}
+              onRemoveFavorite={(target) => void handleRemoveFavorite(target)}
+              onOpenFullscreen={setFullscreenItem}
+            />
           ) : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-                {items.map((item) => (
-                  <CatalogCard
-                    key={item.id}
-                    item={item}
-                    isLight={isLight}
-                    onSelect={setSelectedItem}
-                    isFavorite={favoriteIds.has(item.id)}
-                    onToggleFavorite={(target) => void handleToggleFavorite(target)}
-                    favoriteDisabled={favoriteBusyId === item.id}
-                  />
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <nav className={`mt-8 flex items-center justify-between pt-6 border-t ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
-                  <button
-                    type="button"
-                    disabled={page <= 1}
-                    onClick={() => {
-                      const next = Math.max(1, page - 1);
-                      setPage(next);
-                      void loadFavorites(next);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 border text-xs uppercase tracking-wider font-semibold disabled:opacity-40 ${
-                      isLight ? "bg-white border-zinc-300 text-zinc-800" : "bg-zinc-900 border-zinc-700 text-zinc-200"
-                    }`}
-                  >
-                    <ChevronLeft className="size-4" /> Anterior
-                  </button>
-                  <span className="text-xs uppercase tracking-widest text-zinc-500 font-mono">Página {page} de {totalPages}</span>
-                  <button
-                    type="button"
-                    disabled={page >= totalPages}
-                    onClick={() => {
-                      const next = Math.min(totalPages, page + 1);
-                      setPage(next);
-                      void loadFavorites(next);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 border text-xs uppercase tracking-wider font-semibold disabled:opacity-40 ${
-                      isLight ? "bg-white border-zinc-300 text-zinc-800" : "bg-zinc-900 border-zinc-700 text-zinc-200"
-                    }`}
-                  >
-                    Siguiente <ChevronRight className="size-4" />
-                  </button>
-                </nav>
-              )}
-            </>
+            <LibraryHomeView
+              displayName={displayName}
+              email={user?.email}
+              avatarSrc={avatarSrc}
+              allItems={items}
+              filteredItems={filteredItems}
+              stats={stats}
+              hasActiveFilter={hasActiveFilter}
+              isLoading={isLoading}
+              error={error}
+              favoriteBusyId={favoriteBusyId}
+              isLight={isLight}
+              onSelectItem={handleSelectItem}
+              onRemoveFavorite={(target) => void handleRemoveFavorite(target)}
+              onClearFilters={() => {
+                setSearchQuery("");
+                setSectionFilter("todos");
+              }}
+              onRetry={() => {
+                void loadAllFavorites();
+              }}
+            />
           )}
-        </section>
-      </main>
+        </main>
+      </div>
 
       <FullscreenDetailModal
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-        isFavorite={selectedItem ? favoriteIds.has(selectedItem.id) : false}
-        onToggleFavorite={selectedItem ? (item) => void handleToggleFavorite(item) : undefined}
-        favoriteDisabled={selectedItem ? favoriteBusyId === selectedItem.id : false}
+        item={fullscreenItem}
+        onClose={() => setFullscreenItem(null)}
+        isFavorite={Boolean(fullscreenItem)}
+        onToggleFavorite={
+          fullscreenItem ? (target) => void handleRemoveFavorite(target) : undefined
+        }
+        favoriteDisabled={
+          fullscreenItem ? favoriteBusyId === fullscreenItem.id : false
+        }
       />
-
-      <Footer />
     </div>
   );
 }
