@@ -83,11 +83,11 @@ export default function LibraryDetailView({
   };
 
   const stats: Array<{ icon: ReactNode; label: string; value: string }> = [
-    { icon: <HardDrive className="size-3.5" />, label: "Peso", value: item.size },
-    { icon: <Tag className="size-3.5" />, label: "Versión", value: item.version },
-    { icon: <Calendar className="size-3.5" />, label: "Año", value: item.releaseDate },
+    { icon: <HardDrive className="size-4" />, label: "Peso", value: item.size },
+    { icon: <Tag className="size-4" />, label: "Versión", value: item.version },
+    { icon: <Calendar className="size-4" />, label: "Año", value: item.releaseDate },
     {
-      icon: <User className="size-3.5" />,
+      icon: <User className="size-4" />,
       label: isRom ? "Consola" : "Creador",
       value: isRom ? item.console || "—" : item.developer,
     },
@@ -112,7 +112,7 @@ export default function LibraryDetailView({
       ]
     : [];
 
-  const actionBtn = `inline-flex items-center gap-1.5 px-3 py-2 border text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer ${
+  const actionBtn = `inline-flex items-center gap-2 px-4 py-2.5 border text-xs sm:text-sm uppercase tracking-wider font-semibold transition-colors cursor-pointer ${
     isLight
       ? "bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100 hover:text-black"
       : "bg-zinc-900/90 border-zinc-700 text-zinc-200 hover:bg-zinc-800 hover:text-white"
@@ -144,17 +144,17 @@ export default function LibraryDetailView({
         </div>
 
         {/* Barra superior dentro del Hero */}
-        <div className="relative z-10 flex items-center justify-between gap-2 px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="relative z-10 flex items-center justify-between gap-2 px-5 sm:px-8 lg:px-10 pt-5">
           <button
             type="button"
             onClick={onBackToHome}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 border text-xs uppercase tracking-wider font-semibold backdrop-blur-md transition-colors cursor-pointer ${
+            className={`inline-flex items-center gap-2 px-3.5 py-2 border text-xs sm:text-sm uppercase tracking-wider font-semibold backdrop-blur-md transition-colors cursor-pointer ${
               isLight
                 ? "bg-white/85 border-zinc-300 text-zinc-800 hover:bg-white"
                 : "bg-black/60 border-zinc-700 text-zinc-200 hover:bg-black/85 hover:text-white"
             }`}
           >
-            <ArrowLeft className="size-3.5" />
+            <ArrowLeft className="size-4" />
             <span>Inicio de Biblioteca</span>
           </button>
 
@@ -162,22 +162,22 @@ export default function LibraryDetailView({
             type="button"
             onClick={() => onOpenFullscreen(item)}
             title="Abrir ficha en pantalla completa"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 border text-xs uppercase tracking-wider font-semibold backdrop-blur-md transition-colors cursor-pointer ${
+            className={`inline-flex items-center gap-2 px-3.5 py-2 border text-xs sm:text-sm uppercase tracking-wider font-semibold backdrop-blur-md transition-colors cursor-pointer ${
               isLight
                 ? "bg-white/85 border-zinc-300 text-zinc-800 hover:bg-white"
                 : "bg-black/60 border-zinc-700 text-zinc-200 hover:bg-black/85 hover:text-white"
             }`}
           >
-            <Maximize2 className="size-3.5" />
+            <Maximize2 className="size-4" />
             <span className="hidden sm:inline">Pantalla completa</span>
           </button>
         </div>
 
         {/* Portada + Título sobre el Hero */}
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-20 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+        <div className="relative z-10 max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-10 pt-16 sm:pt-28 lg:pt-36 pb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-6">
             <div
-              className={`relative w-28 sm:w-36 aspect-[3/4] shrink-0 overflow-hidden border-2 shadow-2xl ${
+              className={`relative w-36 sm:w-44 lg:w-52 aspect-[3/4] shrink-0 overflow-hidden border-2 shadow-2xl ${
                 isLight ? "border-white bg-white" : "border-zinc-700 bg-zinc-900"
               }`}
             >
@@ -189,10 +189,10 @@ export default function LibraryDetailView({
               />
             </div>
 
-            <div className="min-w-0 flex-1 space-y-2">
+            <div className="min-w-0 flex-1 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold border ${
+                  className={`px-2.5 py-1 text-xs uppercase tracking-wider font-bold border ${
                     isAdult
                       ? "bg-rose-600 text-white border-rose-500"
                       : isLight
@@ -203,7 +203,7 @@ export default function LibraryDetailView({
                   {APARTADO_BADGE[item.apartado]}
                 </span>
                 <span
-                  className={`px-2 py-0.5 text-[10px] uppercase tracking-wider border ${
+                  className={`px-2.5 py-1 text-xs uppercase tracking-wider border ${
                     isLight
                       ? "bg-white/80 border-zinc-300 text-zinc-700"
                       : "bg-black/50 border-zinc-700 text-zinc-300"
@@ -213,7 +213,7 @@ export default function LibraryDetailView({
                 </span>
                 {item.tag && (
                   <span
-                    className={`px-2 py-0.5 text-[10px] uppercase tracking-wider border ${
+                    className={`px-2.5 py-1 text-xs uppercase tracking-wider border ${
                       isLight
                         ? "bg-white/80 border-zinc-300 text-zinc-600"
                         : "bg-black/50 border-zinc-700 text-zinc-400"
@@ -225,7 +225,7 @@ export default function LibraryDetailView({
               </div>
 
               <h1
-                className={`text-2xl sm:text-4xl font-extrabold tracking-wide leading-tight ${
+                className={`text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-wide leading-tight ${
                   isLight ? "text-zinc-950" : "text-white"
                 }`}
               >
@@ -233,7 +233,7 @@ export default function LibraryDetailView({
               </h1>
 
               {isHydrating && (
-                <p className="text-[11px] font-mono text-emerald-400 animate-pulse">
+                <p className="text-xs font-mono text-emerald-400 animate-pulse">
                   Sincronizando detalles completos...
                 </p>
               )}
@@ -250,23 +250,23 @@ export default function LibraryDetailView({
             : "bg-[#191d26]/90 border-zinc-800/90"
         }`}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="w-full lg:w-auto lg:min-w-[270px] lg:max-w-sm">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-10 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="w-full lg:w-auto lg:min-w-[300px] lg:max-w-md">
             <DownloadCta
               href={primaryLink?.url ?? "#"}
               apartado={item.apartado}
               detail={primaryLink ? `${primaryLink.server} · ${item.size}` : item.size}
               isLight={isLight}
-              size="md"
+              size="lg"
             />
             <DownloadHostInfo hosts={item.downloadHosts} isLight={isLight} />
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             {stats.map((st) => (
-              <div key={st.label} className="min-w-[72px]">
+              <div key={st.label} className="min-w-[84px]">
                 <span
-                  className={`flex items-center gap-1 text-[10px] uppercase tracking-widest ${
+                  className={`flex items-center gap-1.5 text-xs uppercase tracking-widest ${
                     isLight ? "text-zinc-500" : "text-zinc-400"
                   }`}
                 >
@@ -274,7 +274,7 @@ export default function LibraryDetailView({
                   {st.label}
                 </span>
                 <p
-                  className={`text-xs sm:text-sm font-bold mt-0.5 ${
+                  className={`text-sm sm:text-base font-bold mt-0.5 ${
                     isLight ? "text-zinc-900" : "text-zinc-100"
                   }`}
                 >
@@ -284,7 +284,7 @@ export default function LibraryDetailView({
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
               type="button"
               disabled={favoriteBusy}
@@ -292,15 +292,15 @@ export default function LibraryDetailView({
               title="Quitar de tu biblioteca"
               className={`${actionBtn} border-rose-500/40 text-rose-500 hover:bg-rose-500/10 disabled:opacity-50`}
             >
-              <Heart className="size-3.5 fill-current" />
+              <Heart className="size-4 fill-current" />
               <span>En biblioteca</span>
             </button>
 
             <button type="button" onClick={() => void handleCopyShareLink()} className={actionBtn}>
               {copied ? (
-                <Check className="size-3.5 text-emerald-500" />
+                <Check className="size-4 text-emerald-500" />
               ) : (
-                <Copy className="size-3.5" />
+                <Copy className="size-4" />
               )}
               <span>{copied ? "Copiado" : "Compartir"}</span>
             </button>
@@ -309,7 +309,7 @@ export default function LibraryDetailView({
 
         {/* Pestañas internas estilo Steam */}
         <div
-          className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 border-t ${
+          className={`max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-10 flex items-center gap-2 border-t ${
             isLight ? "border-zinc-200" : "border-zinc-800/80"
           }`}
         >
@@ -326,7 +326,7 @@ export default function LibraryDetailView({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 text-xs uppercase tracking-wider font-bold border-b-2 transition-colors cursor-pointer ${
+                className={`px-5 py-3.5 text-sm uppercase tracking-wider font-bold border-b-2 transition-colors cursor-pointer ${
                   active
                     ? isLight
                       ? "border-zinc-900 text-zinc-950"
@@ -344,21 +344,21 @@ export default function LibraryDetailView({
       </section>
 
       {/* Contenido de la pestaña activa */}
-      <div className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="flex-1 max-w-[1440px] w-full mx-auto px-5 sm:px-8 lg:px-10 py-8 space-y-6">
         {resolvedTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-7 space-y-6">
               <section
-                className={`p-5 border ${
+                className={`p-6 sm:p-7 border ${
                   isLight ? "bg-white border-zinc-200" : "bg-zinc-900/70 border-zinc-800"
                 }`}
               >
-                <h2 className="flex items-center gap-2 text-sm uppercase tracking-wider font-bold mb-3">
-                  <BookOpen className="size-4 text-emerald-400" />
+                <h2 className="flex items-center gap-2.5 text-base sm:text-lg uppercase tracking-wider font-bold mb-4">
+                  <BookOpen className="size-5 text-emerald-400" />
                   <span>Acerca de este título</span>
                 </h2>
                 <p
-                  className={`text-sm leading-relaxed whitespace-pre-line ${
+                  className={`text-base leading-relaxed whitespace-pre-line ${
                     isLight ? "text-zinc-700" : "text-zinc-300"
                   }`}
                 >
@@ -368,23 +368,23 @@ export default function LibraryDetailView({
 
               {item.features.length > 0 && (
                 <section
-                  className={`p-5 border ${
+                  className={`p-6 sm:p-7 border ${
                     isLight ? "bg-white border-zinc-200" : "bg-zinc-900/70 border-zinc-800"
                   }`}
                 >
-                  <h2 className="flex items-center gap-2 text-sm uppercase tracking-wider font-bold mb-3">
-                    <Sparkles className="size-4 text-emerald-400" />
+                  <h2 className="flex items-center gap-2.5 text-base sm:text-lg uppercase tracking-wider font-bold mb-4">
+                    <Sparkles className="size-5 text-emerald-400" />
                     <span>Características destacadas</span>
                   </h2>
-                  <ul className="space-y-2 text-sm">
+                  <ul className="space-y-2.5 text-base">
                     {item.features.map((feat, idx) => (
                       <li
                         key={idx}
-                        className={`flex items-start gap-2.5 ${
+                        className={`flex items-start gap-3 ${
                           isLight ? "text-zinc-700" : "text-zinc-300"
                         }`}
                       >
-                        <span className="mt-1.5 size-1.5 bg-emerald-400 shrink-0" />
+                        <span className="mt-2 size-2 bg-emerald-400 shrink-0" />
                         <span>{feat}</span>
                       </li>
                     ))}
@@ -396,24 +396,24 @@ export default function LibraryDetailView({
             <div className="lg:col-span-5 space-y-6">
               {item.installationSteps.length > 0 && (
                 <section
-                  className={`p-5 border ${
+                  className={`p-6 sm:p-7 border ${
                     isLight ? "bg-white border-zinc-200" : "bg-zinc-900/70 border-zinc-800"
                   }`}
                 >
-                  <h2 className="flex items-center gap-2 text-sm uppercase tracking-wider font-bold mb-3">
-                    <ListChecks className="size-4 text-sky-400" />
+                  <h2 className="flex items-center gap-2.5 text-base sm:text-lg uppercase tracking-wider font-bold mb-4">
+                    <ListChecks className="size-5 text-sky-400" />
                     <span>Guía rápida de instalación</span>
                   </h2>
-                  <ol className="space-y-2.5 text-sm">
+                  <ol className="space-y-3 text-base">
                     {item.installationSteps.map((step, idx) => (
                       <li
                         key={idx}
-                        className={`flex items-start gap-2.5 ${
+                        className={`flex items-start gap-3 ${
                           isLight ? "text-zinc-700" : "text-zinc-300"
                         }`}
                       >
                         <span
-                          className={`grid place-items-center size-5 text-[11px] font-bold font-mono shrink-0 border ${
+                          className={`grid place-items-center size-6 text-xs font-bold font-mono shrink-0 border ${
                             isLight
                               ? "bg-zinc-100 border-zinc-300 text-zinc-800"
                               : "bg-zinc-950 border-zinc-700 text-emerald-300"
@@ -433,21 +433,21 @@ export default function LibraryDetailView({
 
         {resolvedTab === "requirements" && !isAdult && (
           <section
-            className={`p-5 sm:p-6 border ${
+            className={`p-6 sm:p-7 border ${
               isLight ? "bg-white border-zinc-200" : "bg-zinc-900/70 border-zinc-800"
             }`}
           >
-            <h2 className="flex items-center gap-2 text-sm uppercase tracking-wider font-bold mb-4">
-              <Cpu className="size-4 text-emerald-400" />
+            <h2 className="flex items-center gap-2.5 text-base sm:text-lg uppercase tracking-wider font-bold mb-5">
+              <Cpu className="size-5 text-emerald-400" />
               <span>{isRom ? "Requisitos de emulación" : "Requisitos mínimos del sistema"}</span>
             </h2>
 
             {requirementRows.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {requirementRows.map((row) => (
                   <div
                     key={row.label}
-                    className={`flex items-start gap-3 p-3.5 border ${
+                    className={`flex items-start gap-3.5 p-4 border ${
                       isLight
                         ? "bg-zinc-50 border-zinc-200"
                         : "bg-zinc-950/70 border-zinc-800"
@@ -456,14 +456,14 @@ export default function LibraryDetailView({
                     <span className="mt-0.5 text-emerald-400 shrink-0">{row.icon}</span>
                     <div className="min-w-0">
                       <span
-                        className={`block text-[10px] uppercase tracking-widest ${
+                        className={`block text-xs uppercase tracking-widest ${
                           isLight ? "text-zinc-500" : "text-zinc-400"
                         }`}
                       >
                         {row.label}
                       </span>
                       <p
-                        className={`text-sm font-semibold mt-0.5 break-words ${
+                        className={`text-base font-semibold mt-0.5 break-words ${
                           isLight ? "text-zinc-900" : "text-zinc-100"
                         }`}
                       >
@@ -474,7 +474,7 @@ export default function LibraryDetailView({
                 ))}
               </div>
             ) : (
-              <p className={`text-sm ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
+              <p className={`text-base ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
                 {isHydrating
                   ? "Cargando requisitos mínimos..."
                   : "No hay requisitos específicos registrados para este título."}
@@ -485,12 +485,12 @@ export default function LibraryDetailView({
 
         {resolvedTab === "mods" && isGame && (
           <section
-            className={`p-5 sm:p-6 border ${
+            className={`p-6 sm:p-7 border ${
               isLight ? "bg-white border-zinc-200" : "bg-zinc-900/70 border-zinc-800"
             }`}
           >
-            <h2 className="flex items-center gap-2 text-sm uppercase tracking-wider font-bold mb-4">
-              <Puzzle className="size-4 text-emerald-400" />
+            <h2 className="flex items-center gap-2.5 text-base sm:text-lg uppercase tracking-wider font-bold mb-5">
+              <Puzzle className="size-5 text-emerald-400" />
               <span>Mods compatibles</span>
             </h2>
             <GameModsSection gameId={item.id} gamePath={itemPath} isLight={isLight} />

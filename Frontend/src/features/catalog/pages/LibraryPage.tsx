@@ -17,10 +17,10 @@ import {
 } from "../utils/libraryHelpers";
 import { dialog } from "../../../shared/ui/dialog";
 
-const SIDEBAR_STORAGE_KEY = "sotano_library_sidebar_width";
-const DEFAULT_SIDEBAR_WIDTH = 296;
-const MIN_SIDEBAR_WIDTH = 220;
-const MAX_SIDEBAR_WIDTH = 520;
+const SIDEBAR_STORAGE_KEY = "sotano_library_sidebar_width_v2";
+const DEFAULT_SIDEBAR_WIDTH = 340;
+const MIN_SIDEBAR_WIDTH = 250;
+const MAX_SIDEBAR_WIDTH = 580;
 
 function readSavedSidebarWidth(): number {
   if (typeof window === "undefined") return DEFAULT_SIDEBAR_WIDTH;

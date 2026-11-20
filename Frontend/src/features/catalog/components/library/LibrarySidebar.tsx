@@ -76,7 +76,7 @@ export default function LibrarySidebar({
     >
       {/* Cabecera estilo Steam: botón Inicio + contador */}
       <div
-        className={`p-3 border-b space-y-2.5 shrink-0 ${
+        className={`p-4 border-b space-y-3 shrink-0 ${
           isLight ? "border-zinc-200 bg-zinc-50/70" : "border-zinc-800/80 bg-zinc-950/60"
         }`}
       >
@@ -87,7 +87,7 @@ export default function LibrarySidebar({
               playCategorySelectSound();
               onSelectHome();
             }}
-            className={`flex-1 flex items-center justify-between gap-2 px-3 py-2 border text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer ${
+            className={`flex-1 flex items-center justify-between gap-2 px-3.5 py-2.5 border text-sm uppercase tracking-wider font-bold transition-colors cursor-pointer ${
               isHomeActive
                 ? isLight
                   ? "bg-zinc-900 text-white border-zinc-900"
@@ -98,11 +98,11 @@ export default function LibrarySidebar({
             }`}
           >
             <span className="flex items-center gap-2">
-              <LayoutGrid className="size-3.5 text-emerald-400" />
+              <LayoutGrid className="size-4 text-emerald-400" />
               <span>Inicio</span>
             </span>
             <span
-              className={`px-1.5 py-0.5 text-[10px] font-mono ${
+              className={`px-2 py-0.5 text-xs font-mono ${
                 isHomeActive
                   ? isLight
                     ? "bg-white/15 text-white"
@@ -120,13 +120,13 @@ export default function LibrarySidebar({
             type="button"
             onClick={cycleSort}
             title={`Ordenar por: ${SORT_LABELS[sortMode]} (clic para cambiar)`}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-2 border text-[11px] uppercase tracking-wider font-semibold transition-colors cursor-pointer shrink-0 ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2.5 border text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer shrink-0 ${
               isLight
                 ? "bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100"
                 : "bg-zinc-900/70 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
             }`}
           >
-            <ArrowUpDown className="size-3.5" />
+            <ArrowUpDown className="size-4" />
             <span>{SORT_LABELS[sortMode]}</span>
           </button>
 
@@ -136,13 +136,13 @@ export default function LibrarySidebar({
               onClick={onCollapseDesktop}
               title="Ocultar menú lateral"
               aria-label="Ocultar menú lateral"
-              className={`hidden lg:inline-flex items-center justify-center p-2 border transition-colors cursor-pointer shrink-0 ${
+              className={`hidden lg:inline-flex items-center justify-center p-2.5 border transition-colors cursor-pointer shrink-0 ${
                 isLight
                   ? "bg-white border-zinc-300 text-zinc-600 hover:text-black hover:bg-zinc-100"
                   : "bg-zinc-900/70 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
             >
-              <PanelLeftClose className="size-3.5" />
+              <PanelLeftClose className="size-4" />
             </button>
           )}
         </div>
@@ -150,7 +150,7 @@ export default function LibrarySidebar({
         {/* Buscador instantáneo */}
         <div className="relative">
           <Search
-            className={`size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${
+            className={`size-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${
               isLight ? "text-zinc-400" : "text-zinc-500"
             }`}
           />
@@ -160,7 +160,7 @@ export default function LibrarySidebar({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar por nombre, género..."
             aria-label="Buscar en tu biblioteca"
-            className={`w-full pl-8 pr-7 py-1.5 text-xs border outline-none transition-colors ${
+            className={`w-full pl-9 pr-8 py-2 text-sm border outline-none transition-colors ${
               isLight
                 ? "bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-700"
                 : "bg-zinc-900/90 border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-zinc-500"
@@ -171,17 +171,17 @@ export default function LibrarySidebar({
               type="button"
               onClick={() => onSearchChange("")}
               aria-label="Limpiar búsqueda"
-              className={`absolute right-2 top-1/2 -translate-y-1/2 p-0.5 cursor-pointer ${
+              className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 cursor-pointer ${
                 isLight ? "text-zinc-400 hover:text-zinc-800" : "text-zinc-500 hover:text-white"
               }`}
             >
-              <X className="size-3.5" />
+              <X className="size-4" />
             </button>
           )}
         </div>
 
         {/* Filtros rápidos por categoría */}
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {SECTION_TABS.filter(
             (tab) => tab.id === "todos" || byApartado[tab.id] > 0 || sectionFilter === tab.id,
           ).map((tab) => {
@@ -192,7 +192,7 @@ export default function LibrarySidebar({
                 key={tab.id}
                 type="button"
                 onClick={() => onSectionChange(tab.id)}
-                className={`px-2 py-1 text-[10px] uppercase tracking-wider font-semibold border transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 text-xs uppercase tracking-wider font-semibold border transition-colors cursor-pointer ${
                   active
                     ? isLight
                       ? "bg-zinc-900 text-white border-zinc-900"
@@ -210,10 +210,10 @@ export default function LibrarySidebar({
       </div>
 
       {/* Lista vertical densa estilo Steam */}
-      <div className="flex-1 overflow-y-auto divide-y divide-transparent py-1">
+      <div className="flex-1 overflow-y-auto divide-y divide-transparent py-1.5">
         {items.length === 0 ? (
-          <div className="px-4 py-8 text-center">
-            <p className={`text-xs ${isLight ? "text-zinc-500" : "text-zinc-500"}`}>
+          <div className="px-4 py-10 text-center">
+            <p className={`text-sm ${isLight ? "text-zinc-500" : "text-zinc-500"}`}>
               {allItemsCount === 0
                 ? "Tu biblioteca está vacía."
                 : "Ningún título coincide con el filtro."}
@@ -230,7 +230,7 @@ export default function LibrarySidebar({
                   playCategorySelectSound();
                   onSelectItem(item);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer border-l-2 ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors cursor-pointer border-l-[3px] ${
                   isSelected
                     ? isLight
                       ? "bg-zinc-100 border-l-zinc-900 text-zinc-950"
@@ -240,7 +240,7 @@ export default function LibrarySidebar({
                       : "border-l-transparent hover:bg-zinc-900/90 text-zinc-300 hover:text-white"
                 }`}
               >
-                <div className="relative w-6 h-8 shrink-0 overflow-hidden border border-zinc-700/60 bg-zinc-900">
+                <div className="relative w-9 aspect-[3/4] shrink-0 overflow-hidden border border-zinc-700/60 bg-zinc-900">
                   <FramedCover
                     src={item.img}
                     alt=""
@@ -250,14 +250,14 @@ export default function LibrarySidebar({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p
-                    className={`text-xs truncate ${
-                      isSelected ? "font-bold" : "font-medium"
+                    className={`text-sm truncate ${
+                      isSelected ? "font-bold" : "font-semibold"
                     }`}
                   >
                     {item.title}
                   </p>
                   <p
-                    className={`text-[10px] truncate font-mono ${
+                    className={`text-xs truncate font-mono mt-0.5 ${
                       isSelected
                         ? isLight
                           ? "text-zinc-600"
