@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { team } from "../data/team";
+import { teamMembers as team } from "../data/team";
 import PortfolioModal from "./PortfolioModal";
 
 interface Member {
@@ -9,7 +9,7 @@ interface Member {
   role: string;
   img: string;
   bio: string;
-  github: string;
+  github?: string;
 }
 
 type Line =
