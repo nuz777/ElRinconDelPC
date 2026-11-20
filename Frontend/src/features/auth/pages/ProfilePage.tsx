@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { motion } from "motion/react";
 import { ArrowLeft, Camera, Check, Lock, Save, User } from "lucide-react";
 import Navbar from "../../../shared/ui/Navbar";
 import Footer from "../../../shared/ui/Footer";
 import { useTheme } from "../../../shared/context/useTheme";
-import { dialog } from "../../../shared/ui/dialog";
+import { dialog, isDialogOpen } from "../../../shared/ui/dialog";
 import { ROUTES } from "../../../app/routes";
 import { DEFAULT_PROFILE_AVATAR, PROFILE_AVATARS } from "../../../shared/config/profileAvatars";
 import { useAuth } from "../context/useAuth";
 import { authService } from "../services/auth.service";
+import { playDetailBackSound, playProfileSelectSound, playProfileSaveSound } from "../../../shared/utils/playDetailOpenSound";
 
 function PresetAvatarOption({
   avatar,
@@ -88,6 +89,7 @@ export default function ProfilePage() {
   const { theme } = useTheme();
   const isLight = theme === "light";
   const { user, checkSession } = useAuth();
+  const [, setLocation] = useLocation();
 
   const [name, setName] = useState("");
   const [picture, setPicture] = useState<string>(DEFAULT_PROFILE_AVATAR);
@@ -109,18 +111,9 @@ export default function ProfilePage() {
     setMainAvatarLoaded(false);
   }, [picture]);
 
-  const displayName = user?.name || user?.username || user?.email || "Usuario";
-  const email = user?.email ?? "";
-  const canChangePassword = !user?.provider || user.provider === "local" || user.provider === "system";
-
-  const initials = useMemo(() => {
-    const base = (user?.name || user?.email || "U").trim();
-    return base.slice(0, 1).toUpperCase();
-  }, [user]);
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+  const saveProfile = useCallback(async () => {
+    if (!user || savingProfile) return;
+    playProfileSaveSound();
 
     const trimmedName = name.trim();
     if (trimmedName.length < 2) {
@@ -151,7 +144,65 @@ export default function ProfilePage() {
     } finally {
       setSavingProfile(false);
     }
+  }, [user, savingProfile, name, picture, checkSession, dialog]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveProfile();
   };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isDialogOpen()) return;
+        e.preventDefault();
+        playDetailBackSound();
+        setLocation(ROUTES.CATALOG);
+        return;
+      }
+      if (e.key === "Enter") {
+        if (isDialogOpen()) return;
+        const target = e.target as HTMLElement | null;
+        // dejar que los formularios manejen su propio submit (perfil/contraseña)
+        if (target?.closest("form")) return;
+        e.preventDefault();
+        void saveProfile();
+        return;
+      }
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      playProfileSelectSound();
+      setPicture((current) => {
+        const currentIndex = PROFILE_AVATARS.findIndex((a) => a.src === current);
+        const base = currentIndex === -1 ? 0 : currentIndex;
+        const delta = e.key === "ArrowRight" ? 1 : -1;
+        const next = (base + delta + PROFILE_AVATARS.length) % PROFILE_AVATARS.length;
+        return PROFILE_AVATARS[next].src;
+      });
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [setLocation, saveProfile]);
+
+  const displayName = user?.name || user?.username || user?.email || "Usuario";
+  const email = user?.email ?? "";
+  const canChangePassword = !user?.provider || user.provider === "local" || user.provider === "system";
+
+  const initials = useMemo(() => {
+    const base = (user?.name || user?.email || "U").trim();
+    return base.slice(0, 1).toUpperCase();
+  }, [user]);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +269,7 @@ export default function ProfilePage() {
           </div>
           <Link
             href={ROUTES.CATALOG}
+            onClick={() => playDetailBackSound()}
             className={`group inline-flex items-center gap-2 text-xs uppercase tracking-wider px-3 py-2 border transition-all duration-200 self-start hover:-translate-y-0.5 ${
               isLight
                 ? "border-zinc-300 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-400"
@@ -339,7 +391,10 @@ export default function ProfilePage() {
                       index={index}
                       selected={picture === avatar.src}
                       isLight={isLight}
-                      onSelect={() => setPicture(avatar.src)}
+                      onSelect={() => {
+                        playProfileSelectSound();
+                        setPicture(avatar.src);
+                      }}
                     />
                   ))}
                 </div>

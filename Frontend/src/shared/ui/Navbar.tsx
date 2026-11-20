@@ -7,6 +7,7 @@ import { useAuth } from "../../features/auth/context/useAuth";
 import { isCatalogPath, ROUTES } from "../../app/routes";
 import { dialog } from "./dialog";
 import { authService } from "../../features/auth/services/auth.service";
+import { playProfileSettingsOpenSound } from "../utils/playDetailOpenSound";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -159,19 +160,8 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
   const isAdmin = user?.role === "admin";
   const avatarSrc = user?.picture;
 
-  const userChip = (
-    <Link
-      href={ROUTES.PROFILE}
-      onClick={() => {
-        setDropdownOpen(false);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }}
-      className={`group flex items-center gap-2 min-w-0 px-1.5 py-1 -mx-1.5 transition-all duration-200 ${
-        isLight ? "hover:text-black hover:bg-zinc-100/80" : "hover:text-white hover:bg-zinc-800/50"
-      }`}
-      title={user?.email ?? displayName}
-      aria-label="Ir a mi perfil"
-    >
+  const userChipContent = (
+    <>
       <span
         className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 shrink-0"
         title="Activo"
@@ -189,6 +179,39 @@ export default function Header({ onNavSectionClick }: HeaderProps) {
           Admin
         </span>
       )}
+    </>
+  );
+
+  const userChipClass = `group flex items-center gap-2 min-w-0 px-1.5 py-1 -mx-1.5 transition-all duration-200 ${
+    inProfile
+      ? "cursor-default"
+      : isLight
+        ? "hover:text-black hover:bg-zinc-100/80"
+        : "hover:text-white hover:bg-zinc-800/50"
+  }`;
+
+  const userChip = inProfile ? (
+    <div
+      className={userChipClass}
+      title={user?.email ?? displayName}
+      aria-current="page"
+      aria-label="Perfil actual"
+    >
+      {userChipContent}
+    </div>
+  ) : (
+    <Link
+      href={ROUTES.PROFILE}
+      onClick={() => {
+        playProfileSettingsOpenSound();
+        setDropdownOpen(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+      className={userChipClass}
+      title={user?.email ?? displayName}
+      aria-label="Ir a mi perfil"
+    >
+      {userChipContent}
     </Link>
   );
 

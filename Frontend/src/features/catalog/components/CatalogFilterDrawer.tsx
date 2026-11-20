@@ -5,6 +5,7 @@ import { APARTADOS_CONFIG } from "../domain/catalogViews";
 import type { Apartado, CatalogItem } from "../domain/catalog.types";
 import type { CatalogView } from "../utils/catalogUrl";
 import RomBrandMenu from "./RomBrandMenu";
+import { playCategorySelectSound } from "../../../shared/utils/playDetailOpenSound";
 
 interface CatalogFilterDrawerProps {
   isOpen: boolean;
@@ -109,7 +110,10 @@ export default function CatalogFilterDrawer({
                   return (
                     <button
                       key={ap.id}
-                      onClick={() => onSelectApartado(ap.id)}
+                      onClick={() => {
+                        playCategorySelectSound();
+                        onSelectApartado(ap.id);
+                      }}
                       className={`flex items-center justify-between p-3.5  border transition-colors cursor-pointer text-left ${
                         isActive
                           ? isLight
@@ -196,6 +200,7 @@ export default function CatalogFilterDrawer({
                       activeBrand={romFilter?.brand}
                       activeConsole={romFilter?.console}
                       onSelect={(brand, consoleName) => {
+                        playCategorySelectSound();
                         onSelectRomConsole(brand, consoleName);
                         onClose();
                       }}
@@ -225,6 +230,7 @@ export default function CatalogFilterDrawer({
               <div className="space-y-1.5 max-h-[40vh] overflow-y-auto pr-1">
                 <button
                   onClick={() => {
+                    playCategorySelectSound();
                     onSelectGenre("todos");
                     onClose();
                   }}
@@ -254,6 +260,7 @@ export default function CatalogFilterDrawer({
                     <button
                       key={g}
                       onClick={() => {
+                        playCategorySelectSound();
                         onSelectGenre(g);
                         onClose();
                       }}

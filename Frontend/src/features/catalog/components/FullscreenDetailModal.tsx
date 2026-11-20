@@ -34,6 +34,7 @@ import DownloadCta from "./DownloadCta";
 import DownloadHostInfo from "./DownloadHostBadge";
 import { APARTADO_NOUN } from "../domain/catalogViews";
 import { dialog, isDialogOpen } from "../../../shared/ui/dialog";
+import { playDetailBackSound } from "../../../shared/utils/playDetailOpenSound";
 
 interface FullscreenDetailModalProps {
   item: CatalogItem | null;
@@ -114,9 +115,14 @@ export default function FullscreenDetailModal({
   const [copied, setCopied] = useState(false);
   const [hydratedState, setHydratedState] = useState<{ id: string; item: CatalogItem } | null>(null);
   const [hydrationFailedId, setHydrationFailedId] = useState<string | null>(null);
+  const [cachedItem, setCachedItem] = useState<CatalogItem | null>(baseItem);
   const { theme } = useTheme();
   const isLight = theme === "light";
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (baseItem) setCachedItem(baseItem);
+  }, [baseItem]);
 
   useEffect(() => {
     if (!baseItem) return;
@@ -141,7 +147,10 @@ export default function FullscreenDetailModal({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !disableEscape && !isDialogOpen()) onClose();
+      if (e.key === "Escape" && !disableEscape && !isDialogOpen()) {
+        playDetailBackSound();
+        onClose();
+      }
     };
     if (baseItem) {
       document.body.style.overflow = "hidden";
@@ -153,16 +162,19 @@ export default function FullscreenDetailModal({
     };
   }, [baseItem, onClose, disableEscape]);
 
-  if (!baseItem) return null;
+  const sourceItem = baseItem ?? cachedItem;
+  if (!sourceItem) return null;
 
-  const item = hydratedState && hydratedState.id === baseItem.id ? hydratedState.item : baseItem;
+  const item =
+    baseItem && hydratedState?.id === baseItem.id ? hydratedState.item : sourceItem;
   const noun = APARTADO_NOUN[item.apartado];
   const isAdult = item.apartado === "adultos";
   const isRom = item.apartado === "roms";
   const primaryLink = item.downloadLinks[0];
   // El listado no trae el banner: hasta tener la ficha completa no se muestra la portada como
   // fondo, para que no aparezca primero la portada y después salte al banner.
-  const isHydrated = hydratedState?.id === baseItem.id || hydrationFailedId === baseItem.id;
+  const isHydrated =
+    hydratedState?.id === sourceItem.id || hydrationFailedId === sourceItem.id;
   const backdrop = item.bannerImg || (isHydrated ? item.img : null);
 
   const handleCopyLink = async () => {
@@ -205,18 +217,19 @@ export default function FullscreenDetailModal({
   }`;
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={() => { if (!baseItem) setCachedItem(null); }}>
+      {baseItem ? (
       <motion.div
+        key={item.id}
         role="dialog"
         aria-modal="true"
         aria-label={`Ficha de ${item.title}`}
         className={`fixed inset-0 z-[100] h-dvh w-screen overflow-y-auto overflow-x-hidden flex flex-col font-share select-text ${
           isLight ? "bg-zinc-100 text-zinc-900" : "bg-zinc-950 text-zinc-100"
         }`}
-        // Solo opacidad: un transform en este contenedor rompería el fondo `fixed`
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        exit={{ opacity: 0, y: 16, scale: 0.985, transition: { duration: reduceMotion ? 0 : 0.22, ease: "easeInOut" } }}
         transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeOut" }}
       >
         {/* Fondo inmersivo: el banner difuminado ocupa toda la vista */}
@@ -249,7 +262,10 @@ export default function FullscreenDetailModal({
         >
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              playDetailBackSound();
+              onClose();
+            }}
             className={`inline-flex items-center gap-2 text-xs sm:text-sm uppercase tracking-wider transition-colors cursor-pointer group shrink-0 ${
               isLight ? "text-zinc-600 hover:text-black" : "text-zinc-400 hover:text-white"
             }`}
@@ -563,6 +579,7 @@ export default function FullscreenDetailModal({
           <NativeBannerAd />
         </div>
       </motion.div>
+      ) : null}
     </AnimatePresence>
   );
 }

@@ -2,6 +2,7 @@ import { Download, HardDrive, Pencil, Trash2 } from "lucide-react";
 import { APARTADO_BADGE } from "../domain/catalogViews";
 import type { CatalogItem } from "../domain/catalog.types";
 import FramedCover from "./FramedCover";
+import { playDetailOpenSound } from "../../../shared/utils/playDetailOpenSound";
 
 interface CatalogCardProps {
   item: CatalogItem;
@@ -20,9 +21,14 @@ export default function CatalogCard({
   onEdit,
   onDelete,
 }: CatalogCardProps) {
+  const handleOpen = () => {
+    playDetailOpenSound();
+    onSelect(item);
+  };
+
   return (
     <div
-      onClick={() => onSelect(item)}
+      onClick={handleOpen}
       aria-label={`Ver detalles de ${item.title}`}
       className={`group flex flex-col border overflow-hidden shadow-sm hover:shadow-md transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
         isLight ? "focus-visible:ring-zinc-900 focus-visible:ring-offset-white" : "focus-visible:ring-zinc-200 focus-visible:ring-offset-zinc-950"
@@ -37,7 +43,7 @@ export default function CatalogCard({
         if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onSelect(item);
+          handleOpen();
         }
       }}
     >

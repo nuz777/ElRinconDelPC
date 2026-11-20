@@ -7,6 +7,7 @@ import type { Apartado, CatalogItem } from "../domain/catalog.types";
 import type { CatalogView } from "../utils/catalogUrl";
 import RomBrandMenu from "./RomBrandMenu";
 import FramedCover from "./FramedCover";
+import { playDetailOpenSound, playCategorySelectSound } from "../../../shared/utils/playDetailOpenSound";
 
 const MAX_SUGGESTIONS = 8;
 
@@ -167,6 +168,7 @@ export default function CatalogToolbar({
     } else if (e.key === "Enter") {
       if (selectedIndex >= 0 && suggestions[selectedIndex]) {
         e.preventDefault();
+        playDetailOpenSound();
         onSelectItemFromSuggestion(suggestions[selectedIndex]);
         setIsDropdownOpen(false);
       } else {
@@ -266,7 +268,10 @@ export default function CatalogToolbar({
                     key={tab.id}
                     type="button"
                     aria-current={isActive ? "page" : undefined}
-                    onClick={() => onSelectApartado(tab.id)}
+                    onClick={() => {
+                      playCategorySelectSound();
+                      onSelectApartado(tab.id);
+                    }}
                     className={`inline-flex items-center gap-2 px-3.5 py-2  text-xs uppercase tracking-wider font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                       isActive
                         ? isLight
@@ -436,6 +441,7 @@ export default function CatalogToolbar({
                                 role="option"
                                 aria-selected={isSelected}
                                 onClick={() => {
+                                  playDetailOpenSound();
                                   onSelectItemFromSuggestion(item);
                                   setIsDropdownOpen(false);
                                 }}
@@ -729,6 +735,7 @@ export default function CatalogToolbar({
                       activeBrand={romFilter?.brand}
                       activeConsole={romFilter?.console}
                       onSelect={(brand, consoleName) => {
+                        playCategorySelectSound();
                         onSelectRomConsole(brand, consoleName);
                         setRomMenuOpen(false);
                       }}

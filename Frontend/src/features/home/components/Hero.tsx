@@ -5,6 +5,7 @@ import { ROUTES } from "../../../app/routes";
 import { catalogService } from "../../catalog/api/catalog.service";
 import type { CatalogItem } from "../../catalog/domain/catalog.types";
 import { useAuth } from "../../auth/context/useAuth";
+import { playDetailOpenSound } from "../../../shared/utils/playDetailOpenSound";
 
 function DiscordIcon({ className = "size-5" }: { className?: string }) {
   return (
@@ -228,7 +229,10 @@ export default function Hero({ onSelectGame }: HeroProps) {
                   <button
                     key={game.id}
                     type="button"
-                    onClick={() => onSelectGame?.(game)}
+                    onClick={() => {
+                      playDetailOpenSound();
+                      onSelectGame?.(game);
+                    }}
                     className="group text-left border border-zinc-800 hover:border-zinc-500 bg-zinc-900/90 hover:bg-zinc-900 transition-colors cursor-pointer flex flex-col overflow-hidden"
                   >
                     <div className="relative aspect-[16/10] w-full overflow-hidden bg-zinc-950 border-b border-zinc-800">

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ROUTES } from "../../../app/routes";
 import { useAuth } from "../../auth/context/useAuth";
+import { playProfileSettingsOpenSound } from "../../../shared/utils/playDetailOpenSound";
 
 interface CatalogBannerProps {
   isLight: boolean;
@@ -172,7 +173,10 @@ export default function CatalogBanner({
                       <Link
                         href={ROUTES.PROFILE}
                         role="menuitem"
-                        onClick={() => setSettingsOpen(false)}
+                        onClick={() => {
+                          playProfileSettingsOpenSound();
+                          setSettingsOpen(false);
+                        }}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider transition-colors border-t ${
                           isLight
                             ? "hover:bg-zinc-50 border-zinc-200"
