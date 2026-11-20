@@ -1,11 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, Joystick, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowRight, ChevronDown, CornerDownLeft, HardDrive, Joystick, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import { APARTADOS_CONFIG, APARTADO_BADGE } from "../domain/catalogViews";
 import type { Apartado, CatalogItem } from "../domain/catalog.types";
 import type { CatalogView } from "../utils/catalogUrl";
 import RomBrandMenu from "./RomBrandMenu";
+import FramedCover from "./FramedCover";
+
+const MAX_SUGGESTIONS = 8;
+
+/** Colores de la insignia de cada apartado en el buscador. */
+function badgeTone(apartado: Apartado, isLight: boolean) {
+  const tones: Record<Apartado, [string, string]> = {
+    juegos: ["bg-zinc-100 text-zinc-700 border-zinc-300", "bg-zinc-950 text-zinc-300 border-zinc-700"],
+    mods: ["bg-blue-50 text-blue-700 border-blue-200", "bg-blue-950/60 text-blue-300 border-blue-800"],
+    roms: ["bg-violet-50 text-violet-700 border-violet-200", "bg-violet-950/60 text-violet-300 border-violet-800"],
+    adultos: ["bg-rose-50 text-rose-700 border-rose-200", "bg-rose-950/60 text-rose-300 border-rose-800"],
+    herramientas: ["bg-emerald-50 text-emerald-700 border-emerald-200", "bg-emerald-950/60 text-emerald-300 border-emerald-800"],
+  };
+  return tones[apartado][isLight ? 0 : 1];
+}
 
 const ROM_MENU_WIDTH = 600;
 const ROM_MENU_IDEAL_HEIGHT = 310;
@@ -107,7 +122,7 @@ export default function CatalogToolbar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const suggestions = useMemo(() => {
+  const matches = useMemo(() => {
     const q = debouncedSearch.toLowerCase().trim();
     if (q.length < 2) return [];
     return allItemsForSuggestions
@@ -125,9 +140,9 @@ export default function CatalogToolbar({
           item.tag.toLowerCase().includes(q) ||
           item.developer.toLowerCase().includes(q)
         );
-      })
-      .slice(0, 6);
+      });
   }, [allItemsForSuggestions, debouncedSearch, activeView.apartado, ageVerified]);
+  const suggestions = useMemo(() => matches.slice(0, MAX_SUGGESTIONS), [matches]);
 
   const handleSearchInputChange = (val: string) => {
     onSearchChange(val);
@@ -226,6 +241,7 @@ export default function CatalogToolbar({
 
   const selectedApartado = activeView.apartado;
   const romFilter = activeView.apartado === "roms" ? activeView : null;
+  const kbdTone = isLight ? "border-zinc-300 bg-white" : "border-zinc-700 bg-zinc-950";
 
   return (
     <>
@@ -236,12 +252,12 @@ export default function CatalogToolbar({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
-            className={`p-3 sm:p-4  border shadow-md flex flex-col 2xl:flex-row items-stretch 2xl:items-center justify-between gap-3 2xl:gap-4 transition-colors ${
+            className={`p-3 sm:p-4  border shadow-md flex flex-col items-stretch justify-between gap-3 transition-colors ${
               isLight ? "bg-white border-zinc-200 shadow-zinc-200/50" : "bg-zinc-900 border-zinc-800"
             }`}
           >
             {/* Desktop Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full 2xl:w-auto pb-1 2xl:pb-0 scrollbar-none [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:[mask-image:none]">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full pb-1 scrollbar-none [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:[mask-image:none]">
               {APARTADOS_CONFIG.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = selectedApartado === tab.id;
@@ -304,8 +320,8 @@ export default function CatalogToolbar({
             </div>
 
             {/* Search Input & Hamburger Filter Trigger */}
-            <div className="flex items-center gap-2.5 w-full 2xl:w-auto">
-              <div ref={searchContainerRef} className="relative flex-1 2xl:w-80 2xl:flex-none">
+            <div className="flex items-center gap-2.5 w-full">
+              <div ref={searchContainerRef} className="relative flex-1">
                 <Search
                   className={`absolute left-3.5 top-1/2 -translate-y-1/2 size-4 pointer-events-none ${
                     isLight ? "text-zinc-400" : "text-zinc-500"
@@ -350,119 +366,201 @@ export default function CatalogToolbar({
                   </button>
                 )}
 
-                {isDropdownOpen && searchQuery.trim().length >= 2 && (
-                  <div
-                    id="catalog-search-listbox"
-                    role="listbox"
-                    className={`absolute top-full left-0 mt-2 w-full md:w-96  border shadow-2xl overflow-hidden z-50 transition-colors ${
-                      isLight
-                        ? "bg-white border-zinc-200 text-zinc-900 shadow-zinc-400/40"
-                        : "bg-zinc-900 border-zinc-800 text-zinc-100 shadow-black/90"
-                    }`}
-                  >
-                    {isSearching ? (
-                      <div className="p-2 space-y-2">
-                        {[1, 2, 3].map((n) => (
-                          <div key={n} className="flex items-center gap-3 p-2  animate-pulse">
-                            <div
-                              className={`w-[60px] h-[28px]  shrink-0 ${
-                                isLight ? "bg-zinc-200" : "bg-zinc-800"
-                              }`}
-                            />
-                            <div className="flex-1 space-y-1.5">
-                              <div
-                                className={`h-3 w-3/4  ${
-                                  isLight ? "bg-zinc-200" : "bg-zinc-800"
-                                }`}
-                              />
-                              <div
-                                className={`h-2.5 w-1/3  ${
-                                  isLight ? "bg-zinc-200" : "bg-zinc-800"
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : suggestions.length === 0 ? (
+                <AnimatePresence>
+                  {isDropdownOpen && searchQuery.trim().length >= 2 && (
+                    <motion.div
+                      id="catalog-search-listbox"
+                      role="listbox"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.15 }}
+                      className={`absolute top-full left-0 right-0 mt-2 border shadow-2xl overflow-hidden z-50 backdrop-blur-md ${
+                        isLight
+                          ? "bg-white/95 border-zinc-200 text-zinc-900 shadow-zinc-400/40"
+                          : "bg-zinc-950/95 border-zinc-800 text-zinc-100 shadow-black/90"
+                      }`}
+                    >
+                      {/* Cabecera */}
                       <div
-                        className={`p-4 text-center text-xs ${
-                          isLight ? "text-zinc-500" : "text-zinc-400"
+                        className={`flex items-center justify-between gap-3 px-4 py-2.5 border-b text-[11px] uppercase tracking-widest ${
+                          isLight ? "border-zinc-200 text-zinc-500" : "border-zinc-800 text-zinc-400"
                         }`}
                       >
-                        Sin resultados para &quot;{debouncedSearch}&quot;
+                        <span className="truncate">
+                          {isSearching ? (
+                            "Buscando…"
+                          ) : (
+                            <>
+                              <span className={`font-bold ${isLight ? "text-zinc-900" : "text-white"}`}>{matches.length}</span>{" "}
+                              {matches.length === 1 ? "resultado" : "resultados"} para &quot;{debouncedSearch}&quot;
+                            </>
+                          )}
+                        </span>
+                        {!isSearching && matches.length > MAX_SUGGESTIONS && (
+                          <span className="shrink-0 normal-case tracking-normal">Mostrando {MAX_SUGGESTIONS}</span>
+                        )}
                       </div>
-                    ) : (
-                      <div className="p-1.5 space-y-0.5 max-h-80 overflow-y-auto">
-                        {suggestions.map((item, idx) => {
-                          const isSelected = selectedIndex === idx;
-                          return (
-                            <div
-                              key={item.id}
-                              id={`suggestion-item-${idx}`}
-                              role="option"
-                              aria-selected={isSelected}
-                              onClick={() => {
-                                onSelectItemFromSuggestion(item);
-                                setIsDropdownOpen(false);
-                              }}
-                              onMouseEnter={() => setSelectedIndex(idx)}
-                              className={`flex items-center gap-3 p-2  cursor-pointer transition-colors ${
-                                isSelected
-                                  ? isLight
-                                    ? "bg-zinc-100 text-black font-medium"
-                                    : "bg-zinc-800 text-white font-medium"
-                                  : isLight
-                                    ? "hover:bg-zinc-50 text-zinc-800"
-                                    : "hover:bg-zinc-800/60 text-zinc-200"
-                              }`}
-                            >
-                              <img
-                                src={item.img}
-                                alt={item.title}
-                                loading="lazy"
-                                className="w-[60px] h-[28px] object-cover  shrink-0 bg-zinc-950 border border-zinc-700/50"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = "/img/SN-tools.jpg";
-                                }}
-                              />
-                              <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                                <div className="text-xs sm:text-sm truncate">
-                                  {highlightMatch(item.title, debouncedSearch)}
-                                </div>
-                                <span
-                                  className={`text-[9px] uppercase px-1.5 py-0.5  font-mono font-bold tracking-wider shrink-0 border ${
-                                    item.apartado === "juegos"
-                                      ? isLight
-                                        ? "bg-zinc-100 text-zinc-700 border-zinc-300"
-                                        : "bg-zinc-950 text-zinc-300 border-zinc-700"
-                                      : item.apartado === "mods"
-                                        ? isLight
-                                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                                          : "bg-blue-950/60 text-blue-300 border-blue-800"
-                                        : item.apartado === "roms"
-                                          ? isLight
-                                            ? "bg-violet-50 text-violet-700 border-violet-200"
-                                            : "bg-violet-950/60 text-violet-300 border-violet-800"
-                                          : item.apartado === "adultos"
-                                            ? isLight
-                                              ? "bg-rose-50 text-rose-700 border-rose-200"
-                                              : "bg-rose-950/60 text-rose-300 border-rose-800"
-                                            : isLight
-                                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                              : "bg-emerald-950/60 text-emerald-300 border-emerald-800"
-                                  }`}
-                                >
-                                  {APARTADO_BADGE[item.apartado]}
-                                </span>
+
+                      {isSearching ? (
+                        <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                          {[1, 2, 3, 4].map((n) => (
+                            <div key={n} className="flex items-center gap-3 p-2 animate-pulse">
+                              <div className={`w-12 aspect-[3/4] shrink-0 ${isLight ? "bg-zinc-200" : "bg-zinc-800"}`} />
+                              <div className="flex-1 space-y-2">
+                                <div className={`h-3 w-3/4 ${isLight ? "bg-zinc-200" : "bg-zinc-800"}`} />
+                                <div className={`h-2.5 w-1/2 ${isLight ? "bg-zinc-200" : "bg-zinc-800"}`} />
+                                <div className={`h-2.5 w-1/3 ${isLight ? "bg-zinc-200" : "bg-zinc-800"}`} />
                               </div>
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
+                      ) : suggestions.length === 0 ? (
+                        <div className={`flex flex-col items-center gap-2 px-4 py-8 text-center ${isLight ? "text-zinc-500" : "text-zinc-400"}`}>
+                          <SearchX className="size-7 opacity-60" aria-hidden />
+                          <p className="text-sm">
+                            No encontramos nada para &quot;
+                            <span className={isLight ? "text-zinc-900" : "text-white"}>{debouncedSearch}</span>&quot;
+                          </p>
+                          <p className="text-[11px]">Prueba con otro nombre, un género o el creador.</p>
+                        </div>
+                      ) : (
+                        <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-1.5 max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain">
+                          {suggestions.map((item, idx) => {
+                            const isSelected = selectedIndex === idx;
+                            const isAdult = item.apartado === "adultos";
+                            return (
+                              <div
+                                key={item.id}
+                                id={`suggestion-item-${idx}`}
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                  onSelectItemFromSuggestion(item);
+                                  setIsDropdownOpen(false);
+                                }}
+                                onMouseEnter={() => setSelectedIndex(idx)}
+                                className={`group relative flex items-center gap-3 p-2 border cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? isLight
+                                      ? "bg-zinc-100 border-zinc-300"
+                                      : "bg-zinc-900 border-zinc-700"
+                                    : "border-transparent"
+                                }`}
+                              >
+                                {/* Acento lateral del ítem activo */}
+                                <span
+                                  className={`absolute left-0 top-2 bottom-2 w-0.5 transition-opacity ${
+                                    isSelected ? "opacity-100" : "opacity-0"
+                                  } ${isAdult ? "bg-rose-500" : isLight ? "bg-zinc-900" : "bg-white"}`}
+                                  aria-hidden
+                                />
+                                <div
+                                  className={`relative w-12 sm:w-14 aspect-[3/4] shrink-0 overflow-hidden border ${
+                                    isLight ? "bg-zinc-100 border-zinc-200" : "bg-zinc-900 border-zinc-800"
+                                  }`}
+                                >
+                                  <FramedCover
+                                    src={item.img}
+                                    alt=""
+                                    framing={item.coverFraming}
+                                    showLoader={false}
+                                    hoverClassName="transition-transform duration-300 group-hover:scale-110"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`text-[9px] uppercase px-1.5 py-0.5 font-mono font-bold tracking-wider shrink-0 border ${badgeTone(
+                                        item.apartado,
+                                        isLight,
+                                      )}`}
+                                    >
+                                      {APARTADO_BADGE[item.apartado]}
+                                    </span>
+                                    {item.tag && (
+                                      <span
+                                        className={`text-[10px] uppercase tracking-wider truncate ${
+                                          isLight ? "text-amber-700" : "text-amber-400"
+                                        }`}
+                                      >
+                                        {item.tag}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className={`mt-1 text-sm font-semibold truncate ${isLight ? "text-zinc-900" : "text-white"}`}>
+                                    {highlightMatch(item.title, debouncedSearch)}
+                                  </div>
+                                  <div
+                                    className={`mt-0.5 flex items-center gap-1.5 text-[11px] min-w-0 ${
+                                      isLight ? "text-zinc-500" : "text-zinc-400"
+                                    }`}
+                                  >
+                                    <span className="truncate">
+                                      {item.apartado === "roms" && item.console ? item.console : item.genre}
+                                    </span>
+                                    {item.size && item.size !== "N/A" && (
+                                      <>
+                                        <span aria-hidden>·</span>
+                                        <HardDrive className="size-3 shrink-0" aria-hidden />
+                                        <span className="shrink-0">{item.size}</span>
+                                      </>
+                                    )}
+                                    <span aria-hidden>·</span>
+                                    <span className="shrink-0 font-mono">{item.version}</span>
+                                  </div>
+                                </div>
+                                <ArrowRight
+                                  className={`size-4 shrink-0 transition-all ${
+                                    isSelected ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1"
+                                  } ${isLight ? "text-zinc-700" : "text-zinc-300"}`}
+                                  aria-hidden
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Pie con atajos */}
+                      <div
+                        className={`hidden sm:flex items-center justify-between gap-3 px-4 py-2 border-t text-[11px] ${
+                          isLight ? "border-zinc-200 text-zinc-500 bg-zinc-50/80" : "border-zinc-800 text-zinc-500 bg-zinc-900/60"
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <span className="flex items-center gap-1">
+                            <kbd className={`px-1 border font-mono ${kbdTone}`}>↑</kbd>
+                            <kbd className={`px-1 border font-mono ${kbdTone}`}>↓</kbd>
+                            navegar
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <kbd className={`px-1 border ${kbdTone}`}>
+                              <CornerDownLeft className="size-3 inline" aria-hidden />
+                            </kbd>
+                            abrir
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <kbd className={`px-1 border font-mono ${kbdTone}`}>Esc</kbd>
+                            cerrar
+                          </span>
+                        </span>
+                        {matches.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsDropdownOpen(false)}
+                            className={`inline-flex items-center gap-1 uppercase tracking-wider font-semibold cursor-pointer ${
+                              isLight ? "text-zinc-700 hover:text-black" : "text-zinc-300 hover:text-white"
+                            }`}
+                          >
+                            Ver todos en el catálogo
+                            <ArrowRight className="size-3.5" aria-hidden />
+                          </button>
+                        )}
                       </div>
-                    )}
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <button

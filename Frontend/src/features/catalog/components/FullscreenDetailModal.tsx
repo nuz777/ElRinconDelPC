@@ -112,6 +112,7 @@ export default function FullscreenDetailModal({
 }: FullscreenDetailModalProps) {
   const [copied, setCopied] = useState(false);
   const [hydratedState, setHydratedState] = useState<{ id: string; item: CatalogItem } | null>(null);
+  const [hydrationFailedId, setHydrationFailedId] = useState<string | null>(null);
   const { theme } = useTheme();
   const isLight = theme === "light";
   const reduceMotion = useReducedMotion();
@@ -129,6 +130,7 @@ export default function FullscreenDetailModal({
       })
       .catch(() => {
         // Se mantiene la ficha base si falla la hidratación
+        if (!cancelled) setHydrationFailedId(baseItem.id);
       });
 
     return () => {
@@ -157,7 +159,10 @@ export default function FullscreenDetailModal({
   const isAdult = item.apartado === "adultos";
   const isRom = item.apartado === "roms";
   const primaryLink = item.downloadLinks[0];
-  const backdrop = item.bannerImg || item.img;
+  // El listado no trae el banner: hasta tener la ficha completa no se muestra la portada como
+  // fondo, para que no aparezca primero la portada y después salte al banner.
+  const isHydrated = hydratedState?.id === baseItem.id || hydrationFailedId === baseItem.id;
+  const backdrop = item.bannerImg || (isHydrated ? item.img : null);
 
   const handleCopyLink = async () => {
     try {
@@ -215,14 +220,19 @@ export default function FullscreenDetailModal({
       >
         {/* Fondo inmersivo: el banner difuminado ocupa toda la vista */}
         <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden>
-          <img
-            src={backdrop}
-            alt=""
-            className={`w-full h-full object-cover scale-110 blur-3xl ${isLight ? "opacity-25" : "opacity-30"}`}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
+          {backdrop && (
+            <img
+              key={backdrop}
+              src={backdrop}
+              alt=""
+              className={`w-full h-full object-cover scale-110 blur-3xl animate-[fade-in_0.6s_ease-out] ${
+                isLight ? "opacity-25" : "opacity-30"
+              }`}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          )}
           <div
             className={`absolute inset-0 ${
               isLight ? "bg-gradient-to-b from-zinc-100/40 via-zinc-100/80 to-zinc-100" : "bg-gradient-to-b from-zinc-950/30 via-zinc-950/80 to-zinc-950"
@@ -318,17 +328,25 @@ export default function FullscreenDetailModal({
 
         {/* Hero: banner + portada + datos + descarga, todo a la vista */}
         <header className="relative z-10">
-          <div className="absolute inset-x-0 top-0 h-[22rem] sm:h-[28rem] overflow-hidden" aria-hidden>
-            <FramedCover
-              src={backdrop}
-              alt=""
-              framing={item.bannerImg ? item.bannerFraming : null}
-              loading="eager"
-              showLoader={false}
-            />
+          {/* La máscara funde el borde inferior del banner con el fondo: sin raya al terminar la imagen */}
+          <div
+            className="absolute inset-x-0 top-0 h-[22rem] sm:h-[30rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_45%,transparent)]"
+            aria-hidden
+          >
+            {backdrop && (
+              <FramedCover
+                key={backdrop}
+                src={backdrop}
+                alt=""
+                framing={item.bannerImg ? item.bannerFraming : null}
+                loading="eager"
+                showLoader={false}
+                className="duration-700"
+              />
+            )}
             <div
               className={`absolute inset-0 bg-gradient-to-t ${
-                isLight ? "from-zinc-100 via-zinc-100/70 to-zinc-100/10" : "from-zinc-950 via-zinc-950/70 to-zinc-950/10"
+                isLight ? "from-zinc-100/90 via-zinc-100/50 to-zinc-100/10" : "from-zinc-950/90 via-zinc-950/50 to-zinc-950/10"
               }`}
             />
           </div>
