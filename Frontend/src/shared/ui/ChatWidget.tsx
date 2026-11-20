@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { playChatHelloThereSound } from "../utils/playDetailOpenSound";
 
 interface FlowNode {
   bot: string;
@@ -143,6 +144,7 @@ export default function ChatWidget() {
     setShowOptions(false);
 
     if (!text) {
+      playChatHelloThereSound();
       setShowOptions(true);
       return;
     }
@@ -159,6 +161,7 @@ export default function ChatWidget() {
         intervalRef.current = null;
         setBotText(text);
         setShowOptions(true);
+        playChatHelloThereSound();
       } else {
         setBotText(text.slice(0, idx + 1));
       }
@@ -207,6 +210,7 @@ export default function ChatWidget() {
       setBotText("");
       setShowTyping(false);
       setShowOptions(false);
+      playChatHelloThereSound();
       setOpen(true);
     }
   };

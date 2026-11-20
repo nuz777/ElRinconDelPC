@@ -4,6 +4,7 @@ let profileSelectAudio: HTMLAudioElement | null = null;
 let profileSaveAudio: HTMLAudioElement | null = null;
 let profileSettingsOpenAudio: HTMLAudioElement | null = null;
 let categorySelectAudio: HTMLAudioElement | null = null;
+let chatHelloThereAudio: HTMLAudioElement | null = null;
 
 export function playDetailOpenSound(): void {
   try {
@@ -94,6 +95,22 @@ export function playCategorySelectSound(): void {
     }
     categorySelectAudio.currentTime = 0;
     void categorySelectAudio.play().catch(() => {
+      // Ignorar bloqueos de autoplay/reproducción
+    });
+  } catch {
+    // noop
+  }
+}
+
+export function playChatHelloThereSound(): void {
+  try {
+    if (typeof window === "undefined") return;
+    if (!chatHelloThereAudio) {
+      chatHelloThereAudio = new Audio("/sounds/hello-there-obi-wan.mp3");
+      chatHelloThereAudio.preload = "auto";
+    }
+    chatHelloThereAudio.currentTime = 0;
+    void chatHelloThereAudio.play().catch(() => {
       // Ignorar bloqueos de autoplay/reproducción
     });
   } catch {
