@@ -31,6 +31,7 @@ import GameModsSection from "../../games/components/GameModsSection";
 import { buildItemPath } from "../utils/catalogUrl";
 import FramedCover from "./FramedCover";
 import DownloadCta from "./DownloadCta";
+import DownloadHostInfo from "./DownloadHostBadge";
 import { APARTADO_NOUN } from "../domain/catalogViews";
 import { dialog, isDialogOpen } from "../../../shared/ui/dialog";
 
@@ -500,7 +501,9 @@ export default function FullscreenDetailModal({
             >
               <h2 className={`text-base font-bold tracking-wide ${strong}`}>Zona de descarga</h2>
               <p className={`mt-1 mb-5 text-xs leading-relaxed ${muted}`}>
-                Descarga directa desde nuestro servidor. Si el enlace falla, avísanos en el chat.
+                {item.downloadHosts?.length
+                  ? "El enlace te lleva al sitio donde está alojado. Si falla, avísanos en el chat."
+                  : "Descarga directa desde nuestro servidor. Si el enlace falla, avísanos en el chat."}
               </p>
               <DownloadCta
                 href={primaryLink?.url ?? "#"}
@@ -509,6 +512,7 @@ export default function FullscreenDetailModal({
                 isLight={isLight}
                 size="md"
               />
+              <DownloadHostInfo hosts={item.downloadHosts} isLight={isLight} />
               <p className={`mt-3 flex items-center gap-1.5 text-[11px] ${muted}`}>
                 <Shield className="size-3.5 text-emerald-500 shrink-0" aria-hidden />
                 Revisado contra malware, sin contraseñas ocultas

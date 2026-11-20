@@ -1,3 +1,5 @@
+import type { DownloadHostId } from "./downloadHosts";
+
 export type Apartado = "juegos" | "mods" | "herramientas" | "roms" | "adultos";
 
 export interface DownloadLink {
@@ -41,6 +43,8 @@ export interface CatalogItem {
   bannerImg?: string; // Banner horizontal de cabecera
   /** Encuadre del banner de cabecera (null = centrado, sin zoom). */
   bannerFraming?: CoverFraming | null;
+  /** Sitio donde está alojada cada parte del archivo, en orden (null = sin elegir). */
+  downloadHosts?: DownloadHostId[] | null;
   shortDesc: string;
   fullDesc: string;
   features: string[];

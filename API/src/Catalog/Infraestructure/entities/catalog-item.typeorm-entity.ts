@@ -1,3 +1,4 @@
+import type { CatalogDownloadHost } from '../../Domain/Entities/download-host.js';
 import {
   Column,
   CreateDateColumn,
@@ -47,6 +48,9 @@ export class CatalogItemTypeormEntity {
 
   @Column({ name: 'banner_framing', type: 'jsonb', nullable: true })
   bannerFraming!: CatalogCoverFraming | null;
+
+  @Column({ name: 'download_hosts', type: 'jsonb', nullable: true })
+  downloadHosts!: CatalogDownloadHost[] | null;
 
   @Column({ name: 'download_url', type: 'text', nullable: true })
   downloadUrl!: string | null;
