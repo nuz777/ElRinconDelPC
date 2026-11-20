@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "motion/react";
 import { ArrowLeft, Camera, Check, Lock, Save, User } from "lucide-react";
@@ -26,6 +26,14 @@ function PresetAvatarOption({
   onSelect: () => void;
 }) {
   const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useLayoutEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) {
+      setLoaded(true);
+    }
+  }, [avatar.src]);
 
   return (
     <motion.button
@@ -58,10 +66,10 @@ function PresetAvatarOption({
         </span>
       )}
       <img
+        ref={imgRef}
         src={avatar.src}
         alt={avatar.label}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
-        loading="lazy"
+        className={`w-full h-full object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
         onLoad={() => setLoaded(true)}
         onError={() => setLoaded(true)}
       />
@@ -95,6 +103,7 @@ export default function ProfilePage() {
   const [picture, setPicture] = useState<string>(DEFAULT_PROFILE_AVATAR);
   const [savingProfile, setSavingProfile] = useState(false);
   const [mainAvatarLoaded, setMainAvatarLoaded] = useState(false);
+  const mainAvatarImgRef = useRef<HTMLImageElement>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -109,6 +118,17 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setMainAvatarLoaded(false);
+  }, [picture]);
+
+  useLayoutEffect(() => {
+    if (!picture) {
+      setMainAvatarLoaded(true);
+      return;
+    }
+    const el = mainAvatarImgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) {
+      setMainAvatarLoaded(true);
+    }
   }, [picture]);
 
   const saveProfile = useCallback(async () => {
@@ -135,6 +155,7 @@ export default function ProfilePage() {
       await authService.updateProfile(payload);
       await checkSession();
       dialog.toast("success", "Perfil actualizado", "Tus cambios se guardaron correctamente.");
+      setLocation(ROUTES.CATALOG);
     } catch (err) {
       dialog.toast(
         "error",
@@ -144,7 +165,7 @@ export default function ProfilePage() {
     } finally {
       setSavingProfile(false);
     }
-  }, [user, savingProfile, name, picture, checkSession, dialog]);
+  }, [user, savingProfile, name, picture, checkSession, dialog, setLocation]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,8 +184,8 @@ export default function ProfilePage() {
       if (e.key === "Enter") {
         if (isDialogOpen()) return;
         const target = e.target as HTMLElement | null;
-        // dejar que los formularios manejen su propio submit (perfil/contraseña)
-        if (target?.closest("form")) return;
+        // permitir submit normal del formulario de cambio de contraseña
+        if (target?.closest("#password-form")) return;
         e.preventDefault();
         void saveProfile();
         return;
@@ -294,35 +315,33 @@ export default function ProfilePage() {
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 260, damping: 20 }}
               >
-                {picture && !mainAvatarLoaded && (
-                  <div
-                    className={`absolute inset-0 z-[1] flex items-center justify-center border-2 ${
-                      isLight ? "bg-zinc-100/80 border-zinc-200" : "bg-zinc-800/70 border-zinc-700"
-                    }`}
-                    aria-hidden="true"
-                  >
-                    <svg className="size-7 animate-spin text-zinc-400" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                      <path className="opacity-90" fill="currentColor" d="M12 2a10 10 0 00-10 10h3.2A6.8 6.8 0 0112 5.2V2z" />
-                    </svg>
-                  </div>
-                )}
-                <motion.img
-                  key={picture || "empty"}
-                  src={picture || undefined}
-                  alt={displayName}
-                  initial={{ opacity: 0.7, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.25 }}
-                  onLoad={() => setMainAvatarLoaded(true)}
-                  onError={() => setMainAvatarLoaded(true)}
-                  className={`size-28 sm:size-32 object-cover border-2 ${
-                    isLight ? "border-zinc-200" : "border-zinc-700"
-                  } ${!picture ? "hidden" : ""} transition-opacity duration-300 ${
-                    mainAvatarLoaded ? "opacity-100" : "opacity-0"
-                  }`}
-                />
-                {!picture && (
+                {picture ? (
+                  <>
+                    {!mainAvatarLoaded && (
+                      <div
+                        className={`absolute inset-0 z-[1] flex items-center justify-center border-2 ${
+                          isLight ? "bg-zinc-100/80 border-zinc-200" : "bg-zinc-800/70 border-zinc-700"
+                        }`}
+                        aria-hidden="true"
+                      >
+                        <svg className="size-7 animate-spin text-zinc-400" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                          <path className="opacity-90" fill="currentColor" d="M12 2a10 10 0 00-10 10h3.2A6.8 6.8 0 0112 5.2V2z" />
+                        </svg>
+                      </div>
+                    )}
+                    <img
+                      ref={mainAvatarImgRef}
+                      src={picture}
+                      alt={displayName}
+                      onLoad={() => setMainAvatarLoaded(true)}
+                      onError={() => setMainAvatarLoaded(true)}
+                      className={`size-28 sm:size-32 object-cover border-2 ${
+                        isLight ? "border-zinc-200" : "border-zinc-700"
+                      } transition-opacity duration-200 ${mainAvatarLoaded ? "opacity-100" : "opacity-0"}`}
+                    />
+                  </>
+                ) : (
                   <div className={`size-28 sm:size-32 flex items-center justify-center text-3xl font-bold border-2 ${isLight ? "bg-zinc-100 border-zinc-200 text-zinc-700" : "bg-zinc-800 border-zinc-700 text-zinc-200"}`}>
                     {initials}
                   </div>
@@ -436,7 +455,7 @@ export default function ProfilePage() {
               Esta cuenta no usa una contraseña local, por lo que no se puede cambiar desde aquí.
             </p>
           ) : (
-            <form onSubmit={handleChangePassword} className="grid sm:grid-cols-3 gap-4">
+            <form id="password-form" onSubmit={handleChangePassword} className="grid sm:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="current-password" className={labelClass}>Contraseña actual</label>
                 <input
