@@ -26,6 +26,14 @@ const flows: Record<string, FlowNode> = {
       { label: "¿Qué requisitos necesito?", next: "pc_req" },
     ],
   },
+  mods: {
+    bot: "Tenemos mods y shaders para mejorar tus juegos. ¿Qué necesitas?",
+    options: [
+      { label: "¿Cómo instalo un mod/shader?", next: "mods_install" },
+      { label: "El mod no funciona", next: "mods_error" },
+      { label: "Sugerir un mod", next: "suggest" },
+    ],
+  },
   android: {
     bot: "Tenemos juegos Android gratis. ¿En qué te ayudo?",
     options: [
@@ -62,8 +70,16 @@ const flows: Record<string, FlowNode> = {
     bot: "Los requisitos mínimos están en la página de cada juego, justo debajo del título. Si tu PC tiene menos de 4GB de RAM y GPU integrada, busca juegos con la etiqueta 'bajo rendimiento'.",
     options: [],
   },
+  mods_install: {
+    bot: "Para instalar un mod o shader: descarga el archivo desde su ficha, descomprímelo si viene en .zip/.rar y sigue los pasos de la descripción. Normalmente se copia en la carpeta del juego o se instala con el gestor indicado.",
+    options: [],
+  },
+  mods_error: {
+    bot: "Si un mod o shader no funciona: verifica que sea compatible con la versión de tu juego, instala las dependencias requeridas y prueba ejecutar el juego como administrador. Si sigue fallando, repórtalo desde el formulario de contacto.",
+    options: [],
+  },
   apk_install: {
-    bot: "Para instalar un APK, primero descarga el archivo desde Saunuz. Luego ve a Ajustes > Seguridad y activa la opción 'Fuentes desconocidas'. Por último abre el APK descargado y toca Instalar. Así de fácil.",
+    bot: "Para instalar un APK, primero descarga el archivo desde El Sótano del PC. Luego ve a Ajustes > Seguridad y activa la opción 'Fuentes desconocidas'. Por último abre el APK descargado y toca Instalar. Así de fácil.",
     options: [],
   },
   apk_error: {
@@ -71,7 +87,7 @@ const flows: Record<string, FlowNode> = {
     options: [],
   },
   apk_safe: {
-    bot: "Todos los APKs de Saunuz son verificados manualmente antes de publicarse. Aun así, te recomendamos tener Malwarebytes en tu Android. ¡Jugamos limpio!",
+    bot: "Todos los APKs de El Sótano del PC son verificados manualmente antes de publicarse. Aun así, te recomendamos tener Malwarebytes en tu Android. ¡Jugamos limpio!",
     options: [],
   },
   tools_how: {
@@ -83,7 +99,7 @@ const flows: Record<string, FlowNode> = {
     options: [],
   },
   tools_app: {
-    bot: "Por ahora no tenemos app móvil oficial, pero la web de Saunuz está optimizada para móviles. Puedes añadirla a tu pantalla de inicio como si fuera una app.",
+    bot: "Por ahora no tenemos app móvil oficial, pero la web de El Sótano del PC está optimizada para móviles. Puedes añadirla a tu pantalla de inicio como si fuera una app.",
     options: [],
   },
   report_link: {
@@ -91,11 +107,11 @@ const flows: Record<string, FlowNode> = {
     options: [],
   },
   suggest: {
-    bot: "Nos encanta recibir sugerencias. Envíanos el nombre del juego o herramienta que quieres ver en Saunuz por el formulario de contacto y lo evaluamos.",
+    bot: "Nos encanta recibir sugerencias. Envíanos el nombre del juego o herramienta que quieres ver en El Sótano del PC por el formulario de contacto y lo evaluamos.",
     options: [],
   },
   contact: {
-    bot: "Para cualquier otro problema, contáctanos desde el formulario de contacto en saunuz.com. Respondemos en menos de 48 horas.",
+    bot: "Para cualquier otro problema, contáctanos desde el formulario de contacto de El Sótano del PC. Respondemos en menos de 48 horas.",
     options: [],
   },
 };
@@ -171,14 +187,23 @@ export default function ChatWidget() {
   const goToNode = useCallback((id: string, userLabelVal?: string) => {
     cleanup();
     const nodeData = flows[id];
-    if (!nodeData) return;
 
     setUserLabel(userLabelVal ?? null);
     setShowTyping(true);
     setShowOptions(false);
     setBotText("");
-    setNodeId(id);
 
+    if (!nodeData) {
+      setNodeId("start");
+      timeoutRef.current = setTimeout(() => {
+        if (mountedRef.current) {
+          startBotTyping("Lo siento, no encontré esa opción. Volvamos al inicio.");
+        }
+      }, 600);
+      return;
+    }
+
+    setNodeId(id);
     timeoutRef.current = setTimeout(() => {
       if (mountedRef.current) {
         startBotTyping(nodeData.bot);
