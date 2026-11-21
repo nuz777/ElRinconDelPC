@@ -301,12 +301,16 @@ html {
 }
 
 @layer base {
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: #3f3f46 transparent;
-  }
-  html.light * {
-    scrollbar-color: #a1a1aa transparent;
+  /* Firefox (no soporta ::-webkit-scrollbar). En Chrome/Edge estas dos propiedades harían que se
+     ignore el estilo de abajo y saldría la barra del sistema, por eso solo se aplican aquí. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #3f3f46 transparent;
+    }
+    html.light * {
+      scrollbar-color: #a1a1aa transparent;
+    }
   }
   ::-webkit-scrollbar {
     width: 6px;
@@ -324,6 +328,9 @@ html {
   }
   ::-webkit-scrollbar-corner {
     background: transparent;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
   }
   html.light ::-webkit-scrollbar-thumb {
     background: #a1a1aa;
@@ -1129,6 +1136,12 @@ html.light .dl-cta:not([data-tone="adult"]) {
   max-height: calc(100dvh - 24px);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Se puede desplazar, pero sin barra visible */
+  scrollbar-width: none;
+}
+
+.dossier-modal::-webkit-scrollbar {
+  display: none;
 }
 
 .dossier-modal[data-rank="general"] {
