@@ -34,6 +34,7 @@ function DossierCard({ member, onOpen }: { member: TeamMember; onOpen: (m: TeamM
   const [active, setActive] = useState(false);
   const isNicholas = member.rank === "general-division";
   const isNuz = member.rank === "general";
+  const isDozenApollo = member.rank === "teniente-general";
   const { Medal, className: medalClass } = RANK_MEDAL[member.rank];
 
   const onMove = (e: PointerEvent<HTMLElement>) => {
@@ -53,6 +54,7 @@ function DossierCard({ member, onOpen }: { member: TeamMember; onOpen: (m: TeamM
     teamSfx.unlock();
     if (isNicholas) teamSfx.move();
     if (isNuz) teamSfx.trophy();
+    if (isDozenApollo) teamSfx.doom();
   };
 
   const deactivate = () => {
@@ -79,6 +81,7 @@ function DossierCard({ member, onOpen }: { member: TeamMember; onOpen: (m: TeamM
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           if (isNicholas) teamSfx.select();
+          if (isDozenApollo) teamSfx.doom();
           onOpen(member);
         }
       }}
@@ -87,6 +90,7 @@ function DossierCard({ member, onOpen }: { member: TeamMember; onOpen: (m: TeamM
         const touch = (e.nativeEvent as globalThis.PointerEvent).pointerType !== "mouse";
         if (touch && !active) return activate();
         if (isNicholas) teamSfx.select();
+        if (isDozenApollo) teamSfx.doom();
         onOpen(member);
       }}
     >

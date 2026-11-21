@@ -2,19 +2,28 @@
  * Sonidos del equipo de desarrollo:
  * - Nicholas: efectos de DELTARUNE (Toby Fox), los mismos de su portfolio.
  * - Nuz: el trofeo de PlayStation que ya usa la página.
+ * - Dozen Apollo: escopeta de doble cañón de Doom.
  * Se reproducen con Web Audio para que suenen al instante, incluso varios seguidos (las letras del diálogo).
  */
-type Effect = "move" | "select" | "text" | "trophy";
+type Effect = "move" | "select" | "text" | "trophy" | "doom";
 
 const EFFECTS: Record<Effect, { src: string; volume: number }> = {
   move: { src: "/sounds/deltarune/menumove.wav", volume: 0.5 }, // pasar el mouse
   select: { src: "/sounds/deltarune/select.wav", volume: 0.5 }, // hacer clic
   text: { src: "/sounds/deltarune/text.wav", volume: 0.35 }, // letra del cuadro de diálogo
   trophy: { src: "/sounds/ps4-trophy.mp3", volume: 0.45 }, // pasar el mouse por Nuz
+  doom: {
+    src: encodeURI("/audio/Doom original double barrell shotgun sound.mp3"),
+    volume: 0.55,
+  }, // pasar el mouse / seleccionar a Dozen Apollo
 };
 
 /** Mínimo entre dos reproducciones del mismo sonido, para que no suene en ráfaga. */
-const COOLDOWN_MS: Partial<Record<Effect, number>> = { move: 45, trophy: 1200 };
+const COOLDOWN_MS: Partial<Record<Effect, number>> = {
+  move: 45,
+  trophy: 1200,
+  doom: 1500,
+};
 
 let ctx: AudioContext | null = null;
 const buffers = new Map<Effect, Promise<AudioBuffer | null>>();
@@ -68,6 +77,7 @@ export const teamSfx = {
   select: () => play("select"),
   text: () => play("text"),
   trophy: () => play("trophy"),
+  doom: () => play("doom"),
   /** Precarga los sonidos tras el primer gesto, para que la primera letra no llegue tarde. */
   unlock() {
     const ac = audioContext();
