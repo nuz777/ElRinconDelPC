@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AudioCtx } from "./audioContextValue";
+import { AudioCtx, PLAYLIST, type Track } from "./audioContextValue";
+
+/** Elige una canción al azar distinta de la anterior (si hay más de una). */
+function pickRandomTrack(previous: Track | null): Track {
+  const options = PLAYLIST.length > 1 ? PLAYLIST.filter((t) => t !== previous) : PLAYLIST;
+  return options[Math.floor(Math.random() * options.length)];
+}
 
 const WebAudioCtx = window.AudioContext;
 
 export function AudioProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [intensity, setIntensity] = useState(0);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const currentTrackRef = useRef<Track | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -69,8 +77,14 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       if (audioCtxRef.current?.state === "suspended") {
         void audioCtxRef.current.resume();
       }
+      // Cada play suena una canción al azar
+      const track = pickRandomTrack(currentTrackRef.current);
+      currentTrackRef.current = track;
+      setCurrentTrack({ ...track }); // objeto nuevo en cada reproducción
+      audio.src = track.src;
+      audio.currentTime = 0;
       audio.volume = 0.7;
-      void audio.play();
+      void audio.play().catch(() => setIsPlaying(false));
       setIsPlaying(true);
     } else {
       audio.pause();
@@ -79,10 +93,21 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     }
   }, [setupAudio]);
 
+  // Al terminar una canción sigue otra al azar
+  const handleEnded = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const track = pickRandomTrack(currentTrackRef.current);
+    currentTrackRef.current = track;
+    setCurrentTrack({ ...track });
+    audio.src = track.src;
+    void audio.play().catch(() => setIsPlaying(false));
+  }, []);
+
   return (
-    <AudioCtx.Provider value={{ isPlaying, toggleAudio, intensity }}>
+    <AudioCtx.Provider value={{ isPlaying, toggleAudio, intensity, currentTrack }}>
       {children}
-      <audio ref={audioRef} src="/audio/mussicSong.mp3" loop preload="auto" />
+      <audio ref={audioRef} preload="none" onEnded={handleEnded} />
     </AudioCtx.Provider>
   );
 }
