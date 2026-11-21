@@ -29,7 +29,7 @@ export const teamMembers: TeamMember[] = [
     serial: "001",
   },
   {
-    name: "Manuel / Marin",
+    name: "Dozen Apollo",
     role: "Miembro",
     img: "/img/Portada_miembros/manuel.png",
     bio: "They are rage, brutal, without mercy. But you. You will be worse. Rip and tear, until it is done.",
