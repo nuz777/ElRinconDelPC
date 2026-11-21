@@ -591,3 +591,727 @@ html.light .dl-cta:not([data-tone="adult"]) {
     opacity: 0;
   }
 }
+
+/* ───────────── Equipo de desarrollo: recuadros de retrato militar ───────────── */
+@property --dz-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes dz-spin {
+  to {
+    --dz-angle: 360deg;
+  }
+}
+
+@keyframes dz-sheen {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes dz-swing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(9deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  85% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes dz-star {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes dz-soul {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.25);
+  }
+  30% {
+    transform: scale(1);
+  }
+}
+
+.dossier {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  --metal: linear-gradient(135deg, #3f3f46, #a1a1aa, #52525b, #d4d4d8, #27272a);
+  --accent: 212 212 216;
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 21rem;
+  margin-inline: auto;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.25s ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dossier:hover {
+    transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  }
+}
+
+.dossier:hover,
+.dossier:focus-visible {
+  transition: transform 0.08s linear;
+}
+
+.dossier:focus-visible .dossier-frame {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 4px;
+}
+
+/* Marco metálico: el degradado vive en el borde (padding) */
+.dossier-frame {
+  position: relative;
+  display: block;
+  padding: 10px;
+  background: var(--metal);
+  background-size: 300% 300%;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.5),
+    inset 0 2px 0 rgb(255 255 255 / 0.25),
+    0 18px 40px -16px rgb(0 0 0 / 0.75);
+  transition: box-shadow 0.3s ease;
+}
+
+.dossier:is(:hover, .is-active) .dossier-frame {
+  animation: dz-sheen 3s linear infinite;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.5),
+    inset 0 2px 0 rgb(255 255 255 / 0.3),
+    0 26px 60px -18px rgb(var(--accent) / 0.45),
+    0 0 0 1px rgb(var(--accent) / 0.25);
+}
+
+.dossier-inner {
+  position: relative;
+  display: block;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgb(255 255 255 / 0.05), transparent 60%),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.015) 0 2px, transparent 2px 4px),
+    #121214;
+  border: 1px solid rgb(0 0 0 / 0.6);
+  box-shadow: inset 0 0 24px rgb(0 0 0 / 0.8);
+}
+
+.dossier-rivet {
+  position: absolute;
+  z-index: 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #fafafa, #71717a 55%, #27272a);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.6);
+}
+
+.dossier-stars {
+  color: rgb(var(--accent));
+}
+
+.dossier:is(:hover, .is-active) .dossier-stars svg {
+  animation: dz-star 1.2s ease-in-out infinite;
+}
+
+.dossier-portrait {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  margin: 0 12px;
+  overflow: hidden;
+  border: 1px solid rgb(0 0 0 / 0.8);
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.18);
+  background: #09090b;
+}
+
+.dossier-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: grayscale(1) sepia(0.35) contrast(1.1) brightness(0.9);
+  transition:
+    filter 0.5s ease,
+    transform 0.6s ease;
+}
+
+.dossier:is(:hover, .is-active) .dossier-portrait img,
+.dossier:focus-visible .dossier-portrait img {
+  filter: grayscale(0) sepia(0) contrast(1.05) brightness(1);
+  transform: scale(1.08);
+}
+
+/* Grano y viñeta de foto antigua */
+.dossier-portrait-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 50%, rgb(0 0 0 / 0.65) 100%),
+    repeating-radial-gradient(circle at 17% 32%, rgb(255 255 255 / 0.03) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+
+/* Brillo que sigue al mouse */
+.dossier-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at var(--mx) var(--my), rgb(255 255 255 / 0.22), transparent 45%);
+  transition: opacity 0.3s ease;
+}
+
+.dossier:is(:hover, .is-active) .dossier-shine {
+  opacity: 1;
+}
+
+.dossier-bracket {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: rgb(var(--accent) / 0.85);
+  transition:
+    width 0.3s ease,
+    height 0.3s ease;
+}
+
+.dossier:is(:hover, .is-active) .dossier-bracket {
+  width: 22px;
+  height: 22px;
+}
+
+.dossier-bracket-tl {
+  top: 6px;
+  left: 6px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.dossier-bracket-tr {
+  top: 6px;
+  right: 6px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+
+.dossier-bracket-bl {
+  bottom: 6px;
+  left: 6px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+}
+
+.dossier-bracket-br {
+  bottom: 6px;
+  right: 6px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+}
+
+/* Sello que cae al pasar el mouse */
+.dossier-stamp {
+  position: absolute;
+  right: 10px;
+  bottom: 14px;
+  padding: 2px 8px;
+  border: 2px solid rgb(220 38 38 / 0.85);
+  color: rgb(239 68 68 / 0.9);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: rotate(-12deg) scale(1.8);
+  transition:
+    opacity 0.2s ease,
+    transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.dossier:is(:hover, .is-active) .dossier-stamp {
+  opacity: 1;
+  transform: rotate(-12deg) scale(1);
+}
+
+.dossier-plaque {
+  position: relative;
+  display: block;
+  margin: -14px 24px 0;
+  padding: 6px 10px;
+  background: var(--metal);
+  background-size: 300% 300%;
+  color: #18181b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.4);
+  box-shadow:
+    0 4px 10px rgb(0 0 0 / 0.6),
+    inset 0 1px 0 rgb(255 255 255 / 0.4);
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%);
+}
+
+.dossier:is(:hover, .is-active) .dossier-plaque {
+  animation: dz-sheen 3s linear infinite;
+}
+
+.dossier-name {
+  color: #fafafa;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.6);
+}
+
+
+/* Medalla: cuelga del borde superior derecho y se balancea */
+.dossier-medal {
+  position: absolute;
+  top: 46%;
+  right: -26px;
+  z-index: 5;
+  transform-origin: 50% 0;
+  pointer-events: none;
+  transition: filter 0.3s ease;
+}
+
+.dossier:is(:hover, .is-active) .dossier-medal {
+  animation: dz-swing 1.4s ease-in-out;
+  filter: drop-shadow(0 0 10px rgb(var(--accent) / 0.55));
+}
+
+/* ── Rango 1: General (oro) ── */
+.dossier[data-rank="general"] {
+  --metal: linear-gradient(135deg, #6b4f16, #f5d77a, #a67c2e, #fbe7a1, #7a5c1e, #e9c46a, #5c4310);
+  --accent: 234 179 8;
+}
+
+.dossier[data-rank="general"] .dossier-frame {
+  padding: 12px;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.5),
+    inset 0 0 0 4px rgb(120 80 10 / 0.35),
+    inset 0 2px 0 rgb(255 255 255 / 0.35),
+    0 22px 50px -16px rgb(0 0 0 / 0.8);
+}
+
+/* ── Rango 2: Teniente General (plata) ── */
+.dossier[data-rank="teniente-general"] {
+  --metal: linear-gradient(135deg, #4b5563, #f3f4f6, #9ca3af, #ffffff, #6b7280, #e5e7eb, #374151);
+  --accent: 203 213 225;
+}
+
+/* ── Rango 3: General de División (marco animado estilo "mundo oscuro") ── */
+.dossier[data-rank="general-division"] {
+  --metal: linear-gradient(135deg, #0b1026, #1e3a8a, #0b1026);
+  --accent: 96 165 250;
+}
+
+.dossier[data-rank="general-division"] .dossier-frame {
+  background: conic-gradient(from var(--dz-angle), #22d3ee, #3b82f6, #8b5cf6, #ef233c, #22d3ee);
+  animation: dz-spin 5s linear infinite;
+}
+
+.dossier[data-rank="general-division"]:is(:hover, .is-active) .dossier-frame {
+  animation: dz-spin 1.6s linear infinite;
+}
+
+/* Esquinas pixeladas */
+.dossier[data-rank="general-division"] .dossier-frame::before,
+.dossier[data-rank="general-division"] .dossier-frame::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+  background: #0b1026;
+  box-shadow:
+    4px 4px 0 0 #22d3ee,
+    -4px -4px 0 0 #ef233c;
+}
+
+.dossier[data-rank="general-division"] .dossier-frame::before {
+  top: -5px;
+  left: -5px;
+}
+
+.dossier[data-rank="general-division"] .dossier-frame::after {
+  bottom: -5px;
+  right: -5px;
+}
+
+.dossier[data-rank="general-division"] .dossier-plaque {
+  color: #e0f2fe;
+  text-shadow: 0 0 8px rgb(34 211 238 / 0.8);
+  background: linear-gradient(90deg, #0b1026, #1e3a8a, #0b1026);
+  border-top: 1px solid #22d3ee;
+  border-bottom: 1px solid #8b5cf6;
+}
+
+.dossier[data-rank="general-division"] .dossier-portrait::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 3px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dossier[data-rank="general-division"]:is(:hover, .is-active) .dossier-portrait::after {
+  opacity: 1;
+}
+
+.dossier[data-rank="general-division"] .dossier-stamp {
+  border-color: rgb(239 35 60 / 0.9);
+  color: #ef233c;
+}
+
+/* Corazón pixelado (SOUL) */
+.dossier-soul,
+.dossier-rpg-soul {
+  flex-shrink: 0;
+  background: #ef233c;
+  clip-path: polygon(
+    14% 0, 43% 0, 43% 17%, 57% 17%, 57% 0, 86% 0, 86% 17%, 100% 17%, 100% 50%, 86% 50%, 86% 67%,
+    71% 67%, 71% 83%, 57% 83%, 57% 100%, 43% 100%, 43% 83%, 29% 83%, 29% 67%, 14% 67%, 14% 50%,
+    0 50%, 0 17%, 14% 17%
+  );
+}
+
+.dossier-soul {
+  width: 14px;
+  height: 12px;
+  animation: dz-soul 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgb(239 35 60 / 0.8));
+}
+
+.dossier-rpg-soul {
+  width: 10px;
+  height: 9px;
+  margin-top: 5px;
+}
+
+/* Cuadro bajo el recuadro: en escritorio flota debajo; en móvil entra en el flujo al tocar */
+.dossier-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  z-index: 6;
+  width: calc(100% + 24px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 100%) translateY(8px);
+  transition:
+    opacity 0.15s ease,
+    transform 0.2s ease;
+}
+
+.dossier:is(:hover, .is-active) .dossier-bubble {
+  opacity: 1;
+  transform: translate(-50%, 100%) translateY(0);
+}
+
+@media (max-width: 767px) {
+  .dossier-bubble {
+    position: static;
+    display: none;
+    width: 100%;
+    margin-top: 14px;
+    transform: none;
+  }
+
+  .dossier.is-active .dossier-bubble {
+    display: flex;
+    transform: none;
+  }
+}
+
+/* Nicholas: cuadro de diálogo estilo UNDERTALE / DELTARUNE */
+.dossier-rpg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 14px;
+  background: #000;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px #000;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Los demás: nota del expediente, en el estilo normal de la página */
+.dossier-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: rgb(24 24 27 / 0.96);
+  border: 1px solid #3f3f46;
+  border-top: 2px solid rgb(var(--accent));
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.8);
+  color: #d4d4d8;
+  font-size: 12px;
+  line-height: 1.6;
+  backdrop-filter: blur(6px);
+}
+
+.dossier-note-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgb(var(--accent));
+}
+
+/* Medallas: en pantallas chicas se pegan más al marco para no salirse de la pantalla */
+@media (max-width: 639px) {
+  .dossier-medal {
+    right: -12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dossier,
+  .dossier-frame,
+  .dossier-medal,
+  .dossier-stars svg,
+  .dossier-soul,
+  .dossier-plaque {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .dossier {
+    transform: none;
+  }
+}
+
+/* ── Expediente (modal) de cada miembro: mismo metal y colores que su recuadro ── */
+.dossier-modal {
+  --metal: linear-gradient(135deg, #3f3f46, #a1a1aa, #52525b, #d4d4d8, #27272a);
+  --accent: 212 212 216;
+  position: relative;
+  width: 100%;
+  max-width: 54rem;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dossier-modal[data-rank="general"] {
+  --metal: linear-gradient(135deg, #6b4f16, #f5d77a, #a67c2e, #fbe7a1, #7a5c1e, #e9c46a, #5c4310);
+  --accent: 234 179 8;
+}
+
+.dossier-modal[data-rank="teniente-general"] {
+  --metal: linear-gradient(135deg, #4b5563, #f3f4f6, #9ca3af, #ffffff, #6b7280, #e5e7eb, #374151);
+  --accent: 203 213 225;
+}
+
+.dossier-modal[data-rank="general-division"] {
+  --metal: linear-gradient(90deg, #0b1026, #1e3a8a, #0b1026);
+  --accent: 96 165 250;
+}
+
+.dossier-modal-frame {
+  position: relative;
+  padding: 12px;
+  background: var(--metal);
+  background-size: 300% 300%;
+  animation: dz-sheen 6s linear infinite;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.5),
+    inset 0 2px 0 rgb(255 255 255 / 0.3),
+    0 40px 90px -30px rgb(var(--accent) / 0.45);
+}
+
+.dossier-modal[data-rank="general-division"] .dossier-modal-frame {
+  background: conic-gradient(from var(--dz-angle), #22d3ee, #3b82f6, #8b5cf6, #ef233c, #22d3ee);
+  animation: dz-spin 4s linear infinite;
+}
+
+.dossier-modal-inner {
+  position: relative;
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgb(var(--accent) / 0.08), transparent 60%),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.015) 0 2px, transparent 2px 4px),
+    #121214;
+  border: 1px solid rgb(0 0 0 / 0.6);
+  box-shadow: inset 0 0 40px rgb(0 0 0 / 0.8);
+}
+
+.dossier-modal-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #3f3f46;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dossier-modal-close:hover,
+.dossier-modal-close:focus-visible {
+  color: #fff;
+  border-color: rgb(var(--accent));
+  transform: rotate(90deg);
+  outline: none;
+}
+
+.dossier-modal-portrait {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 1px solid rgb(0 0 0 / 0.8);
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.25);
+  background: #09090b;
+}
+
+.dossier-modal-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.dossier-modal-portrait .dossier-bracket {
+  width: 22px;
+  height: 22px;
+}
+
+.dossier-modal-stamp {
+  position: absolute;
+  right: 10px;
+  bottom: 16px;
+  padding: 2px 10px;
+  border: 2px solid rgb(220 38 38 / 0.85);
+  color: rgb(239 68 68 / 0.95);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transform: rotate(-12deg);
+  animation: dz-stamp 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) 0.25s both;
+}
+
+@keyframes dz-stamp {
+  from {
+    opacity: 0;
+    transform: rotate(-12deg) scale(2);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-12deg) scale(1);
+  }
+}
+
+.dossier-modal-plaque {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+
+.dossier-modal[data-rank="general-division"] .dossier-modal-plaque {
+  color: #e0f2fe;
+  text-shadow: 0 0 8px rgb(34 211 238 / 0.8);
+  background: linear-gradient(90deg, #0b1026, #1e3a8a, #0b1026);
+  border-top: 1px solid #22d3ee;
+  border-bottom: 1px solid #8b5cf6;
+}
+
+.dossier-modal-stars {
+  color: rgb(var(--accent));
+}
+
+.dossier-modal-accent {
+  color: rgb(var(--accent));
+}
+
+.dossier-modal-note {
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.dossier-modal-rpg {
+  min-height: 96px;
+  font-size: 15px;
+}
+
+.dossier-modal-medal {
+  flex-shrink: 0;
+  width: 72px;
+  transform-origin: 50% 0;
+  animation: dz-swing 1.6s ease-in-out 0.3s;
+}
+
+.dossier-modal[data-rank="general-division"] .dossier-modal-medal {
+  width: 104px;
+}
+
+.dossier-modal-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 10px 16px;
+  border: 1px solid #3f3f46;
+  background: #18181b;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.dossier-modal-link:hover {
+  border-color: rgb(var(--accent));
+  background: #27272a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dossier-modal-frame,
+  .dossier-modal-medal,
+  .dossier-modal-stamp {
+    animation: none !important;
+  }
+}

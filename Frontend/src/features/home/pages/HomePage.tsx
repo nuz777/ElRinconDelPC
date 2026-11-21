@@ -13,7 +13,7 @@ import { Link, useLocation } from "wouter";
 import { AnimatePresence, motion } from "motion/react";
 import Hero from "../components/Hero";
 import RecentGamesSection from "../components/RecentGamesSection";
-import TeamTerminal from "../components/TeamTerminal";
+import TeamRoster from "../components/team/TeamRoster";
 import Header from "../../../shared/ui/Navbar";
 import Footer from "../../../shared/ui/Footer";
 import YouTubeEmbed from "../../../shared/ui/YouTubeEmbed";
@@ -284,12 +284,12 @@ export default function Home() {
               </h2>
               <p className="font-share text-sm text-theme-desc uppercase tracking-widest mb-12">
                 <span className="relative inline-block before:absolute before:-left-8 before:top-1/2 before:-translate-y-1/2 before:w-5 before:h-px before:bg-zinc-400 dark:before:bg-zinc-700 after:absolute after:-right-8 after:top-1/2 after:-translate-y-1/2 after:w-5 after:h-px after:bg-zinc-400 dark:after:bg-zinc-700">
-                  Desarrollado y mantenido por Nuz
+                  Los oficiales al mando del sótano
                 </span>
               </p>
             </div>
           </Reveal>
-          <TeamTerminal />
+          <TeamRoster />
         </section>
 
         {/* Catalog CTA */}
