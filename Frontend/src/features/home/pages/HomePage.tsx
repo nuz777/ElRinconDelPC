@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   MessageCircle,
@@ -52,19 +52,19 @@ function WhatsAppIcon({ className = "size-5" }: { className?: string }) {
 }
 
 export default function Home() {
-  const [showMusicMsg, setShowMusicMsg] = useState(false);
+  // Canción cuyo aviso ya se ocultó (el aviso dura 3 s por canción)
+  const [hiddenMsgFor, setHiddenMsgFor] = useState<object | null>(null);
   const [selectedGame, setSelectedGame] = useState<CatalogItem | null>(null);
   const [, setLocation] = useLocation();
-  const { isPlaying, toggleAudio, intensity } = useAudio();
-  const prevPlaying = useRef(false);
-
+  const { isPlaying, toggleAudio, intensity, currentTrack } = useAudio();
+  // Muestra el nombre de la canción cada vez que empieza una (al dar play o al pasar a la siguiente)
   useEffect(() => {
-    if (isPlaying && !prevPlaying.current) {
-      setShowMusicMsg(true);
-      setTimeout(() => setShowMusicMsg(false), 2500);
-    }
-    prevPlaying.current = isPlaying;
-  }, [isPlaying]);
+    if (!isPlaying || !currentTrack) return;
+    const track = currentTrack;
+    const timer = window.setTimeout(() => setHiddenMsgFor(track), 3000);
+    return () => window.clearTimeout(timer);
+  }, [isPlaying, currentTrack]);
+  const showMusicMsg = isPlaying && !!currentTrack && hiddenMsgFor !== currentTrack;
 
   return (
     <>
@@ -128,7 +128,7 @@ export default function Home() {
                             transition={{ duration: 0.3 }}
                             className="text-xs md:text-sm text-theme-title font-share uppercase tracking-widest bg-zinc-200/90 dark:bg-zinc-900/80 px-3 py-1  border border-zinc-300 dark:border-zinc-700 shadow-sm"
                           >
-                            ¡Música Desbloqueada!
+                            ♪ {currentTrack ? currentTrack.title : "¡Música Desbloqueada!"}
                           </motion.span>
                         )}
                       </AnimatePresence>
